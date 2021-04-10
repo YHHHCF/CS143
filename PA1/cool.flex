@@ -73,11 +73,25 @@ NOT             [nN][oO][tT]
 TRUE            t[rR][uU][eE]
 FALSE           f[aA][lL][sS][eE]
 
+/* Exclusive start states */
+%x COMMENT
+
 %%
 
  /*
   *  Nested comments
   */
+"(*" { ++comment_depth; BEGIN(COMMENT); }
+
+<COMMENT>"(*" { ++comment_depth; }       
+<COMMENT>[^\n] { /* Eat up any char that is not a new line */ }
+<COMMENT>\n { ++curr_lineno; }
+<COMMENT>"*)" {
+                --comment_depth;
+                if (comment_depth == 0) {
+                    BEGIN(INITIAL);
+                }
+              }
 
  /*
   *  The multiple-character operators.
