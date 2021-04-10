@@ -42,14 +42,36 @@ extern YYSTYPE cool_yylval;
 /*
  *  Add Your own definitions here
  */
+// 0 means outside of comments
+int comment_depth = 0;
 
 %}
+
 
 /*
  * Define names for regular expressions here.
  */
-
+/* Keywords */
 DARROW          =>
+CLASS           [cC][lL][aA][sS][sS]
+ELSE            [eE][lL][sS][eE]
+FI              [fF][iI]
+IF              [iI][fF]
+IN              [iI][nN]
+INHERITS        [iI][nN][hH][eE][rR][iI][tT][sS]
+ISVOID          [iI][sS][vV][oO][iI][dD]
+LET             [lL][eE][tT]
+LOOP            [lL][oO][oO][pP]
+POOL            [pP][oO][oO][lL]
+THEN            [tT][hH][eE][nN]
+WHILE           [wW][hH][iI][lL][eE]
+CASE            [cC][aA][sS][eE]
+ESAC            [eE][sS][aA][cC]
+NEW             [nN][eE][wW]
+OF              [oO][fF]
+NOT             [nN][oO][tT]
+TRUE            t[rR][uU][eE]
+FALSE           f[aA][lL][sS][eE]
 
 %%
 
@@ -57,17 +79,35 @@ DARROW          =>
   *  Nested comments
   */
 
-
  /*
   *  The multiple-character operators.
   */
-{DARROW}		{ return (DARROW); }
+
 
  /*
   * Keywords are case-insensitive except for the values true and false,
   * which must begin with a lower-case letter.
   */
-
+{DARROW}        { return (DARROW); }
+{CLASS}         { return (CLASS); }
+{ELSE}          { return (ELSE); }
+{FI}            { return (FI); }
+{IF}            { return (IF); }
+{IN}            { return (IN); }
+{INHERITS}      { return (INHERITS); }
+{ISVOID}        { return (ISVOID); }
+{LET}           { return (LET); }
+{LOOP}          { return (LOOP); }
+{POOL}          { return (POOL); }
+{THEN}          { return (THEN); }
+{WHILE}         { return (WHILE); }
+{CASE}          { return (CASE); }
+{ESAC}          { return (ESAC); }
+{NEW}           { return (NEW); }
+{OF}            { return (OF); }
+{NOT}           { return (NOT); }
+{TRUE}          { yylval.boolean = true; return (BOOL_CONST); }
+{FALSE}         { yylval.boolean = false; return (BOOL_CONST); }
 
  /*
   *  String constants (C syntax)
