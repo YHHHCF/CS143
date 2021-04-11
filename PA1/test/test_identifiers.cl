@@ -1,0 +1,12 @@
+Type_identifier
+TYPEIDENTIFIER
+Type_identifier_
+object_identifier
+object_identifier_
+oBJECT_IDENRIFIER
+self
+sELF
+SELF
+self_type
+sELF_tYPe
+SELF_TYPE

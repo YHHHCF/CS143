@@ -42,10 +42,10 @@ extern YYSTYPE cool_yylval;
 /*
  *  Add Your own definitions here
  */
-// 0 means outside of comments
+/* 0 means outside of comments */
 int comment_depth = 0;
 
-// Store the string
+/* Store the string */
 %}
 
 
@@ -81,9 +81,7 @@ FALSE           f[aA][lL][sS][eE]
 
 %%
 
- /*
-  *  Single line comments
-  */
+ /* Single line comments */
 "--" { BEGIN(LINE_COMMENT); }
 <LINE_COMMENT>[^\n] {}
 <LINE_COMMENT>\n {
@@ -91,9 +89,7 @@ FALSE           f[aA][lL][sS][eE]
     BEGIN(INITIAL);
 }
 
- /*
-  *  Nested comments
-  */
+ /* Nested comments */
 "(*" { ++comment_depth; BEGIN(COMMENT); }
 <COMMENT>"(*" { ++comment_depth; }       
 <COMMENT>[^\n] {}
@@ -131,18 +127,45 @@ FALSE           f[aA][lL][sS][eE]
 {TRUE}          { yylval.boolean = true; return (BOOL_CONST); }
 {FALSE}         { yylval.boolean = false; return (BOOL_CONST); }
 
- /*
-  * Integers
-  */
+ /* Integers */
+[0-9]+ {
+    yylval.symbol = inttable.add_string(yytext);
+    return (INT_CONST);
+}
+ /* Multi char special notations */
+"<-"            { return (ASSIGN); }
+"<="            { return (LE); }
 
- /*
-  * Type IDs
-  */
+ /* Single char special notations */
+"{"             { return '{'; }
+"}"             { return '}'; }
+"("             { return '('; }
+")"             { return ')'; }
+","             { return ','; }
+"."             { return '.'; }
+";"             { return ';'; }
+":"             { return ':'; }
+"@"             { return '@'; }
+"+"             { return '+'; }
+"-"             { return '-'; }
+"*"             { return '*'; }
+"/"             { return '/'; }
+"~"             { return '~'; }
+"="             { return '='; }
+"<"             { return '<'; }
 
 
- /*
-  * Object IDs
-  */
+ /* Type IDs */
+[A-Z][a-zA-Z0-9_]* {
+    yylval.symbol = idtable.add_string(yytext);
+    return (TYPEID);
+}
+
+ /* Object IDs */
+[a-z][a-zA-Z0-9_]* {
+    yylval.symbol = idtable.add_string(yytext);
+    return (OBJECTID);
+}
 
  /*
   *  String constants (C syntax)
@@ -155,7 +178,7 @@ FALSE           f[aA][lL][sS][eE]
 }
 
 <STRING>[^\"]* {
-    yylval.symbol = stringtable.add_string(yytext, yyleng);
+    yylval.symbol = stringtable.add_string(yytext);
     return (STR_CONST);
 }
 
@@ -163,10 +186,8 @@ FALSE           f[aA][lL][sS][eE]
     BEGIN(INITIAL);
 }
 
- /*
-  *  White space
-  */
-[\b\t\f ] { }
+ /* White space */
+[ \f\r\t\v] { }
 \n { ++curr_lineno; }
 
 %%
