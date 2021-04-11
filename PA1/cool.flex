@@ -45,6 +45,7 @@ extern YYSTYPE cool_yylval;
 // 0 means outside of comments
 int comment_depth = 0;
 
+// Store the string
 %}
 
 
@@ -75,27 +76,34 @@ FALSE           f[aA][lL][sS][eE]
 
 /* Exclusive start states */
 %x COMMENT
+%x LINE_COMMENT
+%x STRING
 
 %%
+
+ /*
+  *  Single line comments
+  */
+"--" { BEGIN(LINE_COMMENT); }
+<LINE_COMMENT>[^\n] {}
+<LINE_COMMENT>\n {
+    ++curr_lineno;
+    BEGIN(INITIAL);
+}
 
  /*
   *  Nested comments
   */
 "(*" { ++comment_depth; BEGIN(COMMENT); }
-
 <COMMENT>"(*" { ++comment_depth; }       
-<COMMENT>[^\n] { /* Eat up any char that is not a new line */ }
+<COMMENT>[^\n] {}
 <COMMENT>\n { ++curr_lineno; }
 <COMMENT>"*)" {
-                --comment_depth;
-                if (comment_depth == 0) {
-                    BEGIN(INITIAL);
-                }
-              }
-
- /*
-  *  The multiple-character operators.
-  */
+    --comment_depth;
+    if (comment_depth == 0) {
+        BEGIN(INITIAL);
+    }
+}
 
 
  /*
@@ -124,11 +132,41 @@ FALSE           f[aA][lL][sS][eE]
 {FALSE}         { yylval.boolean = false; return (BOOL_CONST); }
 
  /*
+  * Integers
+  */
+
+ /*
+  * Type IDs
+  */
+
+
+ /*
+  * Object IDs
+  */
+
+ /*
   *  String constants (C syntax)
   *  Escape sequence \c is accepted for all characters c. Except for 
   *  \n \t \b \f, the result is c.
   *
   */
+\" {
+    BEGIN(STRING);
+}
 
+<STRING>[^\"]* {
+    yylval.symbol = stringtable.add_string(yytext, yyleng);
+    return (STR_CONST);
+}
+
+<STRING>\" {
+    BEGIN(INITIAL);
+}
+
+ /*
+  *  White space
+  */
+[\b\t\f ] { }
+\n { ++curr_lineno; }
 
 %%

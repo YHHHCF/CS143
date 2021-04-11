@@ -20,3 +20,19 @@
 *)
 =>
 
+-- This is a single line comment
+
+=>
+
+-- (* This is a nested comment in single line *)
+
+=>
+
+-- (* This is a valid comment
+
+=>
+
+-- -- This is another valid comment
+
+=>
+
