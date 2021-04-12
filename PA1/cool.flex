@@ -1,12 +1,12 @@
-/*
- *  The scanner definition for COOL.
- */
+ /*
+  *  The scanner definition for COOL.
+  */
 %option noyywrap
-/*
- *  Stuff enclosed in %{ %} in the first section is copied verbatim to the
- *  output, so headers and global definitions are placed here to be visible
- * to the code in the file.  Don't remove anything that was here initially
- */
+ /*
+  *  Stuff enclosed in %{ %} in the first section is copied verbatim to the
+  *  output, so headers and global definitions are placed here to be visible
+  * to the code in the file.  Don't remove anything that was here initially
+  */
 %{
 #include <cool-parse.h>
 #include <stringtab.h>
@@ -44,8 +44,7 @@ extern YYSTYPE cool_yylval;
  */
 /* 0 means outside of comments */
 int comment_depth = 0;
-
-/* Store the string */
+bool in_str_error = 0;
 %}
 
 
@@ -173,17 +172,92 @@ FALSE           f[aA][lL][sS][eE]
   *  \n \t \b \f, the result is c.
   *
   */
+ /* Begin a string */
 \" {
     BEGIN(STRING);
+    memset(string_buf, 0, sizeof(string_buf));
+    string_buf_ptr = &string_buf[0];
 }
 
-<STRING>[^\"]* {
-    yylval.symbol = stringtable.add_string(yytext);
-    return (STR_CONST);
+<STRING><<EOF>> {
+    yylval.error_msg = strdup("String contains EOF character");
+    in_str_error = 1;
+    return (ERROR);
+}
+
+<STRING>\0 {
+    yylval.error_msg = strdup("String contains null character.");
+    in_str_error = 1;
+    return (ERROR);
+}
+
+<STRING>\\b {
+    *string_buf_ptr = '\b';
+    ++string_buf_ptr;
+}
+
+<STRING>\\t {
+    *string_buf_ptr = '\t';
+    ++string_buf_ptr;
+}
+
+<STRING>\\n {
+    *string_buf_ptr = '\n';
+    ++string_buf_ptr;
+}
+
+<STRING>\\f {
+    *string_buf_ptr = '\f';
+    ++string_buf_ptr;
+}
+
+ /* A new line with escape */
+<STRING>\\\n {
+    ++curr_lineno;
+    *string_buf_ptr = '\n';
+    ++string_buf_ptr;
+}
+
+<STRING>\\[^btnf] {
+    if ((string_buf_ptr - &string_buf[0]) >= 1024) {
+        yylval.error_msg = strdup("String constant too long");
+        in_str_error = 1;
+        return (ERROR);
+    } else {
+        *string_buf_ptr = yytext[1];
+        ++string_buf_ptr;
+    }
+}
+
+ /* A new lien without escape */
+<STRING>\n {
+    ++curr_lineno;
+    yylval.error_msg = strdup("Unterminated string constant");
+    BEGIN(INITIAL);
+    return (ERROR);
 }
 
 <STRING>\" {
     BEGIN(INITIAL);
+    yylval.symbol = stringtable.add_string(&string_buf[0]);
+    string_buf_ptr = &string_buf[0];
+    if (in_str_error) {
+        in_str_error = 0;
+    } else {
+        return (STR_CONST);
+    }
+}
+
+ /* A normal character */
+<STRING>. {
+    if ((string_buf_ptr - &string_buf[0]) >= 1024) {
+        yylval.error_msg = strdup("String constant too long");
+        in_str_error = 1;
+        return (ERROR);
+    } else {
+        *string_buf_ptr = yytext[0];
+        ++string_buf_ptr;
+    }
 }
 
  /* White space */
