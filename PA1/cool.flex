@@ -44,6 +44,8 @@ extern YYSTYPE cool_yylval;
  */
 /* 0 means outside of comments */
 int comment_depth = 0;
+
+/* 0 means currently no error for this string */
 bool in_str_error = 0;
 %}
 
@@ -172,23 +174,32 @@ FALSE           f[aA][lL][sS][eE]
   *  \n \t \b \f, the result is c.
   *
   */
- /* Begin a string */
+ /* Start a string */
 \" {
-    BEGIN(STRING);
+    BEGIN(STRING);  // Only case to start a string
     memset(string_buf, 0, sizeof(string_buf));
     string_buf_ptr = &string_buf[0];
+    in_str_error = 0;
 }
 
 <STRING><<EOF>> {
-    yylval.error_msg = strdup("String contains EOF character");
-    in_str_error = 1;
-    return (ERROR);
+    BEGIN(INITIAL);  // Case 1 to end a string
+    if (!in_str_error) {
+        /* No need to update in_str_error */
+        yylval.error_msg = strdup("EOF in string constant");
+        return (ERROR);
+    }
+    /* If another error is reported for this string
+     * Then no need to do anything else but to end string
+     */
 }
 
 <STRING>\0 {
-    yylval.error_msg = strdup("String contains null character.");
-    in_str_error = 1;
-    return (ERROR);
+    if (!in_str_error) {
+        in_str_error = 1;
+        yylval.error_msg = strdup("String contains null character.");
+        return (ERROR);
+    }
 }
 
 <STRING>\\b {
@@ -220,25 +231,32 @@ FALSE           f[aA][lL][sS][eE]
 
 <STRING>\\[^btnf] {
     if ((string_buf_ptr - &string_buf[0]) >= 1024) {
-        yylval.error_msg = strdup("String constant too long");
-        in_str_error = 1;
-        return (ERROR);
+        /* Only report this error when there is no other errors before */
+        if (!in_str_error) {
+            in_str_error = 1;
+            yylval.error_msg = strdup("String constant too long");
+            return (ERROR);
+        }
     } else {
         *string_buf_ptr = yytext[1];
         ++string_buf_ptr;
     }
 }
 
- /* A new lien without escape */
+ /* A new line without escape */
 <STRING>\n {
     ++curr_lineno;
-    yylval.error_msg = strdup("Unterminated string constant");
-    BEGIN(INITIAL);
-    return (ERROR);
+    BEGIN(INITIAL);  // Case 2 to end a string
+
+    if (!in_str_error) {
+        in_str_error = 0;
+        yylval.error_msg = strdup("Unterminated string constant");
+        return (ERROR);
+    }
 }
 
 <STRING>\" {
-    BEGIN(INITIAL);
+    BEGIN(INITIAL);  // Case 3 to end a string
     yylval.symbol = stringtable.add_string(&string_buf[0]);
     string_buf_ptr = &string_buf[0];
     if (in_str_error) {
@@ -251,9 +269,11 @@ FALSE           f[aA][lL][sS][eE]
  /* A normal character */
 <STRING>. {
     if ((string_buf_ptr - &string_buf[0]) >= 1024) {
-        yylval.error_msg = strdup("String constant too long");
-        in_str_error = 1;
-        return (ERROR);
+        if (!in_str_error) {
+            in_str_error = 1;
+            yylval.error_msg = strdup("String constant too long");
+            return (ERROR);
+        }
     } else {
         *string_buf_ptr = yytext[0];
         ++string_buf_ptr;
