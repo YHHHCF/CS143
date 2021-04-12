@@ -89,9 +89,17 @@ FALSE           f[aA][lL][sS][eE]
     ++curr_lineno;
     BEGIN(INITIAL);
 }
+<LINE_COMMENT><<EOF>> {
+    /* EOF in line comment is ok */
+    ++curr_lineno;
+    BEGIN(INITIAL);
+}
 
  /* Nested comments */
-"(*" { ++comment_depth; BEGIN(COMMENT); }
+"(*" {
+    ++comment_depth;
+    BEGIN(COMMENT);
+}
 <COMMENT>"(*" { ++comment_depth; }       
 <COMMENT>[^\n] {}
 <COMMENT>\n { ++curr_lineno; }
@@ -100,6 +108,15 @@ FALSE           f[aA][lL][sS][eE]
     if (comment_depth == 0) {
         BEGIN(INITIAL);
     }
+}
+<COMMENT><<EOF>> {
+    BEGIN(INITIAL);
+    yylval.error_msg = strdup("EOF in comment");
+    return (ERROR);
+}
+"*)" {
+    yylval.error_msg = strdup("Unmatched *)");
+    return (ERROR);
 }
 
 
@@ -197,7 +214,7 @@ FALSE           f[aA][lL][sS][eE]
 <STRING>\0 {
     if (!in_str_error) {
         in_str_error = 1;
-        yylval.error_msg = strdup("String contains null character.");
+        yylval.error_msg = strdup("String contains null character");
         return (ERROR);
     }
 }
@@ -283,5 +300,11 @@ FALSE           f[aA][lL][sS][eE]
  /* White space */
 [ \f\r\t\v] { }
 \n { ++curr_lineno; }
+
+ /* Other Characters */
+. {
+    yylval.error_msg = strdup(&yytext[0]);
+    return (ERROR);
+}
 
 %%
