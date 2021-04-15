@@ -84,7 +84,7 @@ FALSE           f[aA][lL][sS][eE]
 
  /* Single line comments */
 "--" { BEGIN(LINE_COMMENT); }
-<LINE_COMMENT>[^\n] {}
+<LINE_COMMENT>. { }
 <LINE_COMMENT>\n {
     ++curr_lineno;
     BEGIN(INITIAL);
@@ -101,7 +101,7 @@ FALSE           f[aA][lL][sS][eE]
     BEGIN(COMMENT);
 }
 <COMMENT>"(*" { ++comment_depth; }       
-<COMMENT>[^\n] {}
+<COMMENT>. { }
 <COMMENT>\n { ++curr_lineno; }
 <COMMENT>"*)" {
     --comment_depth;
@@ -274,11 +274,11 @@ FALSE           f[aA][lL][sS][eE]
 
 <STRING>\" {
     BEGIN(INITIAL);  // Case 3 to end a string
-    yylval.symbol = stringtable.add_string(&string_buf[0]);
     string_buf_ptr = &string_buf[0];
     if (in_str_error) {
         in_str_error = 0;
     } else {
+        yylval.symbol = stringtable.add_string(&string_buf[0]);
         return (STR_CONST);
     }
 }
