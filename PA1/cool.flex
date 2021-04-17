@@ -219,6 +219,14 @@ FALSE           f[aA][lL][sS][eE]
     }
 }
 
+<STRING>\\\0 {
+    if (!in_str_error) {
+        in_str_error = 1;
+        yylval.error_msg = strdup("String contains null character");
+        return (ERROR);
+    }
+}
+
 <STRING>\\b {
     *string_buf_ptr = '\b';
     ++string_buf_ptr;
