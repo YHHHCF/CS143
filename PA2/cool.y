@@ -13,22 +13,18 @@
   
   
   /* Locations */
-  #define YYLTYPE int              /* the type of locations */
-  #define cool_yylloc curr_lineno  /* use the curr_lineno from the lexer
-  for the location of tokens */
+  #define YYLTYPE int // the type of locations
+  #define cool_yylloc curr_lineno // use the curr_lineno from the lexer
     
-    extern int node_lineno;          /* set before constructing a tree node
-    to whatever you want the line number
-    for the tree node to be */
+  extern int node_lineno; // set before constructing a tree node
       
-      
-      #define YYLLOC_DEFAULT(Current, Rhs, N)         \
-      Current = Rhs[1];                             \
-      node_lineno = Current;
+  #define YYLLOC_DEFAULT(Current, Rhs, N) \
+  Current = Rhs[1]; \
+  node_lineno = Current;
     
-    
-    #define SET_NODELOC(Current)  \
-    node_lineno = Current;
+
+  #define SET_NODELOC(Current) \
+  node_lineno = Current;
     
     /* IMPORTANT NOTE ON LINE NUMBERS
     *********************************
@@ -135,7 +131,13 @@
     %type <class_> class
     
     /* You will want to change the following line. */
-    %type <features> dummy_feature_list
+    %type <features> feature_list
+    %type <feature> feature
+    %type <formals> formal_list
+    %type <formal> formal
+    %type <expressions> expr_list
+    %type <expressions> expr_block
+    %type <expression> expr
     
     /* Precedence declarations go here. */
     
@@ -157,17 +159,86 @@
     ;
     
     /* If no parent is specified, the class inherits from the Object class. */
-    class	: CLASS TYPEID '{' dummy_feature_list '}' ';'
+    class
+    : CLASS TYPEID '{' feature_list '}' ';'
     { $$ = class_($2,idtable.add_string("Object"),$4,
     stringtable.add_string(curr_filename)); }
-    | CLASS TYPEID INHERITS TYPEID '{' dummy_feature_list '}' ';'
+    | CLASS TYPEID INHERITS TYPEID '{' feature_list '}' ';'
     { $$ = class_($2,$4,$6,stringtable.add_string(curr_filename)); }
     ;
     
     /* Feature list may be empty, but no empty features in list. */
-    dummy_feature_list:		/* empty */
-    {  $$ = nil_Features(); }
+    feature_list
+    : /* empty */
+    { $$ = nil_Features(); }
+    | feature /* one feature */
+    { $$ = single_Features($1); }
+    | feature_list feature /* multiple features */
+    { $$ = append_Features($1, single_Features($2)); }
+    ;
+
+    feature
+    : OBJECTID '(' formal_list ')' ':' TYPEID '{' expr '}' ';' // method
+    { $$ = method($1, $3, $6, $8); }
+    | OBJECTID ':' TYPEID ';' // attribute without init
+    { $$ = attr($1, $3, no_expr()); }
+    | OBJECTID ':' TYPEID ASSIGN expr ';' // attribute with init
+    { $$ = attr($1, $3, $5); }
+    ;
+
+    /* Formal list */
+    formal_list  // [formal[[, formal]]*] 
+    : // empty formal list
+    { $$ = nil_Formals(); }
+    | formal // single formal
+    { $$ = single_Formals($1); }
+    | formal_list ',' foraml // multiple formals
+    { $$ = append_Formals($1, single_Formals($3)); }
+    ;
+
+    formal
+    : OBJECTID ':' TYPEID
+    { $$ = formal($1, $3); }
+    ;
+
+    /* Expressions */
+    expr_list // [expr[[, expr]]*]
+    : // empty expr list
+    { $$ = nil_Expressions(); }
+    | expr // single expr
+    { $$ = single_Expressions($1); }
+    | expr_list ',' expr // mutiple exprs
+    { $$ = append_Expressions($1, single_Expressions($3)); }
+    ;
+
+    expr_block // {[[expr;]]+}
+    : expr ';' // single expr
+    { $$ = single_Expressions($1); }
+    | expr_block expr ';' // multiple exprs
+    { $$ = append_Expressions($1, single_Expressions($2)); }
+    ;
+
+    expr // expr do not end with ';'
+    : OBJECTID ASSIGN expr // ID <- expr
+    { $$ = assign($1, $3); }
+    | expr '.' OBJECTID '(' expr_list ')' // expr.ID(expr_list)
+    { $$ = dispatch($1, $3, $5); }
+    | expr '@' TYPEID '.' OBJECTID '(' expr_list ')' // expr@TYPE.ID(expr_list)
+    { $$ = static_dispatch($1, $3, $5, $7); }
+    | OBJECTID '(' expr_list ')' // ID(expr_list)
+    { $$ = dispatch(idtable.add_string("self"), $1, $3); }
+    | IF expr THEN expr ELSE expr FI // if expr then expr else expr fi
+    { $$ = cond($2, $4, $6); }
+    | WHILE expr LOOP expr POOL // while expr loop expr pool
+    { $$ = loop($2, $4); }
+    | '{' expr_block '}' // expr_block
+    { $$ = block($2); }
+    | // let
+    { ; }
+    | // case
+    { ; }
     
+    ;
     
     /* end of grammar */
     %%
