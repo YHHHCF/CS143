@@ -3,3 +3,5 @@
 *.pdf
 *.output
 gt.sh
+cool-parse.cc
+cool.tab.h

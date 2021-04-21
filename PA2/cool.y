@@ -135,8 +135,11 @@
     %type <feature> feature
     %type <formals> formal_list
     %type <formal> formal
+    %type <cases> branch_list
+    %type <case_> branch
     %type <expressions> expr_list
     %type <expressions> expr_block
+    %type <expression> let_expr
     %type <expression> expr
     
     /* Precedence declarations go here. */
@@ -192,13 +195,26 @@
     { $$ = nil_Formals(); }
     | formal // single formal
     { $$ = single_Formals($1); }
-    | formal_list ',' foraml // multiple formals
+    | formal_list ',' formal // multiple formals
     { $$ = append_Formals($1, single_Formals($3)); }
     ;
 
     formal
     : OBJECTID ':' TYPEID
     { $$ = formal($1, $3); }
+    ;
+
+    /* branch list used for CASE */
+    branch_list // [[branch]]+
+    : branch // single branch
+    { $$ = single_Cases($1); }
+    | branch_list branch // multiple branches
+    { $$ = append_Cases($1, single_Cases($2)); }
+    ;
+
+    branch // ID:TYPE=>expr;
+    : OBJECTID ':' TYPEID DARROW expr ';'
+    { $$ = branch($1, $3, $5); }
     ;
 
     /* Expressions */
@@ -218,6 +234,17 @@
     { $$ = append_Expressions($1, single_Expressions($2)); }
     ;
 
+    let_expr // without LET keyword
+    : OBJECTID ':' TYPEID IN expr // single ID, no init
+    { $$ = let($1, $3, no_expr(), $5); }
+    | OBJECTID ':' TYPEID ASSIGN expr IN expr // single ID, with init
+    { $$ = let($1, $3, $5, $7); }
+    | OBJECTID ':' TYPEID ',' let_expr // multiple ID, first ID no init
+    { $$ = let($1, $3, no_expr(), $5); }
+    | OBJECTID ':' TYPEID ASSIGN expr ',' let_expr // multiple ID, first ID with init
+    { $$ = let($1, $3, $5, $7); }
+    ;
+
     expr // expr do not end with ';'
     : OBJECTID ASSIGN expr // ID <- expr
     { $$ = assign($1, $3); }
@@ -226,18 +253,49 @@
     | expr '@' TYPEID '.' OBJECTID '(' expr_list ')' // expr@TYPE.ID(expr_list)
     { $$ = static_dispatch($1, $3, $5, $7); }
     | OBJECTID '(' expr_list ')' // ID(expr_list)
-    { $$ = dispatch(idtable.add_string("self"), $1, $3); }
+    { $$ = dispatch(object(idtable.add_string("self")), $1, $3); }
     | IF expr THEN expr ELSE expr FI // if expr then expr else expr fi
     { $$ = cond($2, $4, $6); }
     | WHILE expr LOOP expr POOL // while expr loop expr pool
     { $$ = loop($2, $4); }
     | '{' expr_block '}' // expr_block
     { $$ = block($2); }
-    | // let
-    { ; }
-    | // case
-    { ; }
-    
+    | LET let_expr // let
+    { $$ = $2; }
+    | CASE expr OF branch_list ESAC // case
+    { $$ = typcase($2, $4); }
+    | NEW TYPEID // new TYPE
+    { $$ = new_($2); }
+    | ISVOID expr // isvoid expr
+    { $$ = isvoid($2); }
+    | expr '+' expr // expr + expr
+    { $$ = plus($1, $3); }
+    | expr '-' expr // expr - expr
+    { $$ = sub($1, $3); }
+    | expr '*' expr // expr * expr
+    { $$ = mul($1, $3); }
+    | expr '/' expr // expr / expr
+    { $$ = divide($1, $3); }
+    | '~' expr // ~expr
+    { $$ = neg($2); }
+    | expr '<' expr // expr < expr
+    { $$ = lt($1, $3); }
+    | expr LE expr // expr <= expr
+    { $$ = leq($1, $3); }
+    | expr '=' expr  // expr = expr
+    { $$ = eq($1, $3); }
+    | NOT expr // not expr
+    { $$ = comp($2); }
+    | '(' expr ')' // (expr)
+    { $$ = $2; }
+    | OBJECTID // ID
+    { $$ = object($1); }
+    | INT_CONST // integer
+    { $$ = int_const($1); }
+    | STR_CONST // string
+    { $$ = string_const($1); }
+    | BOOL_CONST // true or false
+    { $$ = bool_const($1); }
     ;
     
     /* end of grammar */
