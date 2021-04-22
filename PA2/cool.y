@@ -143,7 +143,16 @@
     %type <expression> expr
     
     /* Precedence declarations go here. */
-    
+    %right let_flag // to solve let ambiguity, right extend last expr
+    %right ASSIGN
+    %nonassoc NOT
+    %left LE '<' '='
+    %left '+' '-'
+    %left '*' '/'
+    %nonassoc ISVOID
+    %nonassoc '~'
+    %right '@'
+    %right '.'
     
     %%
     /* 
@@ -168,6 +177,8 @@
     stringtable.add_string(curr_filename)); }
     | CLASS TYPEID INHERITS TYPEID '{' feature_list '}' ';'
     { $$ = class_($2,$4,$6,stringtable.add_string(curr_filename)); }
+     | CLASS error ';'
+     { yyerrok; }
     ;
     
     /* Feature list may be empty, but no empty features in list. */
@@ -187,6 +198,8 @@
     { $$ = attr($1, $3, no_expr()); }
     | OBJECTID ':' TYPEID ASSIGN expr ';' // attribute with init
     { $$ = attr($1, $3, $5); }
+     | error ';'
+     { yyerrok; }
     ;
 
     /* Formal list */
@@ -235,9 +248,9 @@
     ;
 
     let_expr // without LET keyword
-    : OBJECTID ':' TYPEID IN expr // single ID, no init
+    : OBJECTID ':' TYPEID IN expr %prec let_flag // single ID, no init
     { $$ = let($1, $3, no_expr(), $5); }
-    | OBJECTID ':' TYPEID ASSIGN expr IN expr // single ID, with init
+    | OBJECTID ':' TYPEID ASSIGN expr IN expr  %prec let_flag // single ID, with init
     { $$ = let($1, $3, $5, $7); }
     | OBJECTID ':' TYPEID ',' let_expr // multiple ID, first ID no init
     { $$ = let($1, $3, no_expr(), $5); }
