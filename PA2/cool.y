@@ -21,7 +21,7 @@
   #define YYLLOC_DEFAULT(Current, Rhs, N) \
   Current = Rhs[1]; \
   node_lineno = Current;
-    
+
 
   #define SET_NODELOC(Current) \
   node_lineno = Current;
@@ -153,6 +153,7 @@
     %nonassoc '~'
     %right '@'
     %right '.'
+    %right '{'
     
     %%
     /* 
@@ -172,20 +173,24 @@
     
     /* If no parent is specified, the class inherits from the Object class. */
     class
-    : CLASS TYPEID '{' feature_list '}' ';'
+    : CLASS TYPEID '{' feature_list '}' ';' // without inheritance, with features
     { $$ = class_($2,idtable.add_string("Object"),$4,
     stringtable.add_string(curr_filename)); }
-    | CLASS TYPEID INHERITS TYPEID '{' feature_list '}' ';'
+    | CLASS TYPEID '{' '}' ';' // without inheritance, without features
+    { $$ = class_($2,idtable.add_string("Object"),nil_Features(),
+    stringtable.add_string(curr_filename)); }
+    | CLASS TYPEID INHERITS TYPEID '{' feature_list '}' ';' // with inheritance, with features
     { $$ = class_($2,$4,$6,stringtable.add_string(curr_filename)); }
-     | CLASS error ';'
-     { yyerrok; }
+    | CLASS TYPEID INHERITS TYPEID '{' '}' ';' // with inheritance, without features
+    { $$ = class_($2,$4,nil_Features(),
+    stringtable.add_string(curr_filename)); }
+    | CLASS error ';'
+    { yyerrok; }
     ;
     
-    /* Feature list may be empty, but no empty features in list. */
+    /* Feature list */
     feature_list
-    : /* empty */
-    { $$ = nil_Features(); }
-    | feature /* one feature */
+    : feature /* one feature */
     { $$ = single_Features($1); }
     | feature_list feature /* multiple features */
     { $$ = append_Features($1, single_Features($2)); }
@@ -198,8 +203,8 @@
     { $$ = attr($1, $3, no_expr()); }
     | OBJECTID ':' TYPEID ASSIGN expr ';' // attribute with init
     { $$ = attr($1, $3, $5); }
-     | error ';'
-     { yyerrok; }
+    | error ';'
+    { yyerrok; }
     ;
 
     /* Formal list */
@@ -215,6 +220,8 @@
     formal
     : OBJECTID ':' TYPEID
     { $$ = formal($1, $3); }
+    | error
+    { yyerrok; }
     ;
 
     /* branch list used for CASE */
@@ -228,6 +235,8 @@
     branch // ID:TYPE=>expr;
     : OBJECTID ':' TYPEID DARROW expr ';'
     { $$ = branch($1, $3, $5); }
+    | error ';'
+    { yyerrok; }
     ;
 
     /* Expressions */
@@ -245,17 +254,23 @@
     { $$ = single_Expressions($1); }
     | expr_block expr ';' // multiple exprs
     { $$ = append_Expressions($1, single_Expressions($2)); }
+    | error ';'
+    { yyerrok; }
     ;
 
     let_expr // without LET keyword
     : OBJECTID ':' TYPEID IN expr %prec let_flag // single ID, no init
     { $$ = let($1, $3, no_expr(), $5); }
-    | OBJECTID ':' TYPEID ASSIGN expr IN expr  %prec let_flag // single ID, with init
+    | OBJECTID ':' TYPEID ASSIGN expr IN expr %prec let_flag // single ID, with init
     { $$ = let($1, $3, $5, $7); }
     | OBJECTID ':' TYPEID ',' let_expr // multiple ID, first ID no init
     { $$ = let($1, $3, no_expr(), $5); }
     | OBJECTID ':' TYPEID ASSIGN expr ',' let_expr // multiple ID, first ID with init
     { $$ = let($1, $3, $5, $7); }
+    | error IN expr %prec let_flag // error handling with scope all bindings
+    { yyerrok; }
+    | error ',' let_expr // error handling with scope from start to error binding
+    { yyerrok; }
     ;
 
     expr // expr do not end with ';'

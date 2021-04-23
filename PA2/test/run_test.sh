@@ -15,7 +15,7 @@ for file in ./unit/* ; do
 done
 
 # Copied from /usr/class/cs143/examples/
-echo =================Program tests=================
+echo =================Example tests=================
 
 for file in ./examples/* ; do
     echo Testing "$file"
