@@ -146,7 +146,7 @@
     %right let_flag // to solve let ambiguity, right extend last expr
     %right ASSIGN
     %nonassoc NOT
-    %left LE '<' '='
+    %nonassoc LE '<' '='
     %left '+' '-'
     %left '*' '/'
     %nonassoc ISVOID
@@ -220,8 +220,6 @@
     formal
     : OBJECTID ':' TYPEID
     { $$ = formal($1, $3); }
-    | error
-    { yyerrok; }
     ;
 
     /* branch list used for CASE */

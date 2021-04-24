@@ -9,7 +9,7 @@ cd ./test/
 # Unit tests I created
 echo ==================Unit tests===================
 
-for file in ./unit/* ; do
+for file in ./unit/*_good.cl ; do
     echo Testing "$file"
     diff <($gtlexer $file | ../parser) <($gtlexer $file | $gtparser)
 done
