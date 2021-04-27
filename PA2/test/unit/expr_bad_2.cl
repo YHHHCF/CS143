@@ -47,6 +47,7 @@ class A {
             x not y;
             x isvoid y;
             x ~ y;
+            (~~)x;
         }
     };
 }

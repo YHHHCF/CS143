@@ -64,7 +64,7 @@ class A {
     };
 };
 
-(* error: let missing colon, comma, IN keyword *)
+(* error: let missing colon, comma, incorrect init, missing IN keyword *)
 class A {
     f1() : Int {
         let x Int <- 1 in a < b
@@ -73,6 +73,9 @@ class A {
         let x : Int <- 1 y : Int <- 2 in a < b
     };
     f3() : Int {
+        let x : Int <- A, y : Int <- 2, z : Int <- B in a < b
+    };
+    f4() : Int {
         let x : Int <- 1, y : Int <- 2, z : Int <- 3 a < b
     };
 };
