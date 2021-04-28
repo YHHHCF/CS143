@@ -45,8 +45,11 @@ class A {
             x < y < z;
             x = y = z;
             x not y;
+            x not y not z;
             x isvoid y;
+            x isvoid y isvoid z;
             x ~ y;
+            x ~ y ~ z;
             (~~)x;
         }
     };

@@ -27,6 +27,12 @@ class A {
     f3() : Int {
         y1, 2, 3)
     };
+    f4() : Int {
+        a.b.c(1, 2, 3)
+    };
+    f5() : Int {
+        a@B@C(1, 2, 3)
+    };
 };
 
 (* error: misspell fi to fii *)
