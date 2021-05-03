@@ -84,25 +84,24 @@ static void initialize_constants(void)
 
 
 ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) {
+    // Add basic classes to class_map and inheritance_map
+    install_basic_classes();
 
-    /* Fill this in */
-
+    // Go through all the classes of program
+    for(int i = classes->first(); classes->more(i); i = classes->next(i)) {
+        this->add_class(classes->nth(i));
+    }
+    bool inheritance_correct = this->check_inheritance_map();
+    if (semant_debug) {
+        this->print_inheritance_map();
+    }
 }
 
 void ClassTable::install_basic_classes() {
 
     // The tree package uses these globals to annotate the classes built below.
    // curr_lineno  = 0;
-    Symbol filename = stringtable.add_string("<basic class>");
-    
-    // The following demonstrates how to create dummy parse trees to
-    // refer to basic Cool classes.  There's no need for method
-    // bodies -- these are already built into the runtime system.
-    
-    // IMPORTANT: The results of the following expressions are
-    // stored in local variables.  You will want to do something
-    // with those variables at the end of this method to make this
-    // code meaningful.
+    Symbol filename = stringtable.add_string("<basic class>");  // TODO: what is this??
 
     // 
     // The Object class has no parent class. Its methods are
@@ -188,6 +187,14 @@ void ClassTable::install_basic_classes() {
 						      Str, 
 						      no_expr()))),
 	       filename);
+    
+    // Add all the Basic Classes Object, IO, Int, Bool, Str to
+    // (1) class_map and (2)inheritance_map
+    this->add_class(Object_class);
+    this->add_class(IO_class);
+    this->add_class(Int_class);
+    this->add_class(Bool_class);
+    this->add_class(Str_class);
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -239,16 +246,23 @@ ostream& ClassTable::semant_error()
  */
 void program_class::semant()
 {
+    if (semant_debug) {
+        printf("=======Debugging information start========\n");
+    }
     initialize_constants();
 
     /* ClassTable constructor may do some semantic analysis */
     ClassTable *classtable = new ClassTable(classes);
 
+    if (semant_debug) {
+        printf("=======Debugging information end==========\n");
+    }
+
     /* some semantic analysis code may go here */
 
     if (classtable->errors()) {
-	cerr << "Compilation halted due to static semantic errors." << endl;
-	exit(1);
+	    cerr << "Compilation halted due to static semantic errors." << endl;
+	    exit(1);
     }
 }
 
