@@ -93,6 +93,7 @@ ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) 
     }
     bool inheritance_correct = this->check_inheritance_map();
     if (semant_debug) {
+        this->print_class_map();
         this->print_inheritance_map();
     }
 }

@@ -100,7 +100,7 @@ public:
         auto set = this->inheritance_map[curr];
 
         if (semant_debug) {
-          printf("Debug inheritance_map checking: %s with %lu childrens\n", curr->get_string(), set.size());
+          printf("Traversing inheritance_map: %s with %lu childrens\n", curr->get_string(), set.size());
         }
 
         for (auto iter = set.begin(); iter != set.end(); ++iter) {
@@ -115,7 +115,7 @@ public:
     // The parents from inheritance_map, whether all of them are in class_map
     // If a class is a parent in inheritance_map but not in class_map
     // Then it has Error 3, the only exception is Object which has not parent
-    std::set<Symbol> inherit_from_undefined_class_set; // Used for Error 4
+    std::set<Symbol> error3_set; // Record in Error 3 and used for Error 4
 
     for (auto symbol_symbols : this->inheritance_map) {
       Symbol parent = symbol_symbols.first;
@@ -124,24 +124,24 @@ public:
         for (auto iter = children.begin(); iter != children.end(); ++iter) {
           Symbol name = *iter;
           if (!name->equal_string("Object", 6)) {
+            error3_set.insert(name);
             Class_ c = this->class_map[name];
             semant_error(c) << "Class " << name << " inherits from an undefined class " << parent << ".\n";
             ++semant_errors;
             correctness = false;
-            inherit_from_undefined_class_set.insert(name);
           }
         }
       }
     }
 
     // Error 4: Cyclic inheritance
-    // If any class in class_map is not in the traveesed list above
+    // If any class in class_map is not in the traversed list above
     // Then it is not reachable from Object
-    // Then it must be the case of cyclic inheritance
+    // Then it must be either Error 3 or Error 4 (if not in error3_set)
     // See test/inherit_bad_cycle.cl for details
     for (auto symbol_class : this->class_map) {
       Symbol name = symbol_class.first;
-      if (!traversed.count(name) && !inherit_from_undefined_class_set.count(name)) {
+      if (!traversed.count(name) && !error3_set.count(name)) {
         Class_ c = symbol_class.second;
         semant_error(c) << "Class " << name << ", or an ancestor of " << name << ", is involved in an inheritance cycle.\n";
         ++semant_errors;
@@ -154,6 +154,7 @@ public:
 
   // Print the inheritance graph for debug
   void print_inheritance_map() {
+    printf("========Print inheritance_map Start=========\n");
     for (auto item : this->inheritance_map) {
       printf("%s <- ", item.first->get_string());
       auto set = item.second;
@@ -162,6 +163,17 @@ public:
       }
       printf("\n");
     }
+    printf("=========Print inheritance_map End==========\n");
+    return;
+  }
+
+  // Print the inheritance graph for debug
+  void print_class_map() {
+    printf("========Print class_map Start=========\n");
+    for (auto item : this->class_map) {
+      printf("%s\n", item.first->get_string());
+    }
+    printf("=========Print class_map End==========\n");
     return;
   }
 
