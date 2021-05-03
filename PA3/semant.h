@@ -106,17 +106,6 @@ public:
         for (auto iter = set.begin(); iter != set.end(); ++iter) {
           traversed.insert(*iter);
           pool.push_back(*iter);
-          // if (traversed.count(*iter)) {
-          //   // Error 3: Cyclic inheritance
-          //   Symbol name = *iter;
-          //   Class_ c = this->class_map[name];
-          //   semant_error(c) << "Class " << name << ", or an ancestor of " << name << ", is involved in an inheritance cycle.\n";
-          //   ++semant_errors;
-          //   correctness = false;
-          // } else {
-          //   traversed.insert(*iter);
-          //   pool.push_back(*iter);
-          // }
         }
       }
     }
