@@ -44,7 +44,7 @@ Class Parent2 inherits GrandParent {
 };
 
 (*
- * Error 4: Inherit from undefined class
+ * Error 3: Inherit from undefined class
  * GrandParent <- Parent1, Parent2, Parent3
  * Parent4 <- Child41
  *)

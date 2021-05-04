@@ -1,5 +1,5 @@
 (*
- * Error 3: contains cycle
+ * Error 4: contains cycle
  * Object <- GoodGrandParent
  * GoodGrandParent <- GoodParent1
  * GoodGrandParent <- GoodParent2
