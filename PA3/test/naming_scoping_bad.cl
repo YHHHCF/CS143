@@ -19,7 +19,7 @@ Class B {
     x : Int;
 };
 Class C inherits B {};
-Class C1 inherits B {
+Class C1 inherits C {
     x : Int;
 };
 
