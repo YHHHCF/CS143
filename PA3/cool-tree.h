@@ -37,6 +37,7 @@ public:
    virtual Class_ copy_Class_() = 0;
    virtual Symbol get_name() = 0;  // Implemented in class__class
    virtual Symbol get_parent() = 0; // Implemented in class__class
+   virtual Features get_features() = 0; // Implemented in class__class
 
 #ifdef Class__EXTRAS
    Class__EXTRAS
@@ -169,6 +170,10 @@ public:
 
    Symbol get_parent() {
       return this->parent;
+   }
+
+   Features get_features() {
+      return this->features;
    }
 
    void dump(ostream& stream, int n);

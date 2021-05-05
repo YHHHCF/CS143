@@ -33,6 +33,12 @@ private:
   // class_map is used to get the Symbol's Class_
   std::map<Symbol, Class_> class_map;
 
+  // Used to manage current scope for naming_and_scoping_DFS
+  SymbolTable<Symbol, char*> *curr_scope;                               // TODO: Want to have SymbolTable map to Type instead of char*                       *****************
+    
+  // Keeps track of the scope for each class
+  std::map<Symbol, SymbolTable<Symbol, char*>> class_scopes;            // TODO: Want to have SymbolTable map to Type instead of char*
+
   void install_basic_classes();
   ostream& error_stream;
 
@@ -151,6 +157,66 @@ public:
 
     return correctness;
   }
+
+    // Checks that each variable is named properly and accessed in its own scope
+    void check_naming_and_scoping() {
+        bool correctness = true;
+        naming_and_scoping_DFS(idtable.lookup_string("Object"));
+
+        // If correct, return, otherwise, declare errors (but proceed?)
+    }
+
+    // DFS used to traverse through the inheritance tree for naming and scoping section
+    void naming_and_scoping_DFS(Symbol class_) {
+
+        // Enter a new scope for each new class
+        curr_scope->enterscope();
+
+        // Add the attributes first, as order of attribute declarations does not matter
+        check_attributes(class_);
+
+        // Check the methods
+        check_methods(class_);
+
+        // Enter the DFS to check child classes
+        auto set = this->inheritance_map[class_];
+        for (auto iter = set.begin(); iter != set.end(); ++iter) {
+            naming_and_scoping_DFS(*iter);
+        }
+
+        // Update class_scopes to handle future errors regarding various forms of dispatch
+        class_scopes[class_] = *curr_scope; // TODO: Does this make a deep copy? I don't think it does -- needs change                                  ****************
+        
+        // Done processing the current scope; exit the scope
+        curr_scope->exitscope();
+    }
+
+    // Checks attributes and adds them to the current scope
+    void check_attributes(Symbol class_) {
+        Class_ c = class_map[class_];  // Fetches the class from the symbol
+        
+        // Enter the scope
+        Features f = c->get_features();
+        for (int i = f -> first(); f -> more(i); i = f -> next(i)) {
+            if (f -> nth(i) /* is an attribute */) {
+                // check for naming errors in current scope. If none,
+                // add it to curr_scope;
+            }
+        }
+    }
+
+    // Checks methods for naming and scoping errors
+    // TODO: What happens if we have encounter dynamic dispatch (@type) at an early level for a later, unprocessed level? Is this even possible?        ****************
+    void check_methods(Symbol class_) {
+        Class_ c = class_map[class_];  // Fetches the class from the symbol
+
+        Features f = c->get_features();
+        for (int i = f -> first(); f -> more(i); i = f -> next(i)) {
+            if (f -> nth(i) /* is a method */) {
+                // handle the cases
+            }
+        }
+    }
 
   // Print the inheritance graph for debug
   void print_inheritance_map() {

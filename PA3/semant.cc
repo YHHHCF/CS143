@@ -96,6 +96,9 @@ ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) 
         this->print_class_map();
         this->print_inheritance_map();
     }
+
+    // Verify that variables are declared before usage (naming and scoping)
+    this->check_naming_and_scoping();
 }
 
 void ClassTable::install_basic_classes() {
