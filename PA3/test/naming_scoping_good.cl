@@ -107,3 +107,15 @@ Class I {
     };
     x : Int <- 1;
 };
+
+Class J {
+    (* get_y() has scope J, can use before declare *)
+    x : Int <- 1 + get_y();
+    (* z has scope J, can use before declare *)
+    y : Int <- z + 1;
+    z : Int <- y + 2;
+
+    get_y() : Int {
+        y
+    };
+};
