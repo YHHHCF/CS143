@@ -52,6 +52,10 @@ class Feature_class : public tree_node {
 public:
    tree_node *copy()		 { return copy_Feature(); }
    virtual Feature copy_Feature() = 0;
+   virtual char* get_grammar() = 0; // Implemented to distinguish between attributes and methods
+   virtual Symbol get_name() = 0; // Implemented for attributes and methods
+
+   virtual Symbol get_type_decl() = 0; // Implemented for attributes
 
 #ifdef Feature_EXTRAS
    Feature_EXTRAS
@@ -204,6 +208,18 @@ public:
    Feature copy_Feature();
    void dump(ostream& stream, int n);
 
+   Symbol get_name() {
+       return name;
+   }
+
+   Symbol get_type_decl() {                  // apparently needs a declaration here as well in order to make the other one work  --  will replace once system is replaced
+      return name;
+   }
+    
+   char* get_grammar() {
+       return "method";
+   }
+
 #ifdef Feature_SHARED_EXTRAS
    Feature_SHARED_EXTRAS
 #endif
@@ -227,6 +243,18 @@ public:
    }
    Feature copy_Feature();
    void dump(ostream& stream, int n);
+
+   Symbol get_name() {
+      return name;
+   }
+
+   Symbol get_type_decl() {
+      return type_decl;
+   }
+
+   char* get_grammar() {
+      return "attribute";
+   }
 
 #ifdef Feature_SHARED_EXTRAS
    Feature_SHARED_EXTRAS

@@ -32,12 +32,14 @@ private:
 
   // class_map is used to get the Symbol's Class_
   std::map<Symbol, Class_> class_map;
-
-  // Used to manage current scope for naming_and_scoping_DFS
-  SymbolTable<Symbol, char*> *curr_scope;                               // TODO: Want to have SymbolTable map to Type instead of char*                       *****************
+  
+  // Used to manage current scope for naming_and_scoping_DFS; maps attributes to types
+  SymbolTable<Symbol, Symbol> *curr_scope = new SymbolTable<Symbol, Symbol>();
     
   // Keeps track of the scope for each class
-  std::map<Symbol, SymbolTable<Symbol, char*>> class_scopes;            // TODO: Want to have SymbolTable map to Type instead of char*
+  std::map<Symbol, SymbolTable<Symbol, char*>> class_scopes;                                        // TODO: remove this
+  std::map<Symbol, std::set<Symbol>> attribute_table;                                        // May want this to actually be (Class, var_name) -> (type) instead
+  std::map<Symbol, std::set<Symbol>> method_table;
 
   void install_basic_classes();
   ostream& error_stream;
@@ -159,63 +161,85 @@ public:
   }
 
     // Checks that each variable is named properly and accessed in its own scope
-    void check_naming_and_scoping() {
+    bool check_naming_and_scoping() {
         bool correctness = true;
         naming_and_scoping_DFS(idtable.lookup_string("Object"));
 
         // If correct, return, otherwise, declare errors (but proceed?)
+        return correctness;
     }
 
     // DFS used to traverse through the inheritance tree for naming and scoping section
-    void naming_and_scoping_DFS(Symbol class_) {
-
+    bool naming_and_scoping_DFS(Symbol class_) {
+        bool correctness = true;
+        
         // Enter a new scope for each new class
         curr_scope->enterscope();
 
         // Add the attributes first, as order of attribute declarations does not matter
-        check_attributes(class_);
+        correctness = correctness && check_attributes(class_);
 
         // Check the methods
-        check_methods(class_);
+        correctness = correctness && check_methods(class_);
 
         // Enter the DFS to check child classes
         auto set = this->inheritance_map[class_];
         for (auto iter = set.begin(); iter != set.end(); ++iter) {
-            naming_and_scoping_DFS(*iter);
+            correctness = correctness && naming_and_scoping_DFS(*iter);
         }
 
-        // Update class_scopes to handle future errors regarding various forms of dispatch
-        class_scopes[class_] = *curr_scope; // TODO: Does this make a deep copy? I don't think it does -- needs change                                  ****************
-        
         // Done processing the current scope; exit the scope
         curr_scope->exitscope();
+
+        return correctness;
     }
 
+    // TODO: SPLIT THE ATTRIBUTE AND METHOD SCAN FROM THE PROCESSING OF EXPR OF THE ATTRIBUTE -- both orders are allowed
     // Checks attributes and adds them to the current scope
-    void check_attributes(Symbol class_) {
+    bool check_attributes(Symbol class_) {
+        bool correctness = true;
         Class_ c = class_map[class_];  // Fetches the class from the symbol
         
         // Enter the scope
         Features f = c->get_features();
         for (int i = f -> first(); f -> more(i); i = f -> next(i)) {
-            if (f -> nth(i) /* is an attribute */) {
-                // check for naming errors in current scope. If none,
-                // add it to curr_scope;
+            Feature_class* curr_feature = f->nth(i);
+            if (curr_feature -> get_grammar() == "attribute") {
+                if (curr_scope -> probe(curr_feature -> get_name()) != NULL) {
+                    /* ERROR 1: Duplicate Definitions */
+                    semant_error(c) << "Attribute " << curr_feature -> get_name() << " in Class " << c -> get_name() << " is duplicatavely defined.\n";
+                    ++semant_errors;
+                    correctness = false;
+                }
+                else if (attribute_table[c->get_parent()].find(curr_feature -> get_name()) != attribute_table[c->get_parent()].end()) {
+                    /* ERROR 2: Overriding Attributes */
+                    semant_error(c) << "Attribute " << curr_feature -> get_name() << " in Class " << c -> get_name() << " is overriding an inherited feature.\n";
+                    ++semant_errors;
+                    correctness = false;
+                }
+                else {
+                    curr_scope -> addid(curr_feature -> get_name(), new Symbol(curr_feature -> get_type_decl()));
+                    attribute_table[class_].insert(curr_feature->get_name());
+                }
             }
         }
+        return correctness;
     }
 
     // Checks methods for naming and scoping errors
-    // TODO: What happens if we have encounter dynamic dispatch (@type) at an early level for a later, unprocessed level? Is this even possible?        ****************
-    void check_methods(Symbol class_) {
+    bool check_methods(Symbol class_) {
+        bool correctness = true;
         Class_ c = class_map[class_];  // Fetches the class from the symbol
 
         Features f = c->get_features();
         for (int i = f -> first(); f -> more(i); i = f -> next(i)) {
-            if (f -> nth(i) /* is a method */) {
-                // handle the cases
+            Feature_class* curr_feature = f->nth(i);
+            if (curr_feature->get_grammar() == "method") {
+                // add to scope
+                // update method table
             }
         }
+        return correctness;
     }
 
   // Print the inheritance graph for debug
