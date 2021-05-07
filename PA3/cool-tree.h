@@ -54,8 +54,7 @@ public:
    virtual Feature copy_Feature() = 0;
    virtual char* get_grammar() = 0; // Implemented to distinguish between attributes and methods
    virtual Symbol get_name() = 0; // Implemented for attributes and methods
-
-   virtual Symbol get_type_decl() = 0; // Implemented for attributes
+   virtual Symbol get_type() = 0; // Returns type of attribute or return type of method
 
 #ifdef Feature_EXTRAS
    Feature_EXTRAS
@@ -211,9 +210,9 @@ public:
    Symbol get_name() {
        return name;
    }
-
-   Symbol get_type_decl() {                  // apparently needs a declaration here as well in order to make the other one work  --  will replace once system is replaced
-      return name;
+    
+   Symbol get_type() {
+      return return_type;
    }
     
    char* get_grammar() {
@@ -248,12 +247,12 @@ public:
       return name;
    }
 
-   Symbol get_type_decl() {
+   Symbol get_type() {
       return type_decl;
    }
 
    char* get_grammar() {
-      return "attribute";
+      return "attr";
    }
 
 #ifdef Feature_SHARED_EXTRAS

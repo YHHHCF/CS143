@@ -34,7 +34,8 @@ private:
   std::map<Symbol, Class_> class_map;
   
   // Used to manage current scope for naming_and_scoping_DFS; maps attributes to types
-  SymbolTable<Symbol, Symbol> *curr_scope = new SymbolTable<Symbol, Symbol>();
+  SymbolTable<Symbol, Symbol> *curr_scope_vars = new SymbolTable<Symbol, Symbol>();
+  SymbolTable<Symbol, Symbol> *curr_scope_methods = new SymbolTable<Symbol, Symbol>();
     
   // Keeps track of the scope for each class
   std::map<Symbol, SymbolTable<Symbol, char*>> class_scopes;                                        // TODO: remove this
@@ -174,13 +175,14 @@ public:
         bool correctness = true;
         
         // Enter a new scope for each new class
-        curr_scope->enterscope();
+        curr_scope_vars->enterscope();
+        curr_scope_methods->enterscope();
+        
+        // Checks for conflicts for the naming of attributes and methods
+        correctness = correctness && check_naming(class_);
 
-        // Add the attributes first, as order of attribute declarations does not matter
-        correctness = correctness && check_attributes(class_);
-
-        // Check the methods
-        correctness = correctness && check_methods(class_);
+        // Checks for conflicts in the expressions/body of methods and attributes
+        correctness = correctness && check_scoping(class_);
 
         // Enter the DFS to check child classes
         auto set = this->inheritance_map[class_];
@@ -189,14 +191,14 @@ public:
         }
 
         // Done processing the current scope; exit the scope
-        curr_scope->exitscope();
+        curr_scope_vars->exitscope();
+        curr_scope_methods->enterscope();
 
         return correctness;
     }
 
-    // TODO: SPLIT THE ATTRIBUTE AND METHOD SCAN FROM THE PROCESSING OF EXPR OF THE ATTRIBUTE -- both orders are allowed
-    // Checks attributes and adds them to the current scope
-    bool check_attributes(Symbol class_) {
+    // Checks naming conflicts and adds them to the current scope
+    bool check_naming(Symbol class_) {
         bool correctness = true;
         Class_ c = class_map[class_];  // Fetches the class from the symbol
         
@@ -204,30 +206,42 @@ public:
         Features f = c->get_features();
         for (int i = f -> first(); f -> more(i); i = f -> next(i)) {
             Feature_class* curr_feature = f->nth(i);
-            if (curr_feature -> get_grammar() == "attribute") {
-                if (curr_scope -> probe(curr_feature -> get_name()) != NULL) {
-                    /* ERROR 1: Duplicate Definitions */
+            if (curr_feature -> get_grammar() == "attr") {
+                /* ERROR 1: Duplicate Definitions of Attributes*/
+                if (curr_scope_vars -> probe(curr_feature -> get_name()) != NULL) {
                     semant_error(c) << "Attribute " << curr_feature -> get_name() << " in Class " << c -> get_name() << " is duplicatavely defined.\n";
                     ++semant_errors;
                     correctness = false;
                 }
+                /* ERROR 2: Overriding Attributes */
                 else if (attribute_table[c->get_parent()].find(curr_feature -> get_name()) != attribute_table[c->get_parent()].end()) {
-                    /* ERROR 2: Overriding Attributes */
                     semant_error(c) << "Attribute " << curr_feature -> get_name() << " in Class " << c -> get_name() << " is overriding an inherited feature.\n";
                     ++semant_errors;
                     correctness = false;
                 }
                 else {
-                    curr_scope -> addid(curr_feature -> get_name(), new Symbol(curr_feature -> get_type_decl()));
+                    curr_scope_vars -> addid(curr_feature -> get_name(), new Symbol(curr_feature -> get_type()));
                     attribute_table[class_].insert(curr_feature->get_name());
+                }
+            }
+            else if (curr_feature->get_grammar() == "method") {
+                /* ERROR 3: Duplicate Definitions of Methods in a Class */
+                if (curr_scope_methods -> probe(curr_feature -> get_name()) != NULL) {
+                    semant_error(c) << "Method " << curr_feature -> get_name() << " in Class " << c -> get_name() << " is duplicatavely defined.\n";
+                    ++semant_errors;
+                    correctness = false;
+                }
+                else {
+                    curr_scope_methods -> addid(curr_feature -> get_name(), new Symbol(curr_feature -> get_type()));
+                    method_table[class_].insert(curr_feature->get_name());
                 }
             }
         }
         return correctness;
     }
 
-    // Checks methods for naming and scoping errors
-    bool check_methods(Symbol class_) {
+    // Checks scoping conflicts and adds them to the current scope; also processes interiors of methods
+    bool check_scoping(Symbol class_) {
         bool correctness = true;
         Class_ c = class_map[class_];  // Fetches the class from the symbol
 
