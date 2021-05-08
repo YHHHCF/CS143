@@ -89,6 +89,9 @@ public:
    tree_node *copy()		 { return copy_Expression(); }
    virtual Expression copy_Expression() = 0;
    virtual bool instanceof(char* type) = 0; // Implemented to distinguish
+   virtual Symbol get_name() = 0;
+    // virtual Symbol get_type() = 0;
+   virtual Expression get_expr() = 0;
 
 #ifdef Expression_EXTRAS
    Expression_EXTRAS
@@ -279,7 +282,6 @@ public:
       return init;
    }
 
-
 #ifdef Feature_SHARED_EXTRAS
    Feature_SHARED_EXTRAS
 #endif
@@ -362,6 +364,18 @@ public:
       return strcmp(this->type, type) == 0;
    }
 
+   Symbol get_name() {
+      return name;
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return expr;
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -393,6 +407,18 @@ public:
       return strcmp(this->type, type) == 0;
    }
 
+   Symbol get_name() {
+      return name;
+   }
+    
+   Symbol get_type() {
+      return type_name;
+   }
+
+   Expression get_expr() {
+      return expr;
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -420,6 +446,18 @@ public:
 
    bool instanceof(char* type) {
       return strcmp(this->type, type) == 0;
+   }
+
+   Symbol get_name() {
+      return name;
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return expr;
    }
 
 #ifdef Expression_SHARED_EXTRAS
@@ -451,6 +489,18 @@ public:
       return strcmp(this->type, type) == 0;
    }
 
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return Expression();
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -476,6 +526,18 @@ public:
 
    bool instanceof(char* type) {
       return strcmp(this->type, type) == 0;
+   }
+
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return pred;
    }
 
 #ifdef Expression_SHARED_EXTRAS
@@ -505,6 +567,18 @@ public:
       return strcmp(this->type, type) == 0;
    }
 
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return expr;
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -528,6 +602,18 @@ public:
 
    bool instanceof(char* type) {
       return strcmp(this->type, type) == 0;
+   }
+
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return Expression();
    }
 
 #ifdef Expression_SHARED_EXTRAS
@@ -561,6 +647,18 @@ public:
       return strcmp(this->type, type) == 0;
    }
 
+   Symbol get_name() {
+      return identifier;
+   }
+    
+   Symbol get_type() {
+      return type_decl;
+   }
+
+   Expression get_expr() {
+      return init;
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -586,6 +684,18 @@ public:
 
    bool instanceof(char* type) {
       return strcmp(this->type, type) == 0;
+   }
+
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return Expression();
    }
 
 #ifdef Expression_SHARED_EXTRAS
@@ -615,6 +725,18 @@ public:
       return strcmp(this->type, type) == 0;
    }
 
+   Symbol get_name() {
+       return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return Expression();
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -640,6 +762,18 @@ public:
 
    bool instanceof(char* type) {
       return strcmp(this->type, type) == 0;
+   }
+
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return Expression();
    }
 
 #ifdef Expression_SHARED_EXTRAS
@@ -669,6 +803,18 @@ public:
       return strcmp(this->type, type) == 0;
    }
 
+   Symbol get_name() {
+       return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return Expression();
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -692,6 +838,18 @@ public:
 
    bool instanceof(char* type) {
       return strcmp(this->type, type) == 0;
+   }
+
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return e1;
    }
 
 #ifdef Expression_SHARED_EXTRAS
@@ -721,6 +879,18 @@ public:
       return strcmp(this->type, type) == 0;
    }
 
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return Expression();
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -746,6 +916,18 @@ public:
 
    bool instanceof(char* type) {
       return strcmp(this->type, type) == 0;
+   }
+
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return Expression();
    }
 
 #ifdef Expression_SHARED_EXTRAS
@@ -775,6 +957,18 @@ public:
       return strcmp(this->type, type) == 0;
    }
 
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return Expression();
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -798,6 +992,18 @@ public:
 
    bool instanceof(char* type) {
       return strcmp(this->type, type) == 0;
+   }
+
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return e1;
    }
 
 #ifdef Expression_SHARED_EXTRAS
@@ -825,6 +1031,18 @@ public:
       return strcmp(this->type, type) == 0;
    }
 
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return Expression();
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -848,6 +1066,18 @@ public:
 
    bool instanceof(char* type) {
       return strcmp(this->type, type) == 0;
+   }
+
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return Expression();
    }
 
 #ifdef Expression_SHARED_EXTRAS
@@ -875,6 +1105,18 @@ public:
       return strcmp(this->type, type) == 0;
    }
 
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return Expression();
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -898,6 +1140,18 @@ public:
 
    bool instanceof(char* type) {
       return strcmp(this->type, type) == 0;
+   }
+
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return type_name;
+   }
+
+   Expression get_expr() {
+      return Expression();
    }
 
 #ifdef Expression_SHARED_EXTRAS
@@ -925,6 +1179,18 @@ public:
       return strcmp(this->type, type) == 0;
    }
 
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return e1;
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -946,6 +1212,18 @@ public:
 
    bool instanceof(char* type) {
       return strcmp(this->type, type) == 0;
+   }
+
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return Expression();
    }
 
 #ifdef Expression_SHARED_EXTRAS
@@ -971,6 +1249,18 @@ public:
 
    bool instanceof(char* type) {
       return strcmp(this->type, type) == 0;
+   }
+
+   Symbol get_name() {
+       return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return Expression();
    }
 
 #ifdef Expression_SHARED_EXTRAS
