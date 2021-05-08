@@ -89,6 +89,9 @@ public:
    tree_node *copy()		 { return copy_Expression(); }
    virtual Expression copy_Expression() = 0;
    virtual char* get_grammar() = 0; // Implemented to distinguish
+   virtual Symbol get_name() = 0;
+    // virtual Symbol get_type() = 0;
+   virtual Expression get_expr() = 0;
 
 #ifdef Expression_EXTRAS
    Expression_EXTRAS
@@ -277,7 +280,6 @@ public:
       return init;
    }
 
-
 #ifdef Feature_SHARED_EXTRAS
    Feature_SHARED_EXTRAS
 #endif
@@ -359,6 +361,18 @@ public:
       return "assign";
    }
 
+   Symbol get_name() {
+      return name;
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return expr;
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -389,6 +403,18 @@ public:
       return "static_dispatch";
    }
 
+   Symbol get_name() {
+      return name;
+   }
+    
+   Symbol get_type() {
+      return type_name;
+   }
+
+   Expression get_expr() {
+      return expr;
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -417,6 +443,18 @@ public:
       return "dispatch";
    }
 
+   Symbol get_name() {
+      return name;
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return expr;
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -442,7 +480,19 @@ public:
    void dump(ostream& stream, int n);
 
    char* get_grammar() {
-      return "cond";
+       return "cond";
+   }
+
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return Expression();
    }
 
 #ifdef Expression_SHARED_EXTRAS
@@ -471,6 +521,18 @@ public:
       return "loop";
    }
 
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return pred;
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -497,6 +559,18 @@ public:
       return "typcase";
    }
 
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return expr;
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -519,6 +593,18 @@ public:
 
    char* get_grammar() {
       return "block";
+   }
+
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return Expression();
    }
 
 #ifdef Expression_SHARED_EXTRAS
@@ -551,6 +637,18 @@ public:
       return "let";
    }
 
+   Symbol get_name() {
+      return identifier;
+   }
+    
+   Symbol get_type() {
+      return type_decl;
+   }
+
+   Expression get_expr() {
+      return init;
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -575,6 +673,18 @@ public:
 
    char* get_grammar() {
       return "plus";
+   }
+
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return Expression();
    }
 
 #ifdef Expression_SHARED_EXTRAS
@@ -603,6 +713,18 @@ public:
       return "sub";
    }
 
+   Symbol get_name() {
+       return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return Expression();
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -627,6 +749,18 @@ public:
 
    char* get_grammar() {
       return "mul";
+   }
+
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return Expression();
    }
 
 #ifdef Expression_SHARED_EXTRAS
@@ -655,6 +789,18 @@ public:
       return "divide";
    }
 
+   Symbol get_name() {
+       return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return Expression();
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -677,6 +823,18 @@ public:
 
    char* get_grammar() {
       return "neg";
+   }
+
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return e1;
    }
 
 #ifdef Expression_SHARED_EXTRAS
@@ -705,6 +863,18 @@ public:
       return "lt";
    }
 
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return Expression();
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -729,6 +899,18 @@ public:
 
    char* get_grammar() {
       return "eq";
+   }
+
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return Expression();
    }
 
 #ifdef Expression_SHARED_EXTRAS
@@ -757,6 +939,18 @@ public:
       return "leq";
    }
 
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return Expression();
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -779,6 +973,18 @@ public:
 
    char* get_grammar() {
       return "comp";
+   }
+
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return e1;
    }
 
 #ifdef Expression_SHARED_EXTRAS
@@ -805,6 +1011,18 @@ public:
       return "int_const";
    }
 
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return Expression();
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -827,6 +1045,18 @@ public:
 
    char* get_grammar() {
       return "bool_const";
+   }
+
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return Expression();
    }
 
 #ifdef Expression_SHARED_EXTRAS
@@ -853,6 +1083,18 @@ public:
       return "string_const";
    }
 
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return Expression();
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -875,6 +1117,18 @@ public:
 
    char* get_grammar() {
       return "new_";
+   }
+
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return type_name;
+   }
+
+   Expression get_expr() {
+      return Expression();
    }
 
 #ifdef Expression_SHARED_EXTRAS
@@ -901,6 +1155,18 @@ public:
       return "isvoid";
    }
 
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return e1;
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -921,6 +1187,18 @@ public:
 
    char* get_grammar() {
       return "no_expr";
+   }
+
+   Symbol get_name() {
+      return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return Expression();
    }
 
 #ifdef Expression_SHARED_EXTRAS
@@ -945,6 +1223,18 @@ public:
 
    char* get_grammar() {
       return "object";
+   }
+
+   Symbol get_name() {
+       return Symbol();
+   }
+    
+   Symbol get_type() {
+      return Symbol();
+   }
+
+   Expression get_expr() {
+      return Expression();
    }
 
 #ifdef Expression_SHARED_EXTRAS

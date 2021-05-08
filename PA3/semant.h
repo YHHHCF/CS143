@@ -35,10 +35,8 @@ private:
   
   // Used to manage current scope for naming_and_scoping_DFS; maps attributes to types
   SymbolTable<Symbol, Symbol> *curr_scope_vars = new SymbolTable<Symbol, Symbol>();
-  SymbolTable<Symbol, Symbol> *curr_scope_methods = new SymbolTable<Symbol, Symbol>();
     
   // Keeps track of the scope for each class
-  std::map<Symbol, std::set<Symbol>> attribute_table;                                        // May want this to actually be (Class, var_name) -> (type) instead
   std::map<Symbol, std::set<Symbol>> method_table;
 
   void install_basic_classes();
@@ -163,7 +161,7 @@ public:
     // Checks that each variable is named properly and accessed in its own scope
     bool check_naming_and_scoping() {
         bool correctness = true;
-        naming_and_scoping_DFS(idtable.lookup_string("Object"));
+        correctness = correctness && naming_and_scoping_DFS(idtable.lookup_string("Object"));
 
         // If correct, return, otherwise, declare errors (but proceed?)
         return correctness;
@@ -175,7 +173,6 @@ public:
         
         // Enter a new scope for each new class
         curr_scope_vars->enterscope();
-        curr_scope_methods->enterscope();
         
         // Checks for conflicts for the naming of attributes and methods
         correctness = correctness && check_naming(class_);
@@ -191,7 +188,6 @@ public:
 
         // Done processing the current scope; exit the scope
         curr_scope_vars->exitscope();
-        curr_scope_methods->enterscope();
 
         return correctness;
     }
@@ -214,25 +210,23 @@ public:
                     correctness = false;
                 }
                 /* ERROR 2: Overriding Attributes */
-                else if (attribute_table[c->get_parent()].find(curr_feature -> get_name()) != attribute_table[c->get_parent()].end()) {
+                else if (curr_scope_vars -> lookup(curr_feature -> get_name()) != NULL) {
                     semant_error(c) << "Attribute " << curr_feature -> get_name() << " is an attribute of an inherited class.\n";
                     ++semant_errors;
                     correctness = false;
                 }
                 else {
                     curr_scope_vars -> addid(curr_feature -> get_name(), new Symbol(curr_feature -> get_type()));
-                    attribute_table[class_].insert(curr_feature->get_name());
                 }
             }
             else if (strcmp(curr_feature->get_grammar(), "method") == 0) {
                 /* ERROR 3: Duplicate Definitions of Methods in a Class */
-                if (curr_scope_methods -> probe(curr_feature -> get_name()) != NULL) {
+                if (method_table[class_].find(curr_feature->get_name()) != method_table[class_].end()) {
                     semant_error(c) << "Method " << curr_feature -> get_name() << " is multiply defined in class.\n";
                     ++semant_errors;
                     correctness = false;
                 }
                 else {
-                    curr_scope_methods -> addid(curr_feature -> get_name(), new Symbol(curr_feature -> get_type()));
                     method_table[class_].insert(curr_feature->get_name());
                 }
             }
@@ -248,6 +242,7 @@ public:
         for (int i = f -> first(); f -> more(i); i = f -> next(i)) {
             Feature_class* curr_feature = f->nth(i);
 
+            // Handles Multiply defined Formals (parameters) in Method Declarations
             if (strcmp(curr_feature->get_grammar(), "method") == 0) {
                 Formals formals = curr_feature->get_formals();
                 curr_scope_vars->enterscope();
@@ -259,15 +254,39 @@ public:
                         ++semant_errors;
                         correctness = false;
                     }
+                    curr_scope_vars -> addid(curr_feature -> get_name(), new Symbol(curr_feature -> get_type()));
                 }
                 curr_scope_vars->exitscope();
             }
             
             Expression expr = curr_feature -> get_expression();
-            if (strcmp(expr->get_grammar(), "let") == 0) {
-                correctness = false;
-            }
+            correctness = correctness && check_expression(expr);
         }
+        return correctness;
+    }
+
+    bool check_expression(Expression expr) {
+        bool correctness = true;
+
+        if (strcmp(expr->get_grammar(), "let") == 0) {
+            curr_scope_vars->enterscope();
+
+            // Any Let Expression checking done here
+            curr_scope_vars->addid(expr->get_name(), new Symbol(expr->get_type()));
+            check_expression(expr->get_expr());
+            
+            curr_scope_vars->exitscope();
+        }
+        else if (strcmp(expr->get_grammar(), "case") == 0) {
+            // case declarations
+        }
+        else if (strcmp(expr->get_grammar(), "dispatch") == 0) {
+            // dispatch
+        }
+        else if (strcmp(expr->get_grammar(), "static dispatch") == 0) {
+            // static dispatch
+        }
+        
         return correctness;
     }
 
