@@ -52,7 +52,7 @@ class Feature_class : public tree_node {
 public:
    tree_node *copy()		 { return copy_Feature(); }
    virtual Feature copy_Feature() = 0;
-   virtual char* get_grammar() = 0; // Implemented to distinguish between attributes and methods
+   virtual bool instanceof(char* type) = 0; // Implemented to distinguish between attributes and methods
    virtual Symbol get_name() = 0; // Implemented for attributes and methods
    virtual Symbol get_type() = 0; // Returns type of attribute or return type of method
    virtual Expression get_expression() = 0; // Returns the expression that the feature evaluates to
@@ -88,7 +88,7 @@ class Expression_class : public tree_node {
 public:
    tree_node *copy()		 { return copy_Expression(); }
    virtual Expression copy_Expression() = 0;
-   virtual char* get_grammar() = 0; // Implemented to distinguish
+   virtual bool instanceof(char* type) = 0; // Implemented to distinguish
    virtual Symbol get_name() = 0;
     // virtual Symbol get_type() = 0;
    virtual Expression get_expr() = 0;
@@ -202,6 +202,7 @@ public:
 // define constructor - method
 class method_class : public Feature_class {
 protected:
+   char* type = "method_class";  // the type of this class
    Symbol name;
    Formals formals;
    Symbol return_type;
@@ -228,8 +229,8 @@ public:
       return return_type;
    }
     
-   char* get_grammar() {
-      return "method";
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
    }
 
    Expression get_expression() {
@@ -248,6 +249,7 @@ public:
 // define constructor - attr
 class attr_class : public Feature_class {
 protected:
+   char* type = "attr_class";
    Symbol name;
    Symbol type_decl;
    Expression init;
@@ -272,8 +274,8 @@ public:
       return Formals();
     }
 
-   char* get_grammar() {
-      return "attr";
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
    }
 
    Expression get_expression() {
@@ -347,6 +349,7 @@ public:
 // define constructor - assign
 class assign_class : public Expression_class {
 protected:
+   char* type = "assign_class";
    Symbol name;
    Expression expr;
 public:
@@ -357,8 +360,8 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   char* get_grammar() {
-      return "assign";
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
    }
 
    Symbol get_name() {
@@ -385,6 +388,7 @@ public:
 // define constructor - static_dispatch
 class static_dispatch_class : public Expression_class {
 protected:
+   char* type = "static_dispatch_class";
    Expression expr;
    Symbol type_name;
    Symbol name;
@@ -399,8 +403,8 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   char* get_grammar() {
-      return "static_dispatch";
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
    }
 
    Symbol get_name() {
@@ -427,6 +431,7 @@ public:
 // define constructor - dispatch
 class dispatch_class : public Expression_class {
 protected:
+   char* type = "dispatch_class";
    Expression expr;
    Symbol name;
    Expressions actual;
@@ -439,8 +444,8 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   char* get_grammar() {
-      return "dispatch";
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
    }
 
    Symbol get_name() {
@@ -467,6 +472,7 @@ public:
 // define constructor - cond
 class cond_class : public Expression_class {
 protected:
+   char* type = "cond_class";
    Expression pred;
    Expression then_exp;
    Expression else_exp;
@@ -479,8 +485,8 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   char* get_grammar() {
-       return "cond";
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
    }
 
    Symbol get_name() {
@@ -507,6 +513,7 @@ public:
 // define constructor - loop
 class loop_class : public Expression_class {
 protected:
+   char* type = "loop_class";
    Expression pred;
    Expression body;
 public:
@@ -517,8 +524,8 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   char* get_grammar() {
-      return "loop";
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
    }
 
    Symbol get_name() {
@@ -545,6 +552,7 @@ public:
 // define constructor - typcase
 class typcase_class : public Expression_class {
 protected:
+   char* type = "typcase_class";
    Expression expr;
    Cases cases;
 public:
@@ -555,8 +563,8 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   char* get_grammar() {
-      return "typcase";
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
    }
 
    Symbol get_name() {
@@ -583,6 +591,7 @@ public:
 // define constructor - block
 class block_class : public Expression_class {
 protected:
+   char* type = "block_class";
    Expressions body;
 public:
    block_class(Expressions a1) {
@@ -591,8 +600,8 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   char* get_grammar() {
-      return "block";
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
    }
 
    Symbol get_name() {
@@ -619,6 +628,7 @@ public:
 // define constructor - let
 class let_class : public Expression_class {
 protected:
+   char* type = "let_class";
    Symbol identifier;
    Symbol type_decl;
    Expression init;
@@ -633,8 +643,8 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   char* get_grammar() {
-      return "let";
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
    }
 
    Symbol get_name() {
@@ -661,6 +671,7 @@ public:
 // define constructor - plus
 class plus_class : public Expression_class {
 protected:
+   char* type = "plus_class";
    Expression e1;
    Expression e2;
 public:
@@ -671,8 +682,8 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   char* get_grammar() {
-      return "plus";
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
    }
 
    Symbol get_name() {
@@ -699,6 +710,7 @@ public:
 // define constructor - sub
 class sub_class : public Expression_class {
 protected:
+   char* type = "sub_class";
    Expression e1;
    Expression e2;
 public:
@@ -709,8 +721,8 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   char* get_grammar() {
-      return "sub";
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
    }
 
    Symbol get_name() {
@@ -737,6 +749,7 @@ public:
 // define constructor - mul
 class mul_class : public Expression_class {
 protected:
+   char* type = "mul_class";
    Expression e1;
    Expression e2;
 public:
@@ -747,8 +760,8 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   char* get_grammar() {
-      return "mul";
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
    }
 
    Symbol get_name() {
@@ -775,6 +788,7 @@ public:
 // define constructor - divide
 class divide_class : public Expression_class {
 protected:
+   char* type = "divide_class";
    Expression e1;
    Expression e2;
 public:
@@ -785,8 +799,8 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   char* get_grammar() {
-      return "divide";
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
    }
 
    Symbol get_name() {
@@ -813,6 +827,7 @@ public:
 // define constructor - neg
 class neg_class : public Expression_class {
 protected:
+   char* type = "neg_class";
    Expression e1;
 public:
    neg_class(Expression a1) {
@@ -821,8 +836,8 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   char* get_grammar() {
-      return "neg";
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
    }
 
    Symbol get_name() {
@@ -849,6 +864,7 @@ public:
 // define constructor - lt
 class lt_class : public Expression_class {
 protected:
+   char* type = "lt_class";
    Expression e1;
    Expression e2;
 public:
@@ -859,8 +875,8 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   char* get_grammar() {
-      return "lt";
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
    }
 
    Symbol get_name() {
@@ -887,6 +903,7 @@ public:
 // define constructor - eq
 class eq_class : public Expression_class {
 protected:
+   char* type = "eq_class";
    Expression e1;
    Expression e2;
 public:
@@ -897,8 +914,8 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   char* get_grammar() {
-      return "eq";
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
    }
 
    Symbol get_name() {
@@ -925,6 +942,7 @@ public:
 // define constructor - leq
 class leq_class : public Expression_class {
 protected:
+   char* type = "leq_class";
    Expression e1;
    Expression e2;
 public:
@@ -935,8 +953,8 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   char* get_grammar() {
-      return "leq";
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
    }
 
    Symbol get_name() {
@@ -963,6 +981,7 @@ public:
 // define constructor - comp
 class comp_class : public Expression_class {
 protected:
+   char* type = "comp_class";
    Expression e1;
 public:
    comp_class(Expression a1) {
@@ -971,8 +990,8 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   char* get_grammar() {
-      return "comp";
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
    }
 
    Symbol get_name() {
@@ -999,6 +1018,7 @@ public:
 // define constructor - int_const
 class int_const_class : public Expression_class {
 protected:
+   char* type = "int_const_class";
    Symbol token;
 public:
    int_const_class(Symbol a1) {
@@ -1007,8 +1027,8 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   char* get_grammar() {
-      return "int_const";
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
    }
 
    Symbol get_name() {
@@ -1035,6 +1055,7 @@ public:
 // define constructor - bool_const
 class bool_const_class : public Expression_class {
 protected:
+   char* type = "bool_const_class";
    Boolean val;
 public:
    bool_const_class(Boolean a1) {
@@ -1043,8 +1064,8 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   char* get_grammar() {
-      return "bool_const";
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
    }
 
    Symbol get_name() {
@@ -1071,6 +1092,7 @@ public:
 // define constructor - string_const
 class string_const_class : public Expression_class {
 protected:
+   char* type = "string_const_class";
    Symbol token;
 public:
    string_const_class(Symbol a1) {
@@ -1079,8 +1101,8 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   char* get_grammar() {
-      return "string_const";
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
    }
 
    Symbol get_name() {
@@ -1107,6 +1129,7 @@ public:
 // define constructor - new_
 class new__class : public Expression_class {
 protected:
+   char* type = "new__class";
    Symbol type_name;
 public:
    new__class(Symbol a1) {
@@ -1115,8 +1138,8 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   char* get_grammar() {
-      return "new_";
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
    }
 
    Symbol get_name() {
@@ -1143,6 +1166,7 @@ public:
 // define constructor - isvoid
 class isvoid_class : public Expression_class {
 protected:
+   char* type = "isvoid_class";
    Expression e1;
 public:
    isvoid_class(Expression a1) {
@@ -1151,8 +1175,8 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   char* get_grammar() {
-      return "isvoid";
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
    }
 
    Symbol get_name() {
@@ -1179,14 +1203,15 @@ public:
 // define constructor - no_expr
 class no_expr_class : public Expression_class {
 protected:
+   char* type = "no_expr_class";
 public:
    no_expr_class() {
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   char* get_grammar() {
-      return "no_expr";
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
    }
 
    Symbol get_name() {
@@ -1213,6 +1238,7 @@ public:
 // define constructor - object
 class object_class : public Expression_class {
 protected:
+   char* type = "object_class";
    Symbol name;
 public:
    object_class(Symbol a1) {
@@ -1221,8 +1247,8 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   char* get_grammar() {
-      return "object";
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
    }
 
    Symbol get_name() {

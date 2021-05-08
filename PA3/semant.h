@@ -201,8 +201,7 @@ public:
         Features f = c->get_features();
         for (int i = f -> first(); f -> more(i); i = f -> next(i)) {
             Feature_class* curr_feature = f->nth(i);
-            if (strcmp(curr_feature->get_grammar(), "attr") == 0) {
-                printf("I AM CHECKING NAMING RIGHT NOW");
+            if (curr_feature->instanceof("attr_class")) {
                 /* ERROR 1: Duplicate Definitions of Attributes*/
                 if (curr_scope_vars -> probe(curr_feature -> get_name()) != NULL) {
                     semant_error(c) << "Attribute " << curr_feature -> get_name() << " is multiply defined in class.\n";
@@ -219,7 +218,7 @@ public:
                     curr_scope_vars -> addid(curr_feature -> get_name(), new Symbol(curr_feature -> get_type()));
                 }
             }
-            else if (strcmp(curr_feature->get_grammar(), "method") == 0) {
+            else if (curr_feature->instanceof("method_class")) {
                 /* ERROR 3: Duplicate Definitions of Methods in a Class */
                 if (method_table[class_].find(curr_feature->get_name()) != method_table[class_].end()) {
                     semant_error(c) << "Method " << curr_feature -> get_name() << " is multiply defined in class.\n";
@@ -243,7 +242,7 @@ public:
             Feature_class* curr_feature = f->nth(i);
 
             // Handles Multiply defined Formals (parameters) in Method Declarations
-            if (strcmp(curr_feature->get_grammar(), "method") == 0) {
+            if (curr_feature->instanceof("method_class")) {
                 Formals formals = curr_feature->get_formals();
                 curr_scope_vars->enterscope();
                 for (int j = formals -> first(); formals -> more(j); j = formals -> next(j)) {
@@ -268,7 +267,7 @@ public:
     bool check_expression(Expression expr) {
         bool correctness = true;
 
-        if (strcmp(expr->get_grammar(), "let") == 0) {
+        if (curr_feature->instanceof("let_class")) {
             curr_scope_vars->enterscope();
 
             // Any Let Expression checking done here
@@ -277,13 +276,13 @@ public:
             
             curr_scope_vars->exitscope();
         }
-        else if (strcmp(expr->get_grammar(), "case") == 0) {
+        else if (curr_feature->instanceof("typcase_class")) {
             // case declarations
         }
-        else if (strcmp(expr->get_grammar(), "dispatch") == 0) {
+        else if (curr_feature->instanceof("dispatch_class")) {
             // dispatch
         }
-        else if (strcmp(expr->get_grammar(), "static dispatch") == 0) {
+        else if (curr_feature->instanceof("static_dispatch_class")) {
             // static dispatch
         }
         
