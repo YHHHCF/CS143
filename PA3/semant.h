@@ -267,22 +267,31 @@ public:
     bool check_expression(Expression expr) {
         bool correctness = true;
 
-        if (curr_feature->instanceof("let_class")) {
+        if (expr->instanceof("let_class")) {
             curr_scope_vars->enterscope();
 
             // Any Let Expression checking done here
             curr_scope_vars->addid(expr->get_name(), new Symbol(expr->get_type()));
-            check_expression(expr->get_expr());
+            check_expression(expr->get_expr()); // We will need to verify type of this later on
+            check_expression(expr->get_body());
             
             curr_scope_vars->exitscope();
         }
-        else if (curr_feature->instanceof("typcase_class")) {
-            // case declarations
+        else if (expr->instanceof("typcase_class")) {
+            curr_scope_vars->enterscope();
+            Cases c = expr->get_cases();
+            for (int i = c->first(); c->more(i); i = c->next(i)) {
+                Case curr_case = c->nth(i);
+                curr_scope_vars->enterscope();
+                curr_scope_vars -> addid(curr_case -> get_name(), new Symbol(curr_case -> get_type()));
+                curr_scope_vars->exitscope();
+            }
+            curr_scope_vars->exitscope();
         }
-        else if (curr_feature->instanceof("dispatch_class")) {
+        else if (expr->instanceof("dispatch_class")) {
             // dispatch
         }
-        else if (curr_feature->instanceof("static_dispatch_class")) {
+        else if (expr->instanceof("static_dispatch_class")) {
             // static dispatch
         }
         
