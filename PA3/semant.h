@@ -37,7 +37,7 @@ private:
   SymbolTable<Symbol, Symbol> *curr_scope_vars = new SymbolTable<Symbol, Symbol>();
     
   // Keeps track of the scope for each class
-  std::map<Symbol, std::set<Symbol>> method_table;
+  std::map<Symbol, std::set<Symbol> > method_table;
 
   void install_basic_classes();
   ostream& error_stream;
@@ -159,29 +159,25 @@ public:
   }
 
     // Checks that each variable is named properly and accessed in its own scope
-    bool check_naming_and_scoping() {
-        bool correctness = true;
-        correctness = correctness && naming_and_scoping_DFS(idtable.lookup_string("Object"));
-
-        // If correct, return, otherwise, declare errors (but proceed?)
-        return correctness;
+    void check_naming_and_scoping() {
+        naming_and_scoping_DFS(idtable.lookup_string("Object"));
     }
 
     // DFS used to traverse through the inheritance tree for naming and scoping section
-    bool naming_and_scoping_DFS(Symbol class_) {
+    bool naming_and_scoping_DFS(Class_ c) {
         bool correctness = true;
         
         // Enter a new scope for each new class
         curr_scope_vars->enterscope();
         
         // Checks for conflicts for the naming of attributes and methods
-        correctness = correctness && check_naming(class_);
+        correctness = correctness && check_naming(c);
 
         // Checks for conflicts in the expressions/body of methods and attributes
-        correctness = correctness && check_scoping(class_);
+        correctness = correctness && check_scoping(c);
 
         // Enter the DFS to check child classes
-        auto set = this->inheritance_map[class_];
+        auto set = this->inheritance_map[c->get_name()];
         for (auto iter = set.begin(); iter != set.end(); ++iter) {
             correctness = correctness && naming_and_scoping_DFS(*iter);
         }
@@ -193,14 +189,12 @@ public:
     }
 
     // Checks naming conflicts and adds them to the current scope
-    bool check_naming(Symbol class_) {
+    bool check_naming(Class_ c) {
         bool correctness = true;
-        Class_ c = class_map[class_];  // Fetches the class from the symbol
-        
         // Enter the scope
-        Features f = c->get_features();
-        for (int i = f -> first(); f -> more(i); i = f -> next(i)) {
-            Feature_class* curr_feature = f->nth(i);
+        Features features = c->get_features();
+        for (int i = features -> first(); features -> more(i); i = features -> next(i)) {
+            Feature curr_feature = features->nth(i);
             if (curr_feature->instanceof("attr_class")) {
                 /* ERROR 1: Duplicate Definitions of Attributes*/
                 if (curr_scope_vars -> probe(curr_feature -> get_name()) != NULL) {
@@ -220,13 +214,13 @@ public:
             }
             else if (curr_feature->instanceof("method_class")) {
                 /* ERROR 3: Duplicate Definitions of Methods in a Class */
-                if (method_table[class_].find(curr_feature->get_name()) != method_table[class_].end()) {
-                    semant_error(c) << "Method " << curr_feature -> get_name() << " is multiply defined in class.\n";
+                if (method_table[c->get_name()].count(curr_feature->get_name())) {
+                    semant_error(c) << "Method " << curr_feature->get_name() << " is multiply defined in class.\n";
                     ++semant_errors;
                     correctness = false;
                 }
                 else {
-                    method_table[class_].insert(curr_feature->get_name());
+                    method_table[c->get_name()].insert(curr_feature->get_name());
                 }
             }
         }
@@ -234,12 +228,11 @@ public:
     }
 
     // Checks scoping conflicts and adds them to the current scope; also processes expressions
-    bool check_scoping(Symbol class_) {
+    bool check_scoping(Class_ c) {
         bool correctness = true;
-        Class_ c = class_map[class_];  // Fetches the class from the symbol
-        Features f = c->get_features();
-        for (int i = f -> first(); f -> more(i); i = f -> next(i)) {
-            Feature_class* curr_feature = f->nth(i);
+        Features features = c->get_features();
+        for (int i = features -> first(); features -> more(i); i = features -> next(i)) {
+            Feature curr_feature = features->nth(i);
 
             // Handles Multiply defined Formals (parameters) in Method Declarations
             if (curr_feature->instanceof("method_class")) {
@@ -259,32 +252,82 @@ public:
             }
             
             Expression expr = curr_feature -> get_expression();
-            correctness = correctness && check_expression(expr);
+            correctness = correctness && check_expression(c, expr);
         }
         return correctness;
     }
 
-    bool check_expression(Expression expr) {
+    bool check_expression(Class_ c, Expression expr) {
         bool correctness = true;
 
-        if (curr_feature->instanceof("let_class")) {
+        if (expr->instanceof("let_class")) {
             curr_scope_vars->enterscope();
 
             // Any Let Expression checking done here
             curr_scope_vars->addid(expr->get_name(), new Symbol(expr->get_type()));
-            check_expression(expr->get_expr());
+            check_expression(c, expr->get_expr());
             
             curr_scope_vars->exitscope();
         }
-        else if (curr_feature->instanceof("typcase_class")) {
+        else if (expr->instanceof("typcase_class")) {
             // case declarations
         }
-        else if (curr_feature->instanceof("dispatch_class")) {
+        else if (expr->instanceof("dispatch_class")) {
             // dispatch
-            
+            curr_scope_vars->enterscope();
+
+            // Step 1: check whether each argument is a legal expression
+            Expressions arguments = expr->get_arguments();
+            for (int i = arguments -> first(); arguments -> more(i); i = arguments -> next(i)) {
+              Expression argument = arguments->nth(i);
+              check_expression(c, argument);
+            }
+
+            // dispatch on self object
+            if (expr->get_expr()->get_name()->equal_string("self", 4)) {
+              // Step 2: check method in current class
+              if (method_table[c->get_name()].count(expr->get_name())) {
+                // TODO: sth else in type checking?
+              } else {
+                semant_error(c) << "Dispatch to undefined method " << expr->get_name() << ".\n";
+                ++semant_errors;
+                correctness = false;
+              }
+
+            }
+            // dispatch not on self object
+            else {
+              // Step 2: check objectID
+              check_expression(c, expr->get_expr());
+
+              // Step 3: check method in type part, we don't know the type of expr->get_expr() now
+              
+            }
+            curr_scope_vars->exitscope();
         }
-        else if (curr_feature->instanceof("static_dispatch_class")) {
+        else if (expr->instanceof("static_dispatch_class")) {
             // static dispatch
+
+            // Step 1: check whether each argument is a legal expression
+            Expressions arguments = expr->get_arguments();
+            for (int i = arguments -> first(); arguments -> more(i); i = arguments -> next(i)) {
+              Expression argument = arguments->nth(i);
+              check_expression(c, argument);
+            }
+
+            // Step 2: check objectID
+            check_expression(c, expr->get_expr());
+
+            // Step 3: TODO: check type to be dispatched on
+
+            // Step 4: check method in type part
+            if (method_table[expr->get_type()].count(expr->get_name())) {
+              // TODO: sth else in type checking?
+            } else {
+              semant_error(c) << "Static dispatch to undefined method " << expr->get_name() << ".\n";
+              ++semant_errors;
+              correctness = false;
+            }
         }
         
         return correctness;
