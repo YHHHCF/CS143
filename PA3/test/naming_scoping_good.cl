@@ -119,3 +119,15 @@ Class J {
         y
     };
 };
+
+Class K inherits IO {
+    x : Int <- 1;
+    get_x() : Int {
+        x
+    };
+};
+
+Class K1 inherits K {
+    y : Int <- get_x();
+    out_int(y);
+};
