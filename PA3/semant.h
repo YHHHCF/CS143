@@ -38,7 +38,6 @@ private:
   SymbolTable<Symbol, Symbol> *curr_scope_methods = new SymbolTable<Symbol, Symbol>();
     
   // Keeps track of the scope for each class
-  std::map<Symbol, SymbolTable<Symbol, char*>> class_scopes;                                        // TODO: remove this
   std::map<Symbol, std::set<Symbol>> attribute_table;                                        // May want this to actually be (Class, var_name) -> (type) instead
   std::map<Symbol, std::set<Symbol>> method_table;
 
@@ -206,16 +205,17 @@ public:
         Features f = c->get_features();
         for (int i = f -> first(); f -> more(i); i = f -> next(i)) {
             Feature_class* curr_feature = f->nth(i);
-            if (curr_feature -> get_grammar() == "attr") {
+            if (strcmp(curr_feature->get_grammar(), "attr") == 0) {
+                printf("I AM CHECKING NAMING RIGHT NOW");
                 /* ERROR 1: Duplicate Definitions of Attributes*/
                 if (curr_scope_vars -> probe(curr_feature -> get_name()) != NULL) {
-                    semant_error(c) << "Attribute " << curr_feature -> get_name() << " in Class " << c -> get_name() << " is duplicatavely defined.\n";
+                    semant_error(c) << "Attribute " << curr_feature -> get_name() << " is multiply defined in class.\n";
                     ++semant_errors;
                     correctness = false;
                 }
                 /* ERROR 2: Overriding Attributes */
                 else if (attribute_table[c->get_parent()].find(curr_feature -> get_name()) != attribute_table[c->get_parent()].end()) {
-                    semant_error(c) << "Attribute " << curr_feature -> get_name() << " in Class " << c -> get_name() << " is overriding an inherited feature.\n";
+                    semant_error(c) << "Attribute " << curr_feature -> get_name() << " is an attribute of an inherited class.\n";
                     ++semant_errors;
                     correctness = false;
                 }
@@ -224,10 +224,10 @@ public:
                     attribute_table[class_].insert(curr_feature->get_name());
                 }
             }
-            else if (curr_feature->get_grammar() == "method") {
+            else if (strcmp(curr_feature->get_grammar(), "method") == 0) {
                 /* ERROR 3: Duplicate Definitions of Methods in a Class */
                 if (curr_scope_methods -> probe(curr_feature -> get_name()) != NULL) {
-                    semant_error(c) << "Method " << curr_feature -> get_name() << " in Class " << c -> get_name() << " is duplicatavely defined.\n";
+                    semant_error(c) << "Method " << curr_feature -> get_name() << " is multiply defined in class.\n";
                     ++semant_errors;
                     correctness = false;
                 }
@@ -240,17 +240,32 @@ public:
         return correctness;
     }
 
-    // Checks scoping conflicts and adds them to the current scope; also processes interiors of methods
+    // Checks scoping conflicts and adds them to the current scope; also processes expressions
     bool check_scoping(Symbol class_) {
         bool correctness = true;
         Class_ c = class_map[class_];  // Fetches the class from the symbol
-
         Features f = c->get_features();
         for (int i = f -> first(); f -> more(i); i = f -> next(i)) {
             Feature_class* curr_feature = f->nth(i);
-            if (curr_feature->get_grammar() == "method") {
-                // add to scope
-                // update method table
+
+            if (strcmp(curr_feature->get_grammar(), "method") == 0) {
+                Formals formals = curr_feature->get_formals();
+                curr_scope_vars->enterscope();
+                for (int j = formals -> first(); formals -> more(j); j = formals -> next(j)) {
+                    Formal curr_formal = formals->nth(j);
+                    /* ERROR 4: Duplicate Definitions of Formals in a Method */
+                    if (curr_scope_vars -> probe(curr_formal->get_name()) != NULL) {
+                        semant_error(c) << "Formal Parameter " << curr_formal->get_name() << "is multiply defined.\n";
+                        ++semant_errors;
+                        correctness = false;
+                    }
+                }
+                curr_scope_vars->exitscope();
+            }
+            
+            Expression expr = curr_feature -> get_expression();
+            if (strcmp(expr->get_grammar(), "let") == 0) {
+                correctness = false;
             }
         }
         return correctness;

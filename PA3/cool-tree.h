@@ -55,6 +55,9 @@ public:
    virtual char* get_grammar() = 0; // Implemented to distinguish between attributes and methods
    virtual Symbol get_name() = 0; // Implemented for attributes and methods
    virtual Symbol get_type() = 0; // Returns type of attribute or return type of method
+   virtual Expression get_expression() = 0; // Returns the expression that the feature evaluates to
+
+   virtual Formals get_formals() = 0; // Implemented to get Formals for methods; calling on attributes returns nil_formals()
 
 #ifdef Feature_EXTRAS
    Feature_EXTRAS
@@ -69,7 +72,9 @@ class Formal_class : public tree_node {
 public:
    tree_node *copy()		 { return copy_Formal(); }
    virtual Formal copy_Formal() = 0;
-
+   virtual Symbol get_name() = 0;  // Implemented to return name
+   virtual Symbol get_type() = 0;  // Implemented to return type
+   
 #ifdef Formal_EXTRAS
    Formal_EXTRAS
 #endif
@@ -83,6 +88,7 @@ class Expression_class : public tree_node {
 public:
    tree_node *copy()		 { return copy_Expression(); }
    virtual Expression copy_Expression() = 0;
+   virtual char* get_grammar() = 0; // Implemented to distinguish
 
 #ifdef Expression_EXTRAS
    Expression_EXTRAS
@@ -210,13 +216,21 @@ public:
    Symbol get_name() {
        return name;
    }
+
+   Formals get_formals() {
+      return formals;
+   }
     
    Symbol get_type() {
       return return_type;
    }
     
    char* get_grammar() {
-       return "method";
+      return "method";
+   }
+
+   Expression get_expression() {
+      return expr;
    }
 
 #ifdef Feature_SHARED_EXTRAS
@@ -251,9 +265,18 @@ public:
       return type_decl;
    }
 
+    Formals get_formals() {
+      return Formals();
+    }
+
    char* get_grammar() {
       return "attr";
    }
+
+   Expression get_expression() {
+      return init;
+   }
+
 
 #ifdef Feature_SHARED_EXTRAS
    Feature_SHARED_EXTRAS
@@ -277,6 +300,15 @@ public:
    Formal copy_Formal();
    void dump(ostream& stream, int n);
 
+   Symbol get_name() {
+      return name;
+   }
+
+   Symbol get_type() {
+      return type_decl;
+   }
+   
+    
 #ifdef Formal_SHARED_EXTRAS
    Formal_SHARED_EXTRAS
 #endif
@@ -323,6 +355,10 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
+   char* get_grammar() {
+      return "assign";
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -349,6 +385,10 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
+   char* get_grammar() {
+      return "static_dispatch";
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -372,6 +412,10 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
+
+   char* get_grammar() {
+      return "dispatch";
+   }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -397,6 +441,10 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
+   char* get_grammar() {
+      return "cond";
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -418,6 +466,10 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
+
+   char* get_grammar() {
+      return "loop";
+   }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -441,6 +493,10 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
+   char* get_grammar() {
+      return "typcase";
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -460,6 +516,10 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
+
+   char* get_grammar() {
+      return "block";
+   }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -487,6 +547,10 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
+   char* get_grammar() {
+      return "let";
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -508,6 +572,10 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
+
+   char* get_grammar() {
+      return "plus";
+   }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -531,6 +599,10 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
+   char* get_grammar() {
+      return "sub";
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -552,6 +624,10 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
+
+   char* get_grammar() {
+      return "mul";
+   }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -575,6 +651,10 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
+   char* get_grammar() {
+      return "divide";
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -594,6 +674,10 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
+
+   char* get_grammar() {
+      return "neg";
+   }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -617,6 +701,10 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
+   char* get_grammar() {
+      return "lt";
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -638,6 +726,10 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
+
+   char* get_grammar() {
+      return "eq";
+   }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -661,6 +753,10 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
+   char* get_grammar() {
+      return "leq";
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -680,6 +776,10 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
+
+   char* get_grammar() {
+      return "comp";
+   }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -701,6 +801,10 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
+   char* get_grammar() {
+      return "int_const";
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -720,6 +824,10 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
+
+   char* get_grammar() {
+      return "bool_const";
+   }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -741,6 +849,10 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
+   char* get_grammar() {
+      return "string_const";
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -760,6 +872,10 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
+
+   char* get_grammar() {
+      return "new_";
+   }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -781,6 +897,10 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
+   char* get_grammar() {
+      return "isvoid";
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -798,6 +918,10 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
+
+   char* get_grammar() {
+      return "no_expr";
+   }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -818,6 +942,10 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
+
+   char* get_grammar() {
+      return "object";
+   }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
