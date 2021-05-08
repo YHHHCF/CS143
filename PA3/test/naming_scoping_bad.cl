@@ -101,3 +101,31 @@ Class I {
     };
 };
 
+(* Static Dispatch errors *)
+Class J {
+    method_J() : Int {
+        0
+    };
+};
+
+Class J1 inherits J {
+    method_J1() : Int {
+        1
+    };
+};
+
+Class J2 inherits J {
+    j1 : J1 <- new J1;
+    method_J2_1() : Int {
+        2
+    };
+    method_J2_2() : Int {
+        {
+            (* static dispatch *)
+            j1@J.method_J1();
+
+            (* self dispatch *)
+            method_J2();
+        }
+    };
+};

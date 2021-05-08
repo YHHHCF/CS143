@@ -92,6 +92,7 @@ public:
    virtual Symbol get_name() = 0;
     // virtual Symbol get_type() = 0;
    virtual Expression get_expr() = 0;
+   virtual Expressions get_arguments() = 0;
 
 #ifdef Expression_EXTRAS
    Expression_EXTRAS
@@ -418,6 +419,10 @@ public:
    Expression get_expr() {
       return expr;
    }
+   
+   Expressions get_arguments() {
+      return actual;
+   }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -458,6 +463,10 @@ public:
 
    Expression get_expr() {
       return expr;
+   }
+
+   Expressions get_arguments() {
+      return actual;
    }
 
 #ifdef Expression_SHARED_EXTRAS

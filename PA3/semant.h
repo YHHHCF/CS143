@@ -281,6 +281,7 @@ public:
         }
         else if (curr_feature->instanceof("dispatch_class")) {
             // dispatch
+            
         }
         else if (curr_feature->instanceof("static_dispatch_class")) {
             // static dispatch
