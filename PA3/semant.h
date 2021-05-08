@@ -265,19 +265,12 @@ public:
 
             // Any Let Expression checking done here
             curr_scope_vars->addid(expr->get_name(), new Symbol(expr->get_type()));
-<<<<<<< HEAD
-            check_expression(c, expr->get_expr());
-=======
-            check_expression(expr->get_expr()); // We will need to verify type of this later on
+            check_expression(c, expr->get_expr()); // We will need to verify type of this later on
             check_expression(expr->get_body());
->>>>>>> 6354e05a188b9195b68ccee5cf61454bd05982ca
             
             curr_scope_vars->exitscope();
         }
         else if (expr->instanceof("typcase_class")) {
-<<<<<<< HEAD
-            // case declarations
-=======
             curr_scope_vars->enterscope();
             Cases c = expr->get_cases();
             for (int i = c->first(); c->more(i); i = c->next(i)) {
@@ -287,7 +280,6 @@ public:
                 curr_scope_vars->exitscope();
             }
             curr_scope_vars->exitscope();
->>>>>>> 6354e05a188b9195b68ccee5cf61454bd05982ca
         }
         else if (expr->instanceof("dispatch_class")) {
             // dispatch
