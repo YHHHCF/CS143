@@ -93,6 +93,8 @@ public:
     // virtual Symbol get_type() = 0;
    virtual Expression get_expr() = 0;
    virtual Expressions get_arguments() = 0;
+   virtual Expression get_body() = 0;
+   virtual Cases get_cases() = 0; // Implemented for typcase
 
 #ifdef Expression_EXTRAS
    Expression_EXTRAS
@@ -107,6 +109,10 @@ class Case_class : public tree_node {
 public:
    tree_node *copy()		 { return copy_Case(); }
    virtual Case copy_Case() = 0;
+
+   virtual Symbol get_name() = 0;
+   virtual Symbol get_type() = 0;
+   virtual Expression get_expr() = 0;
 
 #ifdef Case_EXTRAS
    Case_EXTRAS
@@ -338,6 +344,18 @@ public:
    Case copy_Case();
    void dump(ostream& stream, int n);
 
+   Symbol get_name() {
+      return name;
+   }
+
+   Symbol get_type() {
+     return type_decl;
+   }
+
+   Expression get_expr() {
+      return expr;
+   }
+
 #ifdef Case_SHARED_EXTRAS
    Case_SHARED_EXTRAS
 #endif
@@ -376,6 +394,9 @@ public:
    Expression get_expr() {
       return expr;
    }
+
+   Expression get_body() { return Expression(); }
+   Cases get_cases() { return Cases(); }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -424,6 +445,9 @@ public:
       return actual;
    }
 
+   Expression get_body() { return Expression(); }
+   Cases get_cases() { return Cases(); }
+    
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -469,6 +493,9 @@ public:
       return actual;
    }
 
+   Expression get_body() { return Expression(); }
+   Cases get_cases() { return Cases(); }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -510,6 +537,9 @@ public:
       return Expression();
    }
 
+   Expression get_body() { return then_exp; }
+   Cases get_cases() { return Cases(); }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -548,6 +578,9 @@ public:
    Expression get_expr() {
       return pred;
    }
+
+   Expression get_body() { return body; }
+   Cases get_cases() { return Cases(); }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -588,6 +621,12 @@ public:
       return expr;
    }
 
+   Expression get_body() { return Expression(); }
+
+   Cases get_cases() {
+      return cases;
+   }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -624,6 +663,9 @@ public:
    Expression get_expr() {
       return Expression();
    }
+
+   Expression get_body() { return Expression(); }
+   Cases get_cases() { return Cases(); }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -668,6 +710,12 @@ public:
       return init;
    }
 
+   Expression get_body() {
+      return body;
+   }
+
+   Cases get_cases() { return Cases(); }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -706,6 +754,9 @@ public:
    Expression get_expr() {
       return Expression();
    }
+
+   Expression get_body() { return Expression(); }
+   Cases get_cases() { return Cases(); }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -746,6 +797,9 @@ public:
       return Expression();
    }
 
+   Expression get_body() { return Expression(); }
+   Cases get_cases() { return Cases(); }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -784,6 +838,9 @@ public:
    Expression get_expr() {
       return Expression();
    }
+
+   Expression get_body() { return Expression(); }
+   Cases get_cases() { return Cases(); }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -824,6 +881,9 @@ public:
       return Expression();
    }
 
+   Expression get_body() { return Expression(); }
+   Cases get_cases() { return Cases(); }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -860,6 +920,9 @@ public:
    Expression get_expr() {
       return e1;
    }
+
+   Expression get_body() { return Expression(); }
+   Cases get_cases() { return Cases(); }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -900,6 +963,9 @@ public:
       return Expression();
    }
 
+   Expression get_body() { return Expression(); }
+   Cases get_cases() { return Cases(); }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -938,6 +1004,9 @@ public:
    Expression get_expr() {
       return Expression();
    }
+
+   Expression get_body() { return Expression(); }
+   Cases get_cases() { return Cases(); }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -978,6 +1047,9 @@ public:
       return Expression();
    }
 
+   Expression get_body() { return Expression(); }
+   Cases get_cases() { return Cases(); }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -1014,6 +1086,9 @@ public:
    Expression get_expr() {
       return e1;
    }
+
+   Expression get_body() { return Expression(); }
+   Cases get_cases() { return Cases(); }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -1052,6 +1127,9 @@ public:
       return Expression();
    }
 
+   Expression get_body() { return Expression(); }
+   Cases get_cases() { return Cases(); }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -1088,6 +1166,10 @@ public:
    Expression get_expr() {
       return Expression();
    }
+
+   Expression get_body() { return Expression(); }
+   Cases get_cases() { return Cases(); }
+    
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -1126,6 +1208,9 @@ public:
       return Expression();
    }
 
+   Expression get_body() { return Expression(); }
+   Cases get_cases() { return Cases(); }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -1162,6 +1247,9 @@ public:
    Expression get_expr() {
       return Expression();
    }
+
+   Expression get_body() { return Expression(); }
+   Cases get_cases() { return Cases(); }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -1200,6 +1288,9 @@ public:
       return e1;
    }
 
+   Expression get_body() { return Expression(); }
+   Cases get_cases() { return Cases(); }
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -1234,6 +1325,9 @@ public:
    Expression get_expr() {
       return Expression();
    }
+
+   Expression get_body() { return Expression(); }
+   Cases get_cases() { return Cases(); }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -1271,6 +1365,9 @@ public:
    Expression get_expr() {
       return Expression();
    }
+
+   Expression get_body() { return Expression(); }
+   Cases get_cases() { return Cases(); }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
