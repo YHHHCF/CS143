@@ -205,8 +205,7 @@ public:
         Features f = c->get_features();
         for (int i = f -> first(); f -> more(i); i = f -> next(i)) {
             Feature_class* curr_feature = f->nth(i);
-            if (strcmp(curr_feature->get_grammar(), "attr") == 0) {
-                printf("I AM CHECKING NAMING RIGHT NOW");
+            if (curr_feature->instanceof("attr_class")) {
                 /* ERROR 1: Duplicate Definitions of Attributes*/
                 if (curr_scope_vars -> probe(curr_feature -> get_name()) != NULL) {
                     semant_error(c) << "Attribute " << curr_feature -> get_name() << " is multiply defined in class.\n";
@@ -224,7 +223,7 @@ public:
                     attribute_table[class_].insert(curr_feature->get_name());
                 }
             }
-            else if (strcmp(curr_feature->get_grammar(), "method") == 0) {
+            else if (curr_feature->instanceof("method_class")) {
                 /* ERROR 3: Duplicate Definitions of Methods in a Class */
                 if (curr_scope_methods -> probe(curr_feature -> get_name()) != NULL) {
                     semant_error(c) << "Method " << curr_feature -> get_name() << " is multiply defined in class.\n";
@@ -248,7 +247,7 @@ public:
         for (int i = f -> first(); f -> more(i); i = f -> next(i)) {
             Feature_class* curr_feature = f->nth(i);
 
-            if (strcmp(curr_feature->get_grammar(), "method") == 0) {
+            if (curr_feature->instanceof("method_class")) {
                 Formals formals = curr_feature->get_formals();
                 curr_scope_vars->enterscope();
                 for (int j = formals -> first(); formals -> more(j); j = formals -> next(j)) {
@@ -264,7 +263,7 @@ public:
             }
             
             Expression expr = curr_feature -> get_expression();
-            if (strcmp(expr->get_grammar(), "let") == 0) {
+            if (curr_feature->instanceof("let_class")) {
                 correctness = false;
             }
         }
