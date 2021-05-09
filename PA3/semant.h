@@ -215,7 +215,7 @@ public:
             else if (curr_feature->instanceof("method_class")) {
                 /* ERROR 3: Duplicate Definitions of Methods in a Class */
                 if (method_table[c->get_typeID()].count(curr_feature->get_methodID())) {
-                    semant_error(c) << "Method " << curr_feature->get_methodID() << " is multiply defined in class.\n";
+                    semant_error(c) << "Method " << curr_feature->get_methodID() << " is multiply defined.\n";
                     ++semant_errors;
                 }
                 else {
@@ -235,15 +235,17 @@ public:
             if (curr_feature->instanceof("method_class")) {
                 Formals formals = curr_feature->get_formals();
                 curr_scope_vars->enterscope();
+                // check formals
                 for (int j = formals->first(); formals->more(j); j = formals->next(j)) {
                     Formal curr_formal = formals->nth(j);
                     /* ERROR 4: Duplicate Definitions of Formals in a Method */
                     if (curr_scope_vars->probe(curr_formal->get_objectID()) != NULL) {
-                        semant_error(c) << "Formal Parameter " << curr_formal->get_objectID() << "is multiply defined.\n";
+                        semant_error(c) << "Formal Parameter " << curr_formal->get_objectID() << " is multiply defined.\n";
                         ++semant_errors;
                     }
                     curr_scope_vars->addid(curr_formal->get_objectID(), new Symbol(curr_formal->get_typeID()));
                 }
+
                 curr_scope_vars->exitscope();
             }
 
@@ -329,6 +331,58 @@ public:
             }
 
             curr_scope_vars->exitscope();
+        }
+        else if (expr->instanceof("new__class")) {
+            // place holder for type checking
+        }
+        else if (expr->instanceof("isvoid_class")) {
+            check_expression(c, expr->get_expression());
+        }
+        else if (expr->instanceof("plus_class")) {
+            check_expression(c, expr->get_expression1());
+            check_expression(c, expr->get_expression2());
+        }
+        else if (expr->instanceof("sub_class")) {
+            check_expression(c, expr->get_expression1());
+            check_expression(c, expr->get_expression2());
+        }
+        else if (expr->instanceof("mul_class")) {
+            check_expression(c, expr->get_expression1());
+            check_expression(c, expr->get_expression2());
+        }
+        else if (expr->instanceof("divide_class")) {
+            check_expression(c, expr->get_expression1());
+            check_expression(c, expr->get_expression2());
+        }
+        else if (expr->instanceof("neg_class")) {
+            check_expression(c, expr->get_expression());
+        }
+        else if (expr->instanceof("lt_class")) {
+            check_expression(c, expr->get_expression1());
+            check_expression(c, expr->get_expression2());
+        }
+        else if (expr->instanceof("leq_class")) {
+            check_expression(c, expr->get_expression1());
+            check_expression(c, expr->get_expression2());
+        }
+        else if (expr->instanceof("eq_class")) {
+            check_expression(c, expr->get_expression1());
+            check_expression(c, expr->get_expression2());
+        }
+        else if (expr->instanceof("comp_class")) {
+            check_expression(c, expr->get_expression());
+        }
+        else if (expr->instanceof("object_class")) {
+            // place holder
+        }
+        else if (expr->instanceof("int_const_class")) {
+            // place holder for type checking
+        }
+        else if (expr->instanceof("string_const_class")) {
+            // place holder for type checking
+        }
+        else if (expr->instanceof("bool_const_class")) {
+            // place holder for type checking
         }
     }
 

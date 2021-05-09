@@ -121,10 +121,10 @@ Class J2 inherits J {
     };
     method_J2_2() : Int {
         {
-            (* static dispatch *)
+            (* Static dispatch to undefined method method_J1. *)
             j1@J.method_J1();
 
-            (* self dispatch *)
+            (* Dispatch to undefined method method_J2. *)
             method_J2();
         }
     };
