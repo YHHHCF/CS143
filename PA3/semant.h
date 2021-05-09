@@ -34,6 +34,10 @@ private:
     // key is a typeID, value is a Class_
     std::map<Symbol, Class_> class_map;
 
+    // parent_map is used to get the Child's Parent
+    // key is a typeID for child, value is a typeID for parent
+    std::map<Symbol, Symbol> parent_map;
+
     // Used to manage current scope for naming_and_scoping_DFS; maps an attribute's objectID to typeID
     SymbolTable<Symbol, Symbol> *curr_scope_vars = new SymbolTable<Symbol, Symbol>();
     
@@ -80,6 +84,9 @@ public:
 
         // Add the class to class_map
         this->class_map[typeID] = c;
+
+        // Add the child and parent to parent_map
+        this->parent_map[typeID] = parent_typeID;
 
         // Add the class and its parent to inheritance map
         if (this->inheritance_map.count(parent_typeID)) {
@@ -278,8 +285,8 @@ public:
 
             // dispatch on self object, check if expr is a self object
             if (expr->get_expression()->instanceof("object_class") && expr->get_expression()->get_objectID()->equal_string("self", 4)) {
-                // Step 2: check method in current class
-                if (method_table[c->get_typeID()].count(expr->get_methodID())) {
+                // Step 2: check method in current class's inhertance chain
+                if (check_method(c->get_typeID(), expr->get_methodID())) {
                     // TODO: sth else in type checking?
                 } else {
                     semant_error(c) << "Dispatch to undefined method " << expr->get_methodID() << ".\n";
@@ -298,6 +305,7 @@ public:
         }
         else if (expr->instanceof("static_dispatch_class")) {
             // static dispatch
+            curr_scope_vars->enterscope();
 
             // Step 1: check whether each argument is a legal expression
             Expressions arguments = expr->get_arg_expressions();
@@ -313,18 +321,33 @@ public:
 
             // Step 4: TODO: check method in type part
             // If the static dispatch has that method
-            if (method_table[expr->get_typeID()].count(expr->get_methodID())) {
+            if (check_method(expr->get_typeID(), expr->get_methodID())) {
                 // TODO: sth else in type checking?
             } else {
                 semant_error(c) << "Static dispatch to undefined method " << expr->get_methodID() << ".\n";
                 ++semant_errors;
             }
+
+            curr_scope_vars->exitscope();
         }
     }
 
-    // Given a typeID and a methodID, return the least Class_ that has this methodID
+    // Given a typeID and a methodID, return the least ancestor's typeID
+    // who has this methodID overidden or implemented
     Class_ check_method(Symbol typeID, Symbol methodID) {
-
+        Class_ ret = nullptr;
+        while (!typeID->equal_string("_no_class", 9)) {
+            if (semant_debug) {
+                printf("check_method %s from class %s\n", methodID->get_string(), typeID->get_string());
+            }
+            if (this->method_table[typeID].count(methodID)) {
+                ret = this->class_map[typeID];
+                break;
+            } else {
+                typeID = this->parent_map[typeID];
+            }
+        }
+        return ret;
     }
 
     // Print the inheritance graph for debug
