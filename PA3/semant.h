@@ -27,16 +27,18 @@ private:
   int semant_errors;
 
   // inheritance_map stores inheritance information
-  // key is class symbols, value is its children's symbols
+  // key is a typeID, value is its children's typeIDs
   std::map<Symbol, std::set<Symbol> > inheritance_map;
 
   // class_map is used to get the Symbol's Class_
+  // key is a typeID, value is a Class_
   std::map<Symbol, Class_> class_map;
   
-  // Used to manage current scope for naming_and_scoping_DFS; maps attributes to types
+  // Used to manage current scope for naming_and_scoping_DFS; maps an attribute's objectID to typeID
   SymbolTable<Symbol, Symbol> *curr_scope_vars = new SymbolTable<Symbol, Symbol>();
     
   // Keeps track of the scope for each class
+  // key is a typeID, value is a set of methodIDs
   std::map<Symbol, std::set<Symbol> > method_table;
 
   void install_basic_classes();
@@ -46,72 +48,73 @@ public:
   ClassTable(Classes);
 
   void add_class(Class_ c) {
-    Symbol parent = c->get_parent();
-    Symbol name = c->get_name();
+    Symbol parent_typeID = c->get_parent_typeID();
+    Symbol typeID = c->get_typeID();
 
     // Error 1: Cannot inherit from Bool, Int, String
-    if (parent->equal_string("Bool", 4)) {
-      semant_error(c) << "Class " << name << " cannot inherit class Bool.\n";
+    if (parent_typeID->equal_string("Bool", 4)) {
+      semant_error(c) << "Class " << typeID << " cannot inherit class Bool.\n";
       ++semant_errors;
       return;
     }
-    if (parent->equal_string("Int", 3)) {
-      semant_error(c) << "Class " << name << " cannot inherit class Int.\n";
+    if (parent_typeID->equal_string("Int", 3)) {
+      semant_error(c) << "Class " << typeID << " cannot inherit class Int.\n";
       ++semant_errors;
       return;
     }
-    if (parent->equal_string("String", 6)) {
-      semant_error(c) << "Class " << name << " cannot inherit class String.\n";
+    if (parent_typeID->equal_string("String", 6)) {
+      semant_error(c) << "Class " << typeID << " cannot inherit class String.\n";
       ++semant_errors;
       return;
     }
 
     // Error 2: Cannot add already defined class
-    if (this->class_map.count(name)) {
-      semant_error(c) << "Class " << name << " was previously defined.\n";
+    if (this->class_map.count(typeID)) {
+      semant_error(c) << "Class " << typeID << " was previously defined.\n";
       ++semant_errors;
       return;
     }
 
+    // Add the class to idtable
+    idtable.add_string(typeID->get_string());
+
     // Add the class to class_map
-    this->class_map[name] = c;
+    this->class_map[typeID] = c;
 
     // Add the class and its parent to inheritance map
-    if (this->inheritance_map.count(parent)) {
-      this->inheritance_map[parent].insert(name);
+    if (this->inheritance_map.count(parent_typeID)) {
+      this->inheritance_map[parent_typeID].insert(typeID);
     } else {
       std::set<Symbol> set;
-      set.insert(name);
-      this->inheritance_map[parent] = set;
+      set.insert(typeID);
+      this->inheritance_map[parent_typeID] = set;
     }
     return;
   }
 
   // Check acyclic and single inheritance
   // return true if the inheritance_map is good
-  bool check_inheritance_map() {
-    bool correctness = true;
+  void check_inheritance_map() {
+    std::list<Symbol> typeID_pool; // a temp list for BFS
+    std::set<Symbol> typeID_traversed; // record the nodes that has been traversed
 
-    std::list<Symbol> pool; // a temp list for BFS
-    std::set<Symbol> traversed; // record the nodes that has been traversed
+    typeID_traversed.insert(idtable.lookup_string("Object"));
+    typeID_pool.push_back(idtable.lookup_string("Object"));
 
-    traversed.insert(idtable.lookup_string("Object"));
-    pool.push_back(idtable.lookup_string("Object"));
-
-    while(pool.size()) {
-      int size = pool.size();
+    while(typeID_pool.size()) {
+      int size = typeID_pool.size();
       for (int i = 0; i < size; ++i) {
-        Symbol curr = pool.front();
-        pool.pop_front();
-        auto set = this->inheritance_map[curr];
+        Symbol typeID = typeID_pool.front();
+        typeID_pool.pop_front();
+        auto children_typeIDs = this->inheritance_map[typeID];
 
         if (semant_debug) {
-          printf("Traversing inheritance_map: %s with %lu childrens\n", curr->get_string(), set.size());
+          printf("Traversing inheritance_map: %s with %lu childrens\n", typeID->get_string(), children_typeIDs.size());
         }
 
-        for (auto iter = set.begin(); iter != set.end(); ++iter) {
-          traversed.insert(*iter);
-          pool.push_back(*iter);
+        for (auto iter = children_typeIDs.begin(); iter != children_typeIDs.end(); ++iter) {
+          typeID_traversed.insert(*iter);
+          typeID_pool.push_back(*iter);
         }
       }
     }
@@ -123,18 +126,17 @@ public:
     // Then it has Error 3, the only exception is Object which has not parent
     std::set<Symbol> error3_set; // Record in Error 3 and used for Error 4
 
-    for (auto symbol_symbols : this->inheritance_map) {
-      Symbol parent = symbol_symbols.first;
-      if (!this->class_map.count(parent)) {
-        auto children = symbol_symbols.second;
-        for (auto iter = children.begin(); iter != children.end(); ++iter) {
-          Symbol name = *iter;
-          if (!name->equal_string("Object", 6)) {
-            error3_set.insert(name);
-            Class_ c = this->class_map[name];
-            semant_error(c) << "Class " << name << " inherits from an undefined class " << parent << ".\n";
+    for (auto typeID_typeIDs : this->inheritance_map) {
+      Symbol parent_typeID = typeID_typeIDs.first;
+      if (!this->class_map.count(parent_typeID)) {
+        auto children_typdIDs = typeID_typeIDs.second;
+        for (auto iter = children_typeIDs.begin(); iter != children_typeIDs.end(); ++iter) {
+          Symbol typeID = *iter;
+          if (!typeID->equal_string("Object", 6)) {
+            error3_set.insert(typeID);
+            Class_ c = this->class_map[typeID];
+            semant_error(c) << "Class " << typeID << " inherits from an undefined class " << parent_typeID << ".\n";
             ++semant_errors;
-            correctness = false;
           }
         }
       }
@@ -145,17 +147,14 @@ public:
     // Then it is not reachable from Object
     // Then it must be either Error 3 or Error 4 (if not in error3_set)
     // See test/inherit_bad_cycle.cl for details
-    for (auto symbol_class : this->class_map) {
-      Symbol name = symbol_class.first;
-      if (!traversed.count(name) && !error3_set.count(name)) {
-        Class_ c = symbol_class.second;
-        semant_error(c) << "Class " << name << ", or an ancestor of " << name << ", is involved in an inheritance cycle.\n";
+    for (auto typeID_class : this->class_map) {
+      Symbol typeID = typeID_class.first;
+      if (!traversed.count(typeID) && !error3_set.count(typeID)) {
+        Class_ c = typeID_class.second;
+        semant_error(c) << "Class " << typeID << ", or an ancestor of " << typeID << ", is involved in an inheritance cycle.\n";
         ++semant_errors;
-        correctness = false;
       }
     }
-
-    return correctness;
   }
 
     // Checks that each variable is named properly and accessed in its own scope
@@ -164,110 +163,94 @@ public:
     }
 
     // DFS used to traverse through the inheritance tree for naming and scoping section
-    bool naming_and_scoping_DFS(Class_ c) {
-        bool correctness = true;
-        
+    void naming_and_scoping_DFS(Class_ c) {
         // Enter a new scope for each new class
         curr_scope_vars->enterscope();
         
         // Checks for conflicts for the naming of attributes and methods
-        correctness = correctness && check_naming(c);
+        check_naming(c);
 
         // Checks for conflicts in the expressions/body of methods and attributes
-        correctness = correctness && check_scoping(c);
+        check_scoping(c);
 
         // Enter the DFS to check child classes
-        auto set = this->inheritance_map[c->get_name()];
-        for (auto iter = set.begin(); iter != set.end(); ++iter) {
-            correctness = correctness && naming_and_scoping_DFS(*iter);
+        auto children_typeIDs = this->inheritance_map[c->get_typeID()];
+        for (auto iter = children_typeIDs.begin(); iter != children_typeIDs.end(); ++iter) {
+            naming_and_scoping_DFS(this->class_map[*iter]);
         }
 
         // Done processing the current scope; exit the scope
         curr_scope_vars->exitscope();
-
-        return correctness;
     }
 
     // Checks naming conflicts and adds them to the current scope
-    bool check_naming(Class_ c) {
-        bool correctness = true;
+    void check_naming(Class_ c) {
         // Enter the scope
         Features features = c->get_features();
-        for (int i = features -> first(); features -> more(i); i = features -> next(i)) {
+        for (int i = features->first(); features->more(i); i = features->next(i)) {
             Feature curr_feature = features->nth(i);
             if (curr_feature->instanceof("attr_class")) {
                 /* ERROR 1: Duplicate Definitions of Attributes*/
-                if (curr_scope_vars -> probe(curr_feature -> get_name()) != NULL) {
-                    semant_error(c) << "Attribute " << curr_feature -> get_name() << " is multiply defined in class.\n";
+                if (curr_scope_vars->probe(curr_feature->get_objectID()) != NULL) {
+                    semant_error(c) << "Attribute " << curr_feature->get_objectID() << " is multiply defined in class.\n";
                     ++semant_errors;
-                    correctness = false;
                 }
                 /* ERROR 2: Overriding Attributes */
-                else if (curr_scope_vars -> lookup(curr_feature -> get_name()) != NULL) {
-                    semant_error(c) << "Attribute " << curr_feature -> get_name() << " is an attribute of an inherited class.\n";
+                else if (curr_scope_vars->lookup(curr_feature->get_objectID()) != NULL) {
+                    semant_error(c) << "Attribute " << curr_feature->get_objectID() << " is an attribute of an inherited class.\n";
                     ++semant_errors;
-                    correctness = false;
                 }
                 else {
-                    curr_scope_vars -> addid(curr_feature -> get_name(), new Symbol(curr_feature -> get_type()));
+                    curr_scope_vars->addid(curr_feature->get_objectID(), idtable.lookup_string(curr_feature->get_typeID()->get_string()));
                 }
             }
             else if (curr_feature->instanceof("method_class")) {
                 /* ERROR 3: Duplicate Definitions of Methods in a Class */
-                if (method_table[c->get_name()].count(curr_feature->get_name())) {
-                    semant_error(c) << "Method " << curr_feature->get_name() << " is multiply defined in class.\n";
+                if (method_table[c->get_typeID()].count(curr_feature->get_methodID())) {
+                    semant_error(c) << "Method " << curr_feature->get_methodID() << " is multiply defined in class.\n";
                     ++semant_errors;
-                    correctness = false;
                 }
                 else {
-                    method_table[c->get_name()].insert(curr_feature->get_name());
+                    method_table[c->get_typeID()].insert(curr_feature->get_methodID());
                 }
             }
         }
-        return correctness;
     }
 
     // Checks scoping conflicts and adds them to the current scope; also processes expressions
-    bool check_scoping(Class_ c) {
-        bool correctness = true;
+    void check_scoping(Class_ c) {
         Features features = c->get_features();
-        for (int i = features -> first(); features -> more(i); i = features -> next(i)) {
+        for (int i = features->first(); features->more(i); i = features->next(i)) {
             Feature curr_feature = features->nth(i);
 
             // Handles Multiply defined Formals (parameters) in Method Declarations
             if (curr_feature->instanceof("method_class")) {
                 Formals formals = curr_feature->get_formals();
                 curr_scope_vars->enterscope();
-                for (int j = formals -> first(); formals -> more(j); j = formals -> next(j)) {
+                for (int j = formals->first(); formals->more(j); j = formals->next(j)) {
                     Formal curr_formal = formals->nth(j);
                     /* ERROR 4: Duplicate Definitions of Formals in a Method */
-                    if (curr_scope_vars -> probe(curr_formal->get_name()) != NULL) {
-                        semant_error(c) << "Formal Parameter " << curr_formal->get_name() << "is multiply defined.\n";
+                    if (curr_scope_vars->probe(curr_formal->get_objectID()) != NULL) {
+                        semant_error(c) << "Formal Parameter " << curr_formal->get_objectID() << "is multiply defined.\n";
                         ++semant_errors;
-                        correctness = false;
                     }
-                    curr_scope_vars -> addid(curr_feature -> get_name(), new Symbol(curr_feature -> get_type()));
+                    curr_scope_vars->addid(curr_formal->get_objectID(), idtable.lookup_string(curr_formal->get_typeID()->get_string()));
                 }
                 curr_scope_vars->exitscope();
             }
-            
-            Expression expr = curr_feature -> get_expression();
-            correctness = correctness && check_expression(c, expr);
+
+            Expression expr = curr_feature->get_expression();
+            check_expression(c, expr);
         }
-        return correctness;
     }
 
-    bool check_expression(Class_ c, Expression expr) {
-        bool correctness = true;
-
+    void check_expression(Class_ c, Expression expr) {
         if (expr->instanceof("let_class")) {
             curr_scope_vars->enterscope();
-
             // Any Let Expression checking done here
-            curr_scope_vars->addid(expr->get_name(), new Symbol(expr->get_type()));
-            check_expression(c, expr->get_expr()); // We will need to verify type of this later on
-            check_expression(expr->get_body());
-            
+            curr_scope_vars->addid(expr->get_objectID(), idtable.lookup_string(expr->get_typeID()->get_string()));
+            check_expression(c, expr->get_init_expression()); // TODO: verify type of this
+            check_expression(c, expr->get_body_expression());
             curr_scope_vars->exitscope();
         }
         else if (expr->instanceof("typcase_class")) {
@@ -276,7 +259,7 @@ public:
             for (int i = c->first(); c->more(i); i = c->next(i)) {
                 Case curr_case = c->nth(i);
                 curr_scope_vars->enterscope();
-                curr_scope_vars -> addid(curr_case -> get_name(), new Symbol(curr_case -> get_type()));
+                curr_scope_vars->addid(curr_case->get_objectID(), idtable.lookup_string(curr_case->get_typeID()->get_string()));
                 curr_scope_vars->exitscope();
             }
             curr_scope_vars->exitscope();
@@ -286,30 +269,29 @@ public:
             curr_scope_vars->enterscope();
 
             // Step 1: check whether each argument is a legal expression
-            Expressions arguments = expr->get_arguments();
-            for (int i = arguments -> first(); arguments -> more(i); i = arguments -> next(i)) {
+            Expressions arguments = expr->get_arg_expressions();
+            for (int i = arguments->first(); arguments->more(i); i = arguments->next(i)) {
               Expression argument = arguments->nth(i);
               check_expression(c, argument);
             }
 
-            // dispatch on self object
-            if (expr->get_expr()->get_name()->equal_string("self", 4)) {
+            // dispatch on self object, check if expr is a self object
+            if (expr->get_expression()->instanceof("object_class") && expr->get_expression()->get_objectID()->equal_string("self", 4)) {
               // Step 2: check method in current class
-              if (method_table[c->get_name()].count(expr->get_name())) {
+              if (method_table[c->get_typeID()].count(expr->get_methodID())) {
                 // TODO: sth else in type checking?
               } else {
-                semant_error(c) << "Dispatch to undefined method " << expr->get_name() << ".\n";
+                semant_error(c) << "Dispatch to undefined method " << expr->get_methodID() << ".\n";
                 ++semant_errors;
-                correctness = false;
               }
 
             }
             // dispatch not on self object
             else {
-              // Step 2: check objectID
-              check_expression(c, expr->get_expr());
+              // Step 2: check the dispatch expression
+              check_expression(c, expr->get_expression());
 
-              // Step 3: check method in type part, we don't know the type of expr->get_expr() now
+              // Step 3: TODO: check method in type part, we don't know the type of the dispatch expression now
               
             }
             curr_scope_vars->exitscope();
@@ -318,28 +300,26 @@ public:
             // static dispatch
 
             // Step 1: check whether each argument is a legal expression
-            Expressions arguments = expr->get_arguments();
-            for (int i = arguments -> first(); arguments -> more(i); i = arguments -> next(i)) {
+            Expressions arguments = expr->get_arg_expressions();
+            for (int i = arguments->first(); arguments->more(i); i = arguments->next(i)) {
               Expression argument = arguments->nth(i);
               check_expression(c, argument);
             }
 
-            // Step 2: check objectID
-            check_expression(c, expr->get_expr());
+            // Step 2: check the dispatch expression
+            check_expression(c, expr->get_expression());
 
-            // Step 3: TODO: check type to be dispatched on
+            // Step 3: TODO: check static dispatch typeID
 
-            // Step 4: check method in type part
-            if (method_table[expr->get_type()].count(expr->get_name())) {
+            // Step 4: TODO: check method in type part
+            // If the static dispatch has that method
+            if (method_table[expr->get_typeID()].count(expr->get_methodID())) {
               // TODO: sth else in type checking?
             } else {
-              semant_error(c) << "Static dispatch to undefined method " << expr->get_name() << ".\n";
+              semant_error(c) << "Static dispatch to undefined method " << expr->get_methodID() << ".\n";
               ++semant_errors;
-              correctness = false;
             }
         }
-        
-        return correctness;
     }
 
   // Print the inheritance graph for debug

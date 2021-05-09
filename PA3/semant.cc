@@ -93,7 +93,7 @@ ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) 
     for(int i = classes->first(); classes->more(i); i = classes->next(i)) {
         this->add_class(classes->nth(i));
     }
-    bool inheritance_correct = this->check_inheritance_map();
+    this->check_inheritance_map();
     if (semant_debug) {
         this->print_class_map();
         this->print_inheritance_map();
