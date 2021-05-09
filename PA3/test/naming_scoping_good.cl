@@ -167,3 +167,19 @@ Class M2 inherits M {
         }
     };
 };
+
+Class N {
+    x : Int <- 0;
+
+    method1() : Int {
+        0
+    };
+
+    method2() : Bool {
+        false
+    };
+
+    method3(x : Int) : Int {
+        x
+    };
+};
