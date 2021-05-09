@@ -45,7 +45,8 @@ static Symbol
     str_field,
     substr,
     type_name,
-    val;
+    val,
+    virtual_default; // used for virtual functions' default symbols
 //
 // Initializing the predefined symbols.
 //
@@ -79,6 +80,7 @@ static void initialize_constants(void)
     substr      = idtable.add_string("substr");
     type_name   = idtable.add_string("type_name");
     val         = idtable.add_string("_val");
+    virtual_default     = idtable.add_string("default");
 }
 
 

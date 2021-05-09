@@ -35,8 +35,8 @@ class Class__class : public tree_node {
 public:
    tree_node *copy()		 { return copy_Class_(); }
    virtual Class_ copy_Class_() = 0;
-   virtual Symbol get_name() = 0;  // Implemented in class__class
-   virtual Symbol get_parent() = 0; // Implemented in class__class
+   virtual Symbol get_typeID() = 0; // Implemented in class__class
+   virtual Symbol get_parent_typeID() = 0; // Implemented in class__class
    virtual Features get_features() = 0; // Implemented in class__class
 
 #ifdef Class__EXTRAS
@@ -52,12 +52,12 @@ class Feature_class : public tree_node {
 public:
    tree_node *copy()		 { return copy_Feature(); }
    virtual Feature copy_Feature() = 0;
-   virtual bool instanceof(char* type) = 0; // Implemented to distinguish between attributes and methods
-   virtual Symbol get_name() = 0; // Implemented for attributes and methods
-   virtual Symbol get_type() = 0; // Returns type of attribute or return type of method
-   virtual Expression get_expression() = 0; // Returns the expression that the feature evaluates to
-
-   virtual Formals get_formals() = 0; // Implemented to get Formals for methods; calling on attributes returns nil_formals()
+   virtual bool instanceof(char* type) = 0; // Implemented in method_class and attr_class
+   virtual Symbol get_methodID() { return idtable.lookup_string("default"); } // Overriden in method_class
+   virtual Formals get_formals() { return nil_Formals(); } // Implemented in method_class
+   virtual Symbol get_typeID() { return idtable.lookup_string("default"); } // Overriden in method_class and attr_class
+   virtual Expression get_expression() { return no_expr(); } // Overriden in method_class and attr_class
+   virtual Symbol get_objectID() { return idtable.lookup_string("default"); } // Overriden in attr_class
 
 #ifdef Feature_EXTRAS
    Feature_EXTRAS
@@ -72,8 +72,8 @@ class Formal_class : public tree_node {
 public:
    tree_node *copy()		 { return copy_Formal(); }
    virtual Formal copy_Formal() = 0;
-   virtual Symbol get_name() = 0;  // Implemented to return name
-   virtual Symbol get_type() = 0;  // Implemented to return type
+   virtual Symbol get_objectID() = 0;  // Implemented in formal_class
+   virtual Symbol get_typeID() = 0;  // Implemented in formal_class
    
 #ifdef Formal_EXTRAS
    Formal_EXTRAS
@@ -88,13 +88,24 @@ class Expression_class : public tree_node {
 public:
    tree_node *copy()		 { return copy_Expression(); }
    virtual Expression copy_Expression() = 0;
-   virtual bool instanceof(char* type) = 0; // Implemented to distinguish
-   virtual Symbol get_name() = 0;
-    // virtual Symbol get_type() = 0;
-   virtual Expression get_expr() = 0;
-   virtual Expressions get_arguments() = 0;
-   virtual Expression get_body() = 0;
-   virtual Cases get_cases() = 0; // Implemented for typcase
+   virtual bool instanceof(char* type) = 0;
+   virtual Symbol get_typeID() { return idtable.lookup_string("default"); }
+   virtual Expression get_expression() { return no_expr(); }
+   virtual Symbol get_methodID() { return idtable.lookup_string("default"); }
+   virtual Expressions get_arg_expressions() { return nil_Expressions(); }
+   virtual Expression get_pred_expression() { return no_expr(); }
+   virtual Expression get_then_expression() { return no_expr(); }
+   virtual Expression get_else_expression() { return no_expr(); }
+   virtual Expression get_body_expression() { return no_expr(); }
+   virtual Cases get_cases() { return nil_Cases(); }
+   virtual Expressions get_body_expressions() { return nil_Expressions(); }
+   virtual Symbol get_objectID() { return idtable.lookup_string("default"); }
+   virtual Expression get_init_expression() { return no_expr(); }
+   virtual Expression get_expression1() { return no_expr(); }
+   virtual Expression get_expression2() { return no_expr(); }
+   virtual Symbol get_int_constant() { return idtable.lookup_string("default"); }
+   virtual Boolean get_bool_constant() { return -1; } // use the value here is illegal, so put illegal value here
+   virtual Symbol get_string_constant() { return idtable.lookup_string("default"); }
 
 #ifdef Expression_EXTRAS
    Expression_EXTRAS
@@ -110,9 +121,9 @@ public:
    tree_node *copy()		 { return copy_Case(); }
    virtual Case copy_Case() = 0;
 
-   virtual Symbol get_name() = 0;
-   virtual Symbol get_type() = 0;
-   virtual Expression get_expr() = 0;
+   virtual Symbol get_objectID() = 0; // Implemented in Case_class
+   virtual Symbol get_typeID() = 0; // Implemented in Case_class
+   virtual Expression get_exprssion() = 0; // Implemented in Case_class
 
 #ifdef Case_EXTRAS
    Case_EXTRAS
@@ -170,8 +181,8 @@ public:
 // define constructor - class_
 class class__class : public Class__class {
 protected:
-   Symbol name;
-   Symbol parent;
+   Symbol name; // typeID
+   Symbol parent; // parent_typeID
    Features features;
    Symbol filename;
 public:
@@ -183,11 +194,11 @@ public:
    }
    Class_ copy_Class_();
 
-   Symbol get_name() {
+   Symbol get_typeID() {
       return this->name;
    }
 
-   Symbol get_parent() {
+   Symbol get_parent_typeID() {
       return this->parent;
    }
 
@@ -209,10 +220,10 @@ public:
 // define constructor - method
 class method_class : public Feature_class {
 protected:
-   char* type = "method_class";  // the type of this class
-   Symbol name;
+   char* type = "method_class"; // the type of this class
+   Symbol name; // methodID
    Formals formals;
-   Symbol return_type;
+   Symbol return_type; // typeID
    Expression expr;
 public:
    method_class(Symbol a1, Formals a2, Symbol a3, Expression a4) {
@@ -224,7 +235,7 @@ public:
    Feature copy_Feature();
    void dump(ostream& stream, int n);
 
-   Symbol get_name() {
+   Symbol get_methodID() {
        return name;
    }
 
@@ -232,16 +243,16 @@ public:
       return formals;
    }
     
-   Symbol get_type() {
+   Symbol get_typeID() {
       return return_type;
-   }
-    
-   bool instanceof(char* type) {
-      return strcmp(this->type, type) == 0;
    }
 
    Expression get_expression() {
       return expr;
+   }
+    
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
    }
 
 #ifdef Feature_SHARED_EXTRAS
@@ -257,9 +268,9 @@ public:
 class attr_class : public Feature_class {
 protected:
    char* type = "attr_class";
-   Symbol name;
-   Symbol type_decl;
-   Expression init;
+   Symbol name; // objectID
+   Symbol type_decl; // typeID
+   Expression init; // expression
 public:
    attr_class(Symbol a1, Symbol a2, Expression a3) {
       name = a1;
@@ -269,24 +280,20 @@ public:
    Feature copy_Feature();
    void dump(ostream& stream, int n);
 
-   Symbol get_name() {
+   Symbol get_objectID() {
       return name;
    }
 
-   Symbol get_type() {
+   Symbol get_typeID() {
       return type_decl;
-   }
-
-    Formals get_formals() {
-      return Formals();
-    }
-
-   bool instanceof(char* type) {
-      return strcmp(this->type, type) == 0;
    }
 
    Expression get_expression() {
       return init;
+   }
+
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
    }
 
 #ifdef Feature_SHARED_EXTRAS
@@ -301,8 +308,8 @@ public:
 // define constructor - formal
 class formal_class : public Formal_class {
 protected:
-   Symbol name;
-   Symbol type_decl;
+   Symbol name; // objectID
+   Symbol type_decl; // typeID
 public:
    formal_class(Symbol a1, Symbol a2) {
       name = a1;
@@ -311,11 +318,11 @@ public:
    Formal copy_Formal();
    void dump(ostream& stream, int n);
 
-   Symbol get_name() {
+   Symbol get_objectID() {
       return name;
    }
 
-   Symbol get_type() {
+   Symbol get_typeID() {
       return type_decl;
    }
    
@@ -332,9 +339,9 @@ public:
 // define constructor - branch
 class branch_class : public Case_class {
 protected:
-   Symbol name;
-   Symbol type_decl;
-   Expression expr;
+   Symbol name; // objectID
+   Symbol type_decl; // typeID
+   Expression expr; // expression
 public:
    branch_class(Symbol a1, Symbol a2, Expression a3) {
       name = a1;
@@ -344,15 +351,15 @@ public:
    Case copy_Case();
    void dump(ostream& stream, int n);
 
-   Symbol get_name() {
+   Symbol get_objectID() {
       return name;
    }
 
-   Symbol get_type() {
+   Symbol get_typeID() {
      return type_decl;
    }
 
-   Expression get_expr() {
+   Expression get_expression() {
       return expr;
    }
 
@@ -369,8 +376,8 @@ public:
 class assign_class : public Expression_class {
 protected:
    char* type = "assign_class";
-   Symbol name;
-   Expression expr;
+   Symbol name; // typeID
+   Expression expr; // expression
 public:
    assign_class(Symbol a1, Expression a2) {
       name = a1;
@@ -379,24 +386,17 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   bool instanceof(char* type) {
-      return strcmp(this->type, type) == 0;
-   }
-
-   Symbol get_name() {
+   Symbol get_typeID() {
       return name;
    }
-    
-   Symbol get_type() {
-      return Symbol();
-   }
 
-   Expression get_expr() {
+   Expression get_expression() {
       return expr;
    }
 
-   Expression get_body() { return Expression(); }
-   Cases get_cases() { return Cases(); }
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
+   }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -411,10 +411,10 @@ public:
 class static_dispatch_class : public Expression_class {
 protected:
    char* type = "static_dispatch_class";
-   Expression expr;
-   Symbol type_name;
-   Symbol name;
-   Expressions actual;
+   Expression expr; // expression
+   Symbol type_name; // typeID
+   Symbol name; // methodID
+   Expressions actual; // arg_expressions
 public:
    static_dispatch_class(Expression a1, Symbol a2, Symbol a3, Expressions a4) {
       expr = a1;
@@ -422,31 +422,29 @@ public:
       name = a3;
       actual = a4;
    }
+   
    Expression copy_Expression();
    void dump(ostream& stream, int n);
+
+   Expression get_expression() {
+      return expr;
+   }
+
+   Symbol get_typeID() {
+      return type_name;
+   }
+
+   Symbol get_methodID() {
+      return name;
+   }
+   
+   Expressions get_arg_expressions() {
+      return actual;
+   }
 
    bool instanceof(char* type) {
       return strcmp(this->type, type) == 0;
    }
-
-   Symbol get_name() {
-      return name;
-   }
-    
-   Symbol get_type() {
-      return type_name;
-   }
-
-   Expression get_expr() {
-      return expr;
-   }
-   
-   Expressions get_arguments() {
-      return actual;
-   }
-
-   Expression get_body() { return Expression(); }
-   Cases get_cases() { return Cases(); }
     
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -461,9 +459,9 @@ public:
 class dispatch_class : public Expression_class {
 protected:
    char* type = "dispatch_class";
-   Expression expr;
-   Symbol name;
-   Expressions actual;
+   Expression expr; // expression
+   Symbol name; // methodID
+   Expressions actual; // arg_expressions
 public:
    dispatch_class(Expression a1, Symbol a2, Expressions a3) {
       expr = a1;
@@ -473,28 +471,21 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   bool instanceof(char* type) {
-      return strcmp(this->type, type) == 0;
-   }
-
-   Symbol get_name() {
-      return name;
-   }
-    
-   Symbol get_type() {
-      return Symbol();
-   }
-
-   Expression get_expr() {
+   Expression get_expression() {
       return expr;
    }
 
-   Expressions get_arguments() {
+   Symbol get_methodID() {
+      return name;
+   }
+
+   Expressions get_arg_expressions() {
       return actual;
    }
 
-   Expression get_body() { return Expression(); }
-   Cases get_cases() { return Cases(); }
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
+   }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -509,9 +500,9 @@ public:
 class cond_class : public Expression_class {
 protected:
    char* type = "cond_class";
-   Expression pred;
-   Expression then_exp;
-   Expression else_exp;
+   Expression pred; // pred_expression
+   Expression then_exp; // then_expression
+   Expression else_exp; // else_expression
 public:
    cond_class(Expression a1, Expression a2, Expression a3) {
       pred = a1;
@@ -525,20 +516,17 @@ public:
       return strcmp(this->type, type) == 0;
    }
 
-   Symbol get_name() {
-      return Symbol();
-   }
-    
-   Symbol get_type() {
-      return Symbol();
+   Expression get_pred_expression() {
+      return pred;
    }
 
-   Expression get_expr() {
-      return Expression();
+   Expression get_then_expression() {
+      return then_exp;
    }
 
-   Expression get_body() { return then_exp; }
-   Cases get_cases() { return Cases(); }
+   Expression get_else_expression() {
+      return else_exp;
+   }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -553,8 +541,8 @@ public:
 class loop_class : public Expression_class {
 protected:
    char* type = "loop_class";
-   Expression pred;
-   Expression body;
+   Expression pred; // pred_expression
+   Expression body; // body_expression
 public:
    loop_class(Expression a1, Expression a2) {
       pred = a1;
@@ -563,24 +551,17 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   bool instanceof(char* type) {
-      return strcmp(this->type, type) == 0;
-   }
-
-   Symbol get_name() {
-      return Symbol();
-   }
-    
-   Symbol get_type() {
-      return Symbol();
-   }
-
-   Expression get_expr() {
+   Expression get_pred_expression() {
       return pred;
    }
 
-   Expression get_body() { return body; }
-   Cases get_cases() { return Cases(); }
+   Expression get_body_expression() {
+      return body;
+   }
+
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
+   }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -595,7 +576,7 @@ public:
 class typcase_class : public Expression_class {
 protected:
    char* type = "typcase_class";
-   Expression expr;
+   Expression expr; // expression
    Cases cases;
 public:
    typcase_class(Expression a1, Cases a2) {
@@ -605,26 +586,16 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   bool instanceof(char* type) {
-      return strcmp(this->type, type) == 0;
-   }
-
-   Symbol get_name() {
-      return Symbol();
-   }
-    
-   Symbol get_type() {
-      return Symbol();
-   }
-
-   Expression get_expr() {
+   Expression get_expression() {
       return expr;
    }
 
-   Expression get_body() { return Expression(); }
-
    Cases get_cases() {
       return cases;
+   }
+
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
    }
 
 #ifdef Expression_SHARED_EXTRAS
@@ -640,7 +611,7 @@ public:
 class block_class : public Expression_class {
 protected:
    char* type = "block_class";
-   Expressions body;
+   Expressions body; // body_expressions
 public:
    block_class(Expressions a1) {
       body = a1;
@@ -648,24 +619,13 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
+   Expressions get_body_expressions() {
+      return body;
+   }
+
    bool instanceof(char* type) {
       return strcmp(this->type, type) == 0;
    }
-
-   Symbol get_name() {
-      return Symbol();
-   }
-    
-   Symbol get_type() {
-      return Symbol();
-   }
-
-   Expression get_expr() {
-      return Expression();
-   }
-
-   Expression get_body() { return Expression(); }
-   Cases get_cases() { return Cases(); }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -680,10 +640,10 @@ public:
 class let_class : public Expression_class {
 protected:
    char* type = "let_class";
-   Symbol identifier;
-   Symbol type_decl;
-   Expression init;
-   Expression body;
+   Symbol identifier; // objectID
+   Symbol type_decl; // typeID
+   Expression init; // init_expression
+   Expression body; // body_expression
 public:
    let_class(Symbol a1, Symbol a2, Expression a3, Expression a4) {
       identifier = a1;
@@ -694,27 +654,25 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   bool instanceof(char* type) {
-      return strcmp(this->type, type) == 0;
-   }
-
-   Symbol get_name() {
+   Symbol get_objectID() {
       return identifier;
    }
     
-   Symbol get_type() {
+   Symbol get_typeID() {
       return type_decl;
    }
 
-   Expression get_expr() {
+   Expression get_init_expression() {
       return init;
    }
 
-   Expression get_body() {
+   Expression get_body_expression() {
       return body;
    }
 
-   Cases get_cases() { return Cases(); }
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
+   }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -729,8 +687,8 @@ public:
 class plus_class : public Expression_class {
 protected:
    char* type = "plus_class";
-   Expression e1;
-   Expression e2;
+   Expression e1; // expression1
+   Expression e2; // expression2
 public:
    plus_class(Expression a1, Expression a2) {
       e1 = a1;
@@ -739,24 +697,17 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
+   Expression get_expression1() {
+      return e1;
+   }
+
+   Expression get_expression2() {
+      return e2;
+   }
+
    bool instanceof(char* type) {
       return strcmp(this->type, type) == 0;
    }
-
-   Symbol get_name() {
-      return Symbol();
-   }
-    
-   Symbol get_type() {
-      return Symbol();
-   }
-
-   Expression get_expr() {
-      return Expression();
-   }
-
-   Expression get_body() { return Expression(); }
-   Cases get_cases() { return Cases(); }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -771,8 +722,8 @@ public:
 class sub_class : public Expression_class {
 protected:
    char* type = "sub_class";
-   Expression e1;
-   Expression e2;
+   Expression e1; // expression1
+   Expression e2; // expression2
 public:
    sub_class(Expression a1, Expression a2) {
       e1 = a1;
@@ -781,24 +732,17 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
+   Expression get_expression1() {
+      return e1;
+   }
+
+   Expression get_expression2() {
+      return e2;
+   }
+
    bool instanceof(char* type) {
       return strcmp(this->type, type) == 0;
    }
-
-   Symbol get_name() {
-       return Symbol();
-   }
-    
-   Symbol get_type() {
-      return Symbol();
-   }
-
-   Expression get_expr() {
-      return Expression();
-   }
-
-   Expression get_body() { return Expression(); }
-   Cases get_cases() { return Cases(); }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -813,8 +757,8 @@ public:
 class mul_class : public Expression_class {
 protected:
    char* type = "mul_class";
-   Expression e1;
-   Expression e2;
+   Expression e1; // expression1
+   Expression e2; // expression2
 public:
    mul_class(Expression a1, Expression a2) {
       e1 = a1;
@@ -823,24 +767,17 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
+   Expression get_expression1() {
+      return e1;
+   }
+
+   Expression get_expression2() {
+      return e2;
+   }
+
    bool instanceof(char* type) {
       return strcmp(this->type, type) == 0;
    }
-
-   Symbol get_name() {
-      return Symbol();
-   }
-    
-   Symbol get_type() {
-      return Symbol();
-   }
-
-   Expression get_expr() {
-      return Expression();
-   }
-
-   Expression get_body() { return Expression(); }
-   Cases get_cases() { return Cases(); }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -855,8 +792,8 @@ public:
 class divide_class : public Expression_class {
 protected:
    char* type = "divide_class";
-   Expression e1;
-   Expression e2;
+   Expression e1; // expression1
+   Expression e2; // expression2
 public:
    divide_class(Expression a1, Expression a2) {
       e1 = a1;
@@ -865,24 +802,17 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
+   Expression get_expression1() {
+      return e1;
+   }
+
+   Expression get_expression2() {
+      return e2;
+   }
+
    bool instanceof(char* type) {
       return strcmp(this->type, type) == 0;
    }
-
-   Symbol get_name() {
-       return Symbol();
-   }
-    
-   Symbol get_type() {
-      return Symbol();
-   }
-
-   Expression get_expr() {
-      return Expression();
-   }
-
-   Expression get_body() { return Expression(); }
-   Cases get_cases() { return Cases(); }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -897,7 +827,7 @@ public:
 class neg_class : public Expression_class {
 protected:
    char* type = "neg_class";
-   Expression e1;
+   Expression e1; // expression
 public:
    neg_class(Expression a1) {
       e1 = a1;
@@ -905,24 +835,13 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   bool instanceof(char* type) {
-      return strcmp(this->type, type) == 0;
-   }
-
-   Symbol get_name() {
-      return Symbol();
-   }
-    
-   Symbol get_type() {
-      return Symbol();
-   }
-
-   Expression get_expr() {
+   Expression get_expression() {
       return e1;
    }
 
-   Expression get_body() { return Expression(); }
-   Cases get_cases() { return Cases(); }
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
+   }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -937,8 +856,8 @@ public:
 class lt_class : public Expression_class {
 protected:
    char* type = "lt_class";
-   Expression e1;
-   Expression e2;
+   Expression e1; // expression1
+   Expression e2; // expression2
 public:
    lt_class(Expression a1, Expression a2) {
       e1 = a1;
@@ -947,24 +866,17 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
+   Expression get_expression1() {
+      return e1;
+   }
+
+   Expression get_expression2() {
+      return e2;
+   }
+
    bool instanceof(char* type) {
       return strcmp(this->type, type) == 0;
    }
-
-   Symbol get_name() {
-      return Symbol();
-   }
-    
-   Symbol get_type() {
-      return Symbol();
-   }
-
-   Expression get_expr() {
-      return Expression();
-   }
-
-   Expression get_body() { return Expression(); }
-   Cases get_cases() { return Cases(); }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -979,8 +891,8 @@ public:
 class eq_class : public Expression_class {
 protected:
    char* type = "eq_class";
-   Expression e1;
-   Expression e2;
+   Expression e1; // expression1
+   Expression e2; // expression2
 public:
    eq_class(Expression a1, Expression a2) {
       e1 = a1;
@@ -989,24 +901,17 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
+   Expression get_expression1() {
+      return e1;
+   }
+
+   Expression get_expression2() {
+      return e2;
+   }
+
    bool instanceof(char* type) {
       return strcmp(this->type, type) == 0;
    }
-
-   Symbol get_name() {
-      return Symbol();
-   }
-    
-   Symbol get_type() {
-      return Symbol();
-   }
-
-   Expression get_expr() {
-      return Expression();
-   }
-
-   Expression get_body() { return Expression(); }
-   Cases get_cases() { return Cases(); }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -1021,8 +926,8 @@ public:
 class leq_class : public Expression_class {
 protected:
    char* type = "leq_class";
-   Expression e1;
-   Expression e2;
+   Expression e1; // expression1
+   Expression e2; // expression2
 public:
    leq_class(Expression a1, Expression a2) {
       e1 = a1;
@@ -1031,24 +936,17 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
+   Expression get_expression1() {
+      return e1;
+   }
+
+   Expression get_expression2() {
+      return e2;
+   }
+
    bool instanceof(char* type) {
       return strcmp(this->type, type) == 0;
    }
-
-   Symbol get_name() {
-      return Symbol();
-   }
-    
-   Symbol get_type() {
-      return Symbol();
-   }
-
-   Expression get_expr() {
-      return Expression();
-   }
-
-   Expression get_body() { return Expression(); }
-   Cases get_cases() { return Cases(); }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -1063,7 +961,7 @@ public:
 class comp_class : public Expression_class {
 protected:
    char* type = "comp_class";
-   Expression e1;
+   Expression e1; // expression
 public:
    comp_class(Expression a1) {
       e1 = a1;
@@ -1071,24 +969,13 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   bool instanceof(char* type) {
-      return strcmp(this->type, type) == 0;
-   }
-
-   Symbol get_name() {
-      return Symbol();
-   }
-    
-   Symbol get_type() {
-      return Symbol();
-   }
-
-   Expression get_expr() {
+   Expression get_expression() {
       return e1;
    }
 
-   Expression get_body() { return Expression(); }
-   Cases get_cases() { return Cases(); }
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
+   }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -1098,12 +985,11 @@ public:
 #endif
 };
 
-
 // define constructor - int_const
 class int_const_class : public Expression_class {
 protected:
    char* type = "int_const_class";
-   Symbol token;
+   Symbol token; // int_constant
 public:
    int_const_class(Symbol a1) {
       token = a1;
@@ -1111,24 +997,13 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
+   Symbol get_int_constant() {
+      return token;
+   }
+
    bool instanceof(char* type) {
       return strcmp(this->type, type) == 0;
    }
-
-   Symbol get_name() {
-      return Symbol();
-   }
-    
-   Symbol get_type() {
-      return Symbol();
-   }
-
-   Expression get_expr() {
-      return Expression();
-   }
-
-   Expression get_body() { return Expression(); }
-   Cases get_cases() { return Cases(); }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -1143,7 +1018,7 @@ public:
 class bool_const_class : public Expression_class {
 protected:
    char* type = "bool_const_class";
-   Boolean val;
+   Boolean val; // bool_constant
 public:
    bool_const_class(Boolean a1) {
       val = a1;
@@ -1151,25 +1026,13 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
+   Boolean get_bool_constant() {
+      return val;
+   }
+
    bool instanceof(char* type) {
       return strcmp(this->type, type) == 0;
    }
-
-   Symbol get_name() {
-      return Symbol();
-   }
-    
-   Symbol get_type() {
-      return Symbol();
-   }
-
-   Expression get_expr() {
-      return Expression();
-   }
-
-   Expression get_body() { return Expression(); }
-   Cases get_cases() { return Cases(); }
-    
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -1184,7 +1047,7 @@ public:
 class string_const_class : public Expression_class {
 protected:
    char* type = "string_const_class";
-   Symbol token;
+   Symbol token; // string_constant
 public:
    string_const_class(Symbol a1) {
       token = a1;
@@ -1192,24 +1055,13 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
+   Symbol get_string_constant() {
+      return token;
+   }
+
    bool instanceof(char* type) {
       return strcmp(this->type, type) == 0;
    }
-
-   Symbol get_name() {
-      return Symbol();
-   }
-    
-   Symbol get_type() {
-      return Symbol();
-   }
-
-   Expression get_expr() {
-      return Expression();
-   }
-
-   Expression get_body() { return Expression(); }
-   Cases get_cases() { return Cases(); }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -1224,7 +1076,7 @@ public:
 class new__class : public Expression_class {
 protected:
    char* type = "new__class";
-   Symbol type_name;
+   Symbol type_name; // typeID
 public:
    new__class(Symbol a1) {
       type_name = a1;
@@ -1232,24 +1084,13 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   bool instanceof(char* type) {
-      return strcmp(this->type, type) == 0;
-   }
-
-   Symbol get_name() {
-      return Symbol();
-   }
-    
-   Symbol get_type() {
+   Symbol get_typeID() {
       return type_name;
    }
 
-   Expression get_expr() {
-      return Expression();
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
    }
-
-   Expression get_body() { return Expression(); }
-   Cases get_cases() { return Cases(); }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -1264,7 +1105,7 @@ public:
 class isvoid_class : public Expression_class {
 protected:
    char* type = "isvoid_class";
-   Expression e1;
+   Expression e1; // expression
 public:
    isvoid_class(Expression a1) {
       e1 = a1;
@@ -1272,24 +1113,13 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   bool instanceof(char* type) {
-      return strcmp(this->type, type) == 0;
-   }
-
-   Symbol get_name() {
-      return Symbol();
-   }
-    
-   Symbol get_type() {
-      return Symbol();
-   }
-
-   Expression get_expr() {
+   Expression get_expression() {
       return e1;
    }
 
-   Expression get_body() { return Expression(); }
-   Cases get_cases() { return Cases(); }
+   bool instanceof(char* type) {
+      return strcmp(this->type, type) == 0;
+   }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -1314,21 +1144,6 @@ public:
       return strcmp(this->type, type) == 0;
    }
 
-   Symbol get_name() {
-      return Symbol();
-   }
-    
-   Symbol get_type() {
-      return Symbol();
-   }
-
-   Expression get_expr() {
-      return Expression();
-   }
-
-   Expression get_body() { return Expression(); }
-   Cases get_cases() { return Cases(); }
-
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -1342,7 +1157,7 @@ public:
 class object_class : public Expression_class {
 protected:
    char* type = "object_class";
-   Symbol name;
+   Symbol name; // objectID
 public:
    object_class(Symbol a1) {
       name = a1;
@@ -1350,24 +1165,13 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
+   Symbol get_objectID() {
+      return name;
+   }
+
    bool instanceof(char* type) {
       return strcmp(this->type, type) == 0;
    }
-
-   Symbol get_name() {
-       return Symbol();
-   }
-    
-   Symbol get_type() {
-      return Symbol();
-   }
-
-   Expression get_expr() {
-      return Expression();
-   }
-
-   Expression get_body() { return Expression(); }
-   Cases get_cases() { return Cases(); }
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
