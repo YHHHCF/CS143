@@ -24,138 +24,138 @@ typedef ClassTable *ClassTableP;
 
 class ClassTable {
 private:
-  int semant_errors;
+    int semant_errors;
 
-  // inheritance_map stores inheritance information
-  // key is a typeID, value is its children's typeIDs
-  std::map<Symbol, std::set<Symbol> > inheritance_map;
+    // inheritance_map stores inheritance information
+    // key is a typeID, value is its children's typeIDs
+    std::map<Symbol, std::set<Symbol> > inheritance_map;
 
-  // class_map is used to get the Symbol's Class_
-  // key is a typeID, value is a Class_
-  std::map<Symbol, Class_> class_map;
-  
-  // Used to manage current scope for naming_and_scoping_DFS; maps an attribute's objectID to typeID
-  SymbolTable<Symbol, Symbol> *curr_scope_vars = new SymbolTable<Symbol, Symbol>();
+    // class_map is used to get the Symbol's Class_
+    // key is a typeID, value is a Class_
+    std::map<Symbol, Class_> class_map;
+
+    // Used to manage current scope for naming_and_scoping_DFS; maps an attribute's objectID to typeID
+    SymbolTable<Symbol, Symbol> *curr_scope_vars = new SymbolTable<Symbol, Symbol>();
     
-  // Keeps track of the scope for each class
-  // key is a typeID, value is a set of methodIDs
-  std::map<Symbol, std::set<Symbol> > method_table;
+    // Keeps track of the scope for each class
+    // key is a typeID, value is a set of methodIDs
+    std::map<Symbol, std::set<Symbol> > method_table;
 
-  void install_basic_classes();
-  ostream& error_stream;
+    void install_basic_classes();
+    ostream& error_stream;
 
 public:
-  ClassTable(Classes);
+    ClassTable(Classes);
 
-  void add_class(Class_ c) {
-    Symbol parent_typeID = c->get_parent_typeID();
-    Symbol typeID = c->get_typeID();
+    void add_class(Class_ c) {
+        Symbol parent_typeID = c->get_parent_typeID();
+        Symbol typeID = c->get_typeID();
 
-    // Error 1: Cannot inherit from Bool, Int, String
-    if (parent_typeID->equal_string("Bool", 4)) {
-      semant_error(c) << "Class " << typeID << " cannot inherit class Bool.\n";
-      ++semant_errors;
-      return;
-    }
-    if (parent_typeID->equal_string("Int", 3)) {
-      semant_error(c) << "Class " << typeID << " cannot inherit class Int.\n";
-      ++semant_errors;
-      return;
-    }
-    if (parent_typeID->equal_string("String", 6)) {
-      semant_error(c) << "Class " << typeID << " cannot inherit class String.\n";
-      ++semant_errors;
-      return;
-    }
+        // Error 1: Cannot inherit from Bool, Int, String
+        if (parent_typeID->equal_string("Bool", 4)) {
+            semant_error(c) << "Class " << typeID << " cannot inherit class Bool.\n";
+            ++semant_errors;
+            return;
+        }
+        if (parent_typeID->equal_string("Int", 3)) {
+            semant_error(c) << "Class " << typeID << " cannot inherit class Int.\n";
+            ++semant_errors;
+            return;
+        }
+        if (parent_typeID->equal_string("String", 6)) {
+            semant_error(c) << "Class " << typeID << " cannot inherit class String.\n";
+            ++semant_errors;
+            return;
+        }
 
-    // Error 2: Cannot add already defined class
-    if (this->class_map.count(typeID)) {
-      semant_error(c) << "Class " << typeID << " was previously defined.\n";
-      ++semant_errors;
-      return;
-    }
+        // Error 2: Cannot add already defined class
+        if (this->class_map.count(typeID)) {
+            semant_error(c) << "Class " << typeID << " was previously defined.\n";
+            ++semant_errors;
+            return;
+        }
 
-    // Add the class to idtable
-    idtable.add_string(typeID->get_string());
+        // Add the class to idtable
+        idtable.add_string(typeID->get_string());
 
-    // Add the class to class_map
-    this->class_map[typeID] = c;
+        // Add the class to class_map
+        this->class_map[typeID] = c;
 
-    // Add the class and its parent to inheritance map
-    if (this->inheritance_map.count(parent_typeID)) {
-      this->inheritance_map[parent_typeID].insert(typeID);
-    } else {
-      std::set<Symbol> set;
-      set.insert(typeID);
-      this->inheritance_map[parent_typeID] = set;
-    }
-    return;
+        // Add the class and its parent to inheritance map
+        if (this->inheritance_map.count(parent_typeID)) {
+            this->inheritance_map[parent_typeID].insert(typeID);
+        } else {
+            std::set<Symbol> set;
+            set.insert(typeID);
+            this->inheritance_map[parent_typeID] = set;
+        }
+        return;
   }
 
   // Check acyclic and single inheritance
   // return true if the inheritance_map is good
-  void check_inheritance_map() {
-    std::list<Symbol> typeID_pool; // a temp list for BFS
-    std::set<Symbol> typeID_traversed; // record the nodes that has been traversed
+    void check_inheritance_map() {
+        std::list<Symbol> typeID_pool; // a temp list for BFS
+        std::set<Symbol> typeID_traversed; // record the nodes that has been traversed
 
-    typeID_traversed.insert(idtable.lookup_string("Object"));
-    typeID_pool.push_back(idtable.lookup_string("Object"));
+        typeID_traversed.insert(idtable.lookup_string("Object"));
+        typeID_pool.push_back(idtable.lookup_string("Object"));
 
-    while(typeID_pool.size()) {
-      int size = typeID_pool.size();
-      for (int i = 0; i < size; ++i) {
-        Symbol typeID = typeID_pool.front();
-        typeID_pool.pop_front();
-        auto children_typeIDs = this->inheritance_map[typeID];
+        while(typeID_pool.size()) {
+            int size = typeID_pool.size();
+            for (int i = 0; i < size; ++i) {
+                Symbol typeID = typeID_pool.front();
+                typeID_pool.pop_front();
+                auto children_typeIDs = this->inheritance_map[typeID];
 
-        if (semant_debug) {
-          printf("Traversing inheritance_map: %s with %lu childrens\n", typeID->get_string(), children_typeIDs.size());
+                if (semant_debug) {
+                    printf("Traversing inheritance_map: %s with %lu childrens\n", typeID->get_string(), children_typeIDs.size());
+                }
+
+                for (auto iter = children_typeIDs.begin(); iter != children_typeIDs.end(); ++iter) {
+                    typeID_traversed.insert(*iter);
+                    typeID_pool.push_back(*iter);
+                }
+            }
         }
 
-        for (auto iter = children_typeIDs.begin(); iter != children_typeIDs.end(); ++iter) {
-          typeID_traversed.insert(*iter);
-          typeID_pool.push_back(*iter);
+        // Error 3: Inherit from undefined class
+        // If any class's parent is not defined then we can find this by checking
+        // The parents from inheritance_map, whether all of them are in class_map
+        // If a class is a parent in inheritance_map but not in class_map
+        // Then it has Error 3, the only exception is Object which has not parent
+        std::set<Symbol> error3_set; // Record in Error 3 and used for Error 4
+
+        for (auto typeID_typeIDs : this->inheritance_map) {
+            Symbol parent_typeID = typeID_typeIDs.first;
+            if (!this->class_map.count(parent_typeID)) {
+                auto children_typeIDs = typeID_typeIDs.second;
+                for (auto iter = children_typeIDs.begin(); iter != children_typeIDs.end(); ++iter) {
+                    Symbol typeID = *iter;
+                    if (!typeID->equal_string("Object", 6)) {
+                        error3_set.insert(typeID);
+                        Class_ c = this->class_map[typeID];
+                        semant_error(c) << "Class " << typeID << " inherits from an undefined class " << parent_typeID << ".\n";
+                        ++semant_errors;
+                    }
+                }
+            }
         }
-      }
-    }
 
-    // Error 3: Inherit from undefined class
-    // If any class's parent is not defined then we can find this by checking
-    // The parents from inheritance_map, whether all of them are in class_map
-    // If a class is a parent in inheritance_map but not in class_map
-    // Then it has Error 3, the only exception is Object which has not parent
-    std::set<Symbol> error3_set; // Record in Error 3 and used for Error 4
-
-    for (auto typeID_typeIDs : this->inheritance_map) {
-      Symbol parent_typeID = typeID_typeIDs.first;
-      if (!this->class_map.count(parent_typeID)) {
-        auto children_typeIDs = typeID_typeIDs.second;
-        for (auto iter = children_typeIDs.begin(); iter != children_typeIDs.end(); ++iter) {
-          Symbol typeID = *iter;
-          if (!typeID->equal_string("Object", 6)) {
-            error3_set.insert(typeID);
-            Class_ c = this->class_map[typeID];
-            semant_error(c) << "Class " << typeID << " inherits from an undefined class " << parent_typeID << ".\n";
-            ++semant_errors;
-          }
+        // Error 4: Cyclic inheritance
+        // If any class in class_map is not in the traversed list above
+        // Then it is not reachable from Object
+        // Then it must be either Error 3 or Error 4 (if not in error3_set)
+        // See test/inherit_bad_cycle.cl for details
+        for (auto typeID_class : this->class_map) {
+            Symbol typeID = typeID_class.first;
+            if (!typeID_traversed.count(typeID) && !error3_set.count(typeID)) {
+                Class_ c = typeID_class.second;
+                semant_error(c) << "Class " << typeID << ", or an ancestor of " << typeID << ", is involved in an inheritance cycle.\n";
+                ++semant_errors;
+            }
         }
-      }
     }
-
-    // Error 4: Cyclic inheritance
-    // If any class in class_map is not in the traversed list above
-    // Then it is not reachable from Object
-    // Then it must be either Error 3 or Error 4 (if not in error3_set)
-    // See test/inherit_bad_cycle.cl for details
-    for (auto typeID_class : this->class_map) {
-      Symbol typeID = typeID_class.first;
-      if (!typeID_traversed.count(typeID) && !error3_set.count(typeID)) {
-        Class_ c = typeID_class.second;
-        semant_error(c) << "Class " << typeID << ", or an ancestor of " << typeID << ", is involved in an inheritance cycle.\n";
-        ++semant_errors;
-      }
-    }
-  }
 
     // Checks that each variable is named properly and accessed in its own scope
     void check_naming_and_scoping() {
@@ -272,27 +272,26 @@ public:
             // Step 1: check whether each argument is a legal expression
             Expressions arguments = expr->get_arg_expressions();
             for (int i = arguments->first(); arguments->more(i); i = arguments->next(i)) {
-              Expression argument = arguments->nth(i);
-              check_expression(c, argument);
+                Expression argument = arguments->nth(i);
+                check_expression(c, argument);
             }
 
             // dispatch on self object, check if expr is a self object
             if (expr->get_expression()->instanceof("object_class") && expr->get_expression()->get_objectID()->equal_string("self", 4)) {
-              // Step 2: check method in current class
-              if (method_table[c->get_typeID()].count(expr->get_methodID())) {
-                // TODO: sth else in type checking?
-              } else {
-                semant_error(c) << "Dispatch to undefined method " << expr->get_methodID() << ".\n";
-                ++semant_errors;
-              }
-
+                // Step 2: check method in current class
+                if (method_table[c->get_typeID()].count(expr->get_methodID())) {
+                    // TODO: sth else in type checking?
+                } else {
+                    semant_error(c) << "Dispatch to undefined method " << expr->get_methodID() << ".\n";
+                    ++semant_errors;
+                }
             }
             // dispatch not on self object
             else {
-              // Step 2: check the dispatch expression
-              check_expression(c, expr->get_expression());
+                // Step 2: check the dispatch expression
+                check_expression(c, expr->get_expression());
 
-              // Step 3: TODO: check method in type part, we don't know the type of the dispatch expression now
+                // Step 3: TODO: check method in type part, we don't know the type of the dispatch expression now
               
             }
             curr_scope_vars->exitscope();
@@ -303,8 +302,8 @@ public:
             // Step 1: check whether each argument is a legal expression
             Expressions arguments = expr->get_arg_expressions();
             for (int i = arguments->first(); arguments->more(i); i = arguments->next(i)) {
-              Expression argument = arguments->nth(i);
-              check_expression(c, argument);
+                Expression argument = arguments->nth(i);
+                check_expression(c, argument);
             }
 
             // Step 2: check the dispatch expression
@@ -315,43 +314,43 @@ public:
             // Step 4: TODO: check method in type part
             // If the static dispatch has that method
             if (method_table[expr->get_typeID()].count(expr->get_methodID())) {
-              // TODO: sth else in type checking?
+                // TODO: sth else in type checking?
             } else {
-              semant_error(c) << "Static dispatch to undefined method " << expr->get_methodID() << ".\n";
-              ++semant_errors;
+                semant_error(c) << "Static dispatch to undefined method " << expr->get_methodID() << ".\n";
+                ++semant_errors;
             }
         }
     }
 
-  // Print the inheritance graph for debug
-  void print_inheritance_map() {
+    // Print the inheritance graph for debug
+    void print_inheritance_map() {
     printf("========Print inheritance_map Start=========\n");
-    for (auto item : this->inheritance_map) {
-      printf("%s <- ", item.first->get_string());
-      auto set = item.second;
-      for (auto iter = set.begin(); iter != set.end(); ++iter) {
-        printf("[%s] ", (*iter)->get_string());
-      }
-      printf("\n");
+        for (auto item : this->inheritance_map) {
+            printf("%s <- ", item.first->get_string());
+            auto set = item.second;
+            for (auto iter = set.begin(); iter != set.end(); ++iter) {
+                printf("[%s] ", (*iter)->get_string());
+            }
+            printf("\n");
+        }
+        printf("=========Print inheritance_map End==========\n");
+        return;
     }
-    printf("=========Print inheritance_map End==========\n");
-    return;
-  }
 
-  // Print the inheritance graph for debug
-  void print_class_map() {
-    printf("========Print class_map Start=========\n");
-    for (auto item : this->class_map) {
-      printf("%s\n", item.first->get_string());
+    // Print the inheritance graph for debug
+    void print_class_map() {
+        printf("========Print class_map Start=========\n");
+        for (auto item : this->class_map) {
+            printf("%s\n", item.first->get_string());
+        }
+        printf("=========Print class_map End==========\n");
+        return;
     }
-    printf("=========Print class_map End==========\n");
-    return;
-  }
 
-  int errors() { return semant_errors; }
-  ostream& semant_error();
-  ostream& semant_error(Class_ c);
-  ostream& semant_error(Symbol filename, tree_node *t);
+    int errors() { return semant_errors; }
+    ostream& semant_error();
+    ostream& semant_error(Class_ c);
+    ostream& semant_error(Symbol filename, tree_node *t);
 };
 
 
