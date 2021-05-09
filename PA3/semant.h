@@ -331,6 +331,25 @@ public:
 
             curr_scope_vars->exitscope();
         }
+        else if (expr->instanceof("assign_class")) {
+            check_expression(c, expr->get_expression());
+        }
+        else if (expr->instanceof("cond_class")) {
+            check_expression(c, expr->get_pred_expression());
+            check_expression(c, expr->get_then_expression());
+            check_expression(c, expr->get_else_expression());
+        }
+        else if (expr->instanceof("loop_class") ) {
+            check_expression(c, expr->get_pred_expression());
+            check_expression(c, expr->get_body_expression());
+        }
+        else if (expr->instanceof("block_class") ) {
+            Expressions exprs = expr->get_body_expressions();
+            for (int i = exprs->first(); exprs->more(i); i = exprs->next(i)) {
+                Expression curr_expr = exprs->nth(i);
+                check_expression(c, curr_expr);
+            }
+        }
         else if (expr->instanceof("new__class")) {
             // place holder for type checking
         }
@@ -372,7 +391,10 @@ public:
             check_expression(c, expr->get_expression());
         }
         else if (expr->instanceof("object_class")) {
-            // place holder
+            if (curr_scope_vars -> lookup(expr->get_objectID()) == NULL) {
+                semant_error(c) << "Undeclared identifier " << expr->get_objectID() << ".\n";
+                ++semant_errors;
+            }
         }
         else if (expr->instanceof("int_const_class")) {
             // place holder for type checking
