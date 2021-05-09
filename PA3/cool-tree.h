@@ -35,9 +35,9 @@ class Class__class : public tree_node {
 public:
    tree_node *copy()		 { return copy_Class_(); }
    virtual Class_ copy_Class_() = 0;
-   virtual Symbol get_typeID() = 0; // Implemented in class__class
-   virtual Symbol get_parent_typeID() = 0; // Implemented in class__class
-   virtual Features get_features() = 0; // Implemented in class__class
+   virtual Symbol get_typeID() { return nullptr; } // Overriden in class__class
+   virtual Symbol get_parent_typeID() { return nullptr; } // Overriden in class__class
+   virtual Features get_features() { return nullptr; } // Overriden in class__class
 
 #ifdef Class__EXTRAS
    Class__EXTRAS
@@ -53,11 +53,11 @@ public:
    tree_node *copy()		 { return copy_Feature(); }
    virtual Feature copy_Feature() = 0;
    virtual bool instanceof(char* type) = 0; // Implemented in method_class and attr_class
-   virtual Symbol get_methodID() { return idtable.lookup_string("default"); } // Overriden in method_class
-   virtual Formals get_formals() { return nil_Formals(); } // Implemented in method_class
-   virtual Symbol get_typeID() { return idtable.lookup_string("default"); } // Overriden in method_class and attr_class
-   virtual Expression get_expression() { return no_expr(); } // Overriden in method_class and attr_class
-   virtual Symbol get_objectID() { return idtable.lookup_string("default"); } // Overriden in attr_class
+   virtual Symbol get_methodID() { return nullptr; } // Overriden in method_class
+   virtual Formals get_formals() { return nullptr; } // Overriden in method_class
+   virtual Symbol get_typeID() { return nullptr; } // Overriden in method_class and attr_class
+   virtual Expression get_expression() { return nullptr; } // Overriden in method_class and attr_class
+   virtual Symbol get_objectID() { return nullptr; } // Overriden in attr_class
 
 #ifdef Feature_EXTRAS
    Feature_EXTRAS
@@ -72,8 +72,8 @@ class Formal_class : public tree_node {
 public:
    tree_node *copy()		 { return copy_Formal(); }
    virtual Formal copy_Formal() = 0;
-   virtual Symbol get_objectID() = 0;  // Implemented in formal_class
-   virtual Symbol get_typeID() = 0;  // Implemented in formal_class
+   virtual Symbol get_objectID() { return nullptr; } // Overriden in formal_class
+   virtual Symbol get_typeID() { return nullptr; } // Overriden in formal_class
    
 #ifdef Formal_EXTRAS
    Formal_EXTRAS
@@ -89,23 +89,23 @@ public:
    tree_node *copy()		 { return copy_Expression(); }
    virtual Expression copy_Expression() = 0;
    virtual bool instanceof(char* type) = 0;
-   virtual Symbol get_typeID() { return idtable.lookup_string("default"); }
-   virtual Expression get_expression() { return no_expr(); }
-   virtual Symbol get_methodID() { return idtable.lookup_string("default"); }
-   virtual Expressions get_arg_expressions() { return nil_Expressions(); }
-   virtual Expression get_pred_expression() { return no_expr(); }
-   virtual Expression get_then_expression() { return no_expr(); }
-   virtual Expression get_else_expression() { return no_expr(); }
-   virtual Expression get_body_expression() { return no_expr(); }
-   virtual Cases get_cases() { return nil_Cases(); }
-   virtual Expressions get_body_expressions() { return nil_Expressions(); }
-   virtual Symbol get_objectID() { return idtable.lookup_string("default"); }
-   virtual Expression get_init_expression() { return no_expr(); }
-   virtual Expression get_expression1() { return no_expr(); }
-   virtual Expression get_expression2() { return no_expr(); }
-   virtual Symbol get_int_constant() { return idtable.lookup_string("default"); }
+   virtual Symbol get_typeID() { return nullptr; }
+   virtual Expression get_expression() { return nullptr; }
+   virtual Symbol get_methodID() { return nullptr; }
+   virtual Expressions get_arg_expressions() { return nullptr; }
+   virtual Expression get_pred_expression() { return nullptr; }
+   virtual Expression get_then_expression() { return nullptr; }
+   virtual Expression get_else_expression() { return nullptr; }
+   virtual Expression get_body_expression() { return nullptr; }
+   virtual Cases get_cases() { return nullptr; }
+   virtual Expressions get_body_expressions() { return nullptr; }
+   virtual Symbol get_objectID() { return nullptr; }
+   virtual Expression get_init_expression() { return nullptr; }
+   virtual Expression get_expression1() { return nullptr; }
+   virtual Expression get_expression2() { return nullptr; }
+   virtual Symbol get_int_constant() { return nullptr; }
    virtual Boolean get_bool_constant() { return -1; } // use the value here is illegal, so put illegal value here
-   virtual Symbol get_string_constant() { return idtable.lookup_string("default"); }
+   virtual Symbol get_string_constant() { return nullptr; }
 
 #ifdef Expression_EXTRAS
    Expression_EXTRAS
@@ -121,9 +121,9 @@ public:
    tree_node *copy()		 { return copy_Case(); }
    virtual Case copy_Case() = 0;
 
-   virtual Symbol get_objectID() = 0; // Implemented in Case_class
-   virtual Symbol get_typeID() = 0; // Implemented in Case_class
-   virtual Expression get_exprssion() = 0; // Implemented in Case_class
+   virtual Symbol get_objectID() { return nullptr; } // Overriden in branch_class
+   virtual Symbol get_typeID()  { return nullptr; } // Overriden in branch_class
+   virtual Expression get_expression()  { return nullptr; } // Overriden in branch_class
 
 #ifdef Case_EXTRAS
    Case_EXTRAS

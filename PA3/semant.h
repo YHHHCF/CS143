@@ -129,7 +129,7 @@ public:
     for (auto typeID_typeIDs : this->inheritance_map) {
       Symbol parent_typeID = typeID_typeIDs.first;
       if (!this->class_map.count(parent_typeID)) {
-        auto children_typdIDs = typeID_typeIDs.second;
+        auto children_typeIDs = typeID_typeIDs.second;
         for (auto iter = children_typeIDs.begin(); iter != children_typeIDs.end(); ++iter) {
           Symbol typeID = *iter;
           if (!typeID->equal_string("Object", 6)) {
@@ -149,7 +149,7 @@ public:
     // See test/inherit_bad_cycle.cl for details
     for (auto typeID_class : this->class_map) {
       Symbol typeID = typeID_class.first;
-      if (!traversed.count(typeID) && !error3_set.count(typeID)) {
+      if (!typeID_traversed.count(typeID) && !error3_set.count(typeID)) {
         Class_ c = typeID_class.second;
         semant_error(c) << "Class " << typeID << ", or an ancestor of " << typeID << ", is involved in an inheritance cycle.\n";
         ++semant_errors;
@@ -159,7 +159,7 @@ public:
 
     // Checks that each variable is named properly and accessed in its own scope
     void check_naming_and_scoping() {
-        naming_and_scoping_DFS(idtable.lookup_string("Object"));
+        naming_and_scoping_DFS(class_map[idtable.lookup_string("Object")]);
     }
 
     // DFS used to traverse through the inheritance tree for naming and scoping section
@@ -201,7 +201,8 @@ public:
                     ++semant_errors;
                 }
                 else {
-                    curr_scope_vars->addid(curr_feature->get_objectID(), idtable.lookup_string(curr_feature->get_typeID()->get_string()));
+                    idtable.lookup_string(curr_feature->get_typeID()->get_string());
+                    curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(curr_feature->get_typeID()));
                 }
             }
             else if (curr_feature->instanceof("method_class")) {
@@ -234,7 +235,7 @@ public:
                         semant_error(c) << "Formal Parameter " << curr_formal->get_objectID() << "is multiply defined.\n";
                         ++semant_errors;
                     }
-                    curr_scope_vars->addid(curr_formal->get_objectID(), idtable.lookup_string(curr_formal->get_typeID()->get_string()));
+                    curr_scope_vars->addid(curr_formal->get_objectID(), new Symbol(curr_formal->get_typeID()));
                 }
                 curr_scope_vars->exitscope();
             }
@@ -248,7 +249,7 @@ public:
         if (expr->instanceof("let_class")) {
             curr_scope_vars->enterscope();
             // Any Let Expression checking done here
-            curr_scope_vars->addid(expr->get_objectID(), idtable.lookup_string(expr->get_typeID()->get_string()));
+            curr_scope_vars->addid(expr->get_objectID(), new Symbol(expr->get_typeID()));
             check_expression(c, expr->get_init_expression()); // TODO: verify type of this
             check_expression(c, expr->get_body_expression());
             curr_scope_vars->exitscope();
@@ -259,7 +260,7 @@ public:
             for (int i = c->first(); c->more(i); i = c->next(i)) {
                 Case curr_case = c->nth(i);
                 curr_scope_vars->enterscope();
-                curr_scope_vars->addid(curr_case->get_objectID(), idtable.lookup_string(curr_case->get_typeID()->get_string()));
+                curr_scope_vars->addid(curr_case->get_objectID(), new Symbol(curr_case->get_typeID()));
                 curr_scope_vars->exitscope();
             }
             curr_scope_vars->exitscope();
