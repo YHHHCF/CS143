@@ -129,3 +129,27 @@ Class J2 inherits J {
         }
     };
 };
+
+
+Class K {
+    x : Int <- 0;
+
+    method() : Int {
+        0
+    };
+
+    (* Method method is multiply defined. *)
+    method() : Bool {
+        false
+    };
+
+    (* Method method is multiply defined. *)
+    method(x : Int) : Int {
+        x
+    };
+
+    (* Method method is multiply defined. *)
+    method(x : Bool) : Int {
+        0
+    };
+};
