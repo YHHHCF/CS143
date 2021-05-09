@@ -245,12 +245,11 @@ public:
                     }
                     curr_scope_vars->addid(curr_formal->get_objectID(), new Symbol(curr_formal->get_typeID()));
                 }
-
+                check_expression(c, curr_feature->get_expression());
                 curr_scope_vars->exitscope();
+            } else {
+                check_expression(c, curr_feature->get_expression());
             }
-
-            Expression expr = curr_feature->get_expression();
-            check_expression(c, expr);
         }
     }
 
