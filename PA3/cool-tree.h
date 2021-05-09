@@ -92,8 +92,8 @@ public:
    virtual Symbol get_name() = 0;
     // virtual Symbol get_type() = 0;
    virtual Expression get_expr() = 0;
+   virtual Expressions get_arguments() = 0;
    virtual Expression get_body() = 0;
-
    virtual Cases get_cases() = 0; // Implemented for typcase
 
 #ifdef Expression_EXTRAS
@@ -440,6 +440,10 @@ public:
    Expression get_expr() {
       return expr;
    }
+   
+   Expressions get_arguments() {
+      return actual;
+   }
 
    Expression get_body() { return Expression(); }
    Cases get_cases() { return Cases(); }
@@ -485,9 +489,13 @@ public:
       return expr;
    }
 
+   Expressions get_arguments() {
+      return actual;
+   }
+
    Expression get_body() { return Expression(); }
    Cases get_cases() { return Cases(); }
-    
+
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif

@@ -129,5 +129,41 @@ Class K inherits IO {
 
 Class K1 inherits K {
     y : Int <- get_x();
-    out_int(y);
+};
+
+(* Can use the same attribute to init an attribute *)
+Class L {
+    x : Int <- x + 1;
+};
+
+(* All 3 types of dispatch *)
+Class M {
+    method_M() : Int {
+        0
+    };
+};
+
+Class M1 inherits M {
+    method_M1() : Int {
+        1
+    };
+};
+
+Class M2 inherits M {
+    m1 : M1 <- new M1;
+    method_M2_1() : Int {
+        2
+    };
+    method_M2_2() : Int {
+        {
+            (* dispatch *)
+            m1.method_M1();
+
+            (* self dispatch *)
+            method_M2_1();
+
+            (* static dispatch *)
+            m1@M.method_M();
+        }
+    };
 };
