@@ -129,6 +129,8 @@ Class K inherits IO {
 
 Class K1 inherits K {
     y : Int <- get_x();
+    z : M <- new M;
+    w : Int <- z.method_M();
 };
 
 (* Can use the same attribute to init an attribute *)

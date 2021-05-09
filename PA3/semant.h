@@ -322,6 +322,11 @@ public:
         }
     }
 
+    // Given a typeID and a methodID, return the least Class_ that has this methodID
+    Class_ check_method(Symbol typeID, Symbol methodID) {
+
+    }
+
     // Print the inheritance graph for debug
     void print_inheritance_map() {
     printf("========Print inheritance_map Start=========\n");
