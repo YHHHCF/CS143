@@ -182,4 +182,8 @@ Class N {
     method3(x : Int) : Int {
         x
     };
+
+    method4(x : Bool) : Int {
+        0
+    };
 };

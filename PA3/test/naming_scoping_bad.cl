@@ -147,4 +147,9 @@ Class K {
     method(x : Int) : Int {
         x
     };
+
+    (* Method method is multiply defined. *)
+    method(x : Bool) : Int {
+        0
+    };
 };
