@@ -264,11 +264,12 @@ public:
         }
         else if (expr->instanceof("typcase_class")) {
             curr_scope_vars->enterscope();
-            Cases c = expr->get_cases();
-            for (int i = c->first(); c->more(i); i = c->next(i)) {
-                Case curr_case = c->nth(i);
+            Cases cases_ = expr->get_cases();
+            for (int i = cases_->first(); cases_->more(i); i = cases_->next(i)) {
+                Case curr_case = cases_->nth(i);
                 curr_scope_vars->enterscope();
                 curr_scope_vars->addid(curr_case->get_objectID(), new Symbol(curr_case->get_typeID()));
+                check_expression(c, curr_case->get_expression());
                 curr_scope_vars->exitscope();
             }
             curr_scope_vars->exitscope();
