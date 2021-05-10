@@ -6,6 +6,7 @@
 #include <map>
 #include <set>
 #include <list>
+#include <stack>
 #include "cool-tree.h"
 #include "stringtab.h"
 #include "symtab.h"
@@ -41,9 +42,10 @@ private:
     // Used to manage current scope for naming_and_scoping_DFS; maps an attribute's objectID to typeID
     SymbolTable<Symbol, Symbol> *curr_scope_vars = new SymbolTable<Symbol, Symbol>();
     
-    // Keeps track of the scope for each class
-    // key is a typeID, value is a set of methodIDs
-    std::map<Symbol, std::set<Symbol> > method_table;
+    // key is a class's typeID, value is a method map for that class
+    // a method map's key is methodID, value is the Feature class
+    std::map<Symbol, std::map<Symbol, Feature> > method_table;
+    
 
     void install_basic_classes();
     ostream& error_stream;
@@ -166,40 +168,24 @@ public:
 
     // Checks that each variable is named properly and accessed in its own scope
     void check_naming_and_scoping() {
-        naming_DFS(class_map[idtable.lookup_string("Object")]);
-        scoping_and_typing_DFS(class_map[idtable.lookup_string("Object")]);
+        naming_and_scoping_DFS(class_map[idtable.lookup_string("Object")]);
     }
 
-    // DFS used to traverse through the inheritance tree for naming section
-    void naming_DFS(Class_ c) {
+    // DFS used to traverse through the inheritance tree for naming and scoping section
+    void naming_and_scoping_DFS(Class_ c) {
         // Enter a new scope for each new class
         curr_scope_vars->enterscope();
         
         // Checks for conflicts for the naming of attributes and methods
         check_naming(c);
 
-        // Enter the DFS to check child classes
-        auto children_typeIDs = this->inheritance_map[c->get_typeID()];
-        for (auto iter = children_typeIDs.begin(); iter != children_typeIDs.end(); ++iter) {
-            naming_DFS(this->class_map[*iter]);
-        }
-
-        // Done processing the current scope; exit the scope
-        curr_scope_vars->exitscope();
-    }
-    
-    // DFS used to traverse through the inheritance tree for scoping and typing section
-    void scoping_and_typing_DFS(Class_ c) {
-        // Enter a new scope for each new class
-        curr_scope_vars->enterscope();
-
         // Checks for conflicts in the expressions/body of methods and attributes
-        check_scoping_and_typing(c);
+        check_scoping(c);
 
         // Enter the DFS to check child classes
         auto children_typeIDs = this->inheritance_map[c->get_typeID()];
         for (auto iter = children_typeIDs.begin(); iter != children_typeIDs.end(); ++iter) {
-            scoping_and_typing_DFS(this->class_map[*iter]);
+            naming_and_scoping_DFS(this->class_map[*iter]);
         }
 
         // Done processing the current scope; exit the scope
@@ -230,19 +216,20 @@ public:
             }
             else if (curr_feature->instanceof("method_class")) {
                 /* ERROR 3: Duplicate Definitions of Methods in a Class */
-                if (method_table[c->get_typeID()].count(curr_feature->get_methodID())) {
+                // if the method table of this class contains the methodID
+                std::map<Symbol, Feature> curr_method_table = method_table[c->get_typeID()]; // the methods for that class
+                if (curr_method_table.count(curr_feature->get_methodID())) {
                     semant_error(c) << "Method " << curr_feature->get_methodID() << " is multiply defined.\n";
                     ++semant_errors;
-                }
-                else {
-                    method_table[c->get_typeID()].insert(curr_feature->get_methodID());
+                } else {
+                    curr_method_table[curr_feature->get_methodID()] = curr_feature;
                 }
             }
         }
     }
 
     // Checks scoping conflicts and adds them to the current scope; also processes expressions
-    void check_scoping_and_typing(Class_ c) {
+    void check_scoping(Class_ c) {
         Features features = c->get_features();
         for (int i = features->first(); features->more(i); i = features->next(i)) {
             Feature curr_feature = features->nth(i);
@@ -261,6 +248,7 @@ public:
                     }
                     curr_scope_vars->addid(curr_formal->get_objectID(), new Symbol(curr_formal->get_typeID()));
                 }
+                // TODO: need to check return type from expression conforms to return type declared
                 check_expression(c, curr_feature->get_expression());
                 curr_scope_vars->exitscope();
             } else {
@@ -293,74 +281,113 @@ public:
             // TODO
         }
         else if (expr->instanceof("dispatch_class")) {
-            // dispatch
-            curr_scope_vars->enterscope();
-
-            // Step 1: check whether each argument is a legal expression
-            Expressions arguments = expr->get_arg_expressions();
-            for (int i = arguments->first(); arguments->more(i); i = arguments->next(i)) {
-                Expression argument = arguments->nth(i);
-                check_expression(c, argument);
+            // dispatch: e0.f(e1, e2, ...., en) or self.f(e1, e2, ...., en)
+            Symbol T0, Ti, Ti_declare;
+            // Step 1: evaluate e0 and T0
+            if (is_self(expr->get_expression())) {
+                // T0 is current class typeID
+                T0 = c->get_typeID();
+            } else {
+                // evaluate e0 and find its typeID T0
+                T0 = check_expression(c, expr->get_expression());
             }
 
-            // dispatch on self object, check if expr is a self object
-            if (expr->get_expression()->instanceof("object_class") && expr->get_expression()->get_objectID()->equal_string("self", 4)) {
-                // Step 2: check method in current class's inhertance chain
-                if (check_method(c->get_typeID(), expr->get_methodID())) {
-                    // TODO: sth else in type checking?
-                } else {
-                    semant_error(c) << "Dispatch to undefined method " << expr->get_methodID() << ".\n";
+            // Step 2: find method and formals
+            // check method defined
+            Class_ method_implement_class = check_method(T0, expr->get_methodID());
+            if (!method_implement_class) {
+                semant_error(c) << "Dispatch to undefined method " << expr->get_methodID() << ".\n";
+                ++semant_errors;
+            }
+            Feature feature = this->method_table[method_implement_class->get_typeID()][expr->get_methodID()];
+            Formals formals = feature->get_formals();
+
+            // Step 3: check whether each argument is a legal expression and the types conform to formal types
+            Expressions arguments = expr->get_arg_expressions();
+            if (arguments->len() != formals->len()) {
+                semant_error(c) << "TODO: check error msg.\n";
+                ++semant_errors;
+            }
+            for (int i = arguments->first(); arguments->more(i); i = arguments->next(i)) {
+                Expression curr_argument = arguments->nth(i);
+                Ti = check_expression(c, curr_argument);
+
+                Formal curr_formal = formals->nth(i);
+                Ti_declare = curr_formal->get_typeID();
+
+                if (!conform(Ti, Ti_declare)) {
+                    semant_error(c) << "TODO: check error msg.\n";
                     ++semant_errors;
                 }
             }
-            // dispatch not on self object
-            else {
-                // Step 2: check the dispatch expression
-                check_expression(c, expr->get_expression());
 
-                // Step 3: TODO: check method in type part, we don't know the type of the dispatch expression now
-              
-            }
-            curr_scope_vars->exitscope();
-            // TODO
+            // Step 4: return the declared return type
+            return feature->get_typeID();
         }
         else if (expr->instanceof("static_dispatch_class")) {
-            // static dispatch
-            curr_scope_vars->enterscope();
-
-            // Step 1: check whether each argument is a legal expression
-            Expressions arguments = expr->get_arg_expressions();
-            for (int i = arguments->first(); arguments->more(i); i = arguments->next(i)) {
-                Expression argument = arguments->nth(i);
-                check_expression(c, argument);
+            // static dispatch: e0@T.f(e1, e2, ...., en)
+            Symbol T0, Ti, Ti_declare;
+            // Step 1: evaluate e0 and T0
+            if (is_self(expr->get_expression())) {
+                // it is an error to use self object for static dispatch
+                semant_error(c) << "TODO: check error msg.\n";
+                ++semant_errors;
+            } else {
+                // evaluate e0 and find its typeID T0
+                T0 = check_expression(c, expr->get_expression());
+                if (!conform(T0, expr->get_typeID())) {
+                    semant_error(c) << "TODO: check error msg.\n";
+                    ++semant_errors;
+                }
             }
 
-            // Step 2: check the dispatch expression
-            check_expression(c, expr->get_expression());
-
-            // Step 3: TODO: check static dispatch typeID
-
-            // Step 4: TODO: check method in type part
-            // If the static dispatch has that method
-            if (check_method(expr->get_typeID(), expr->get_methodID())) {
-                // TODO: sth else in type checking?
-            } else {
+            // Step 2: find method and formals
+            // check method defined
+            Class_ method_implement_class = check_method(expr->get_typeID(), expr->get_methodID());
+            if (!method_implement_class) {
                 semant_error(c) << "Static dispatch to undefined method " << expr->get_methodID() << ".\n";
                 ++semant_errors;
             }
+            Feature feature = this->method_table[method_implement_class->get_typeID()][expr->get_methodID()];
+            Formals formals = feature->get_formals();
 
-            curr_scope_vars->exitscope();
-            // TODO
+            // Step 3: check whether each argument is a legal expression and the types conform to formal types
+            Expressions arguments = expr->get_arg_expressions();
+            if (arguments->len() != formals->len()) {
+                semant_error(c) << "TODO: check error msg.\n";
+                ++semant_errors;
+            }
+            for (int i = arguments->first(); arguments->more(i); i = arguments->next(i)) {
+                Expression curr_argument = arguments->nth(i);
+                Ti = check_expression(c, curr_argument);
+
+                Formal curr_formal = formals->nth(i);
+                Ti_declare = curr_formal->get_typeID();
+
+                if (!conform(Ti, Ti_declare)) {
+                    semant_error(c) << "TODO: check error msg.\n";
+                    ++semant_errors;
+                }
+            }
+
+            // Step 4: return the declared return type
+            return feature->get_typeID();
         }
         else if (expr->instanceof("assign_class")) {
             check_expression(c, expr->get_expression());
             // TODO
         }
         else if (expr->instanceof("cond_class")) {
-            check_expression(c, expr->get_pred_expression());
-            check_expression(c, expr->get_then_expression());
-            check_expression(c, expr->get_else_expression());
-            // TODO
+            Symbol T_pred = check_expression(c, expr->get_pred_expression());
+            Symbol T_then = check_expression(c, expr->get_then_expression());
+            Symbol T_else = check_expression(c, expr->get_else_expression());
+
+            if (!isBool(T_pred)) {
+                semant_error(c) << "TODO: check error msg.\n";
+                    ++semant_errors;
+            }
+
+            return least_common_ancestor(T_then, T_else);
         }
         else if (expr->instanceof("loop_class") ) {
             check_expression(c, expr->get_pred_expression());
@@ -471,7 +498,10 @@ public:
         }
 
         // The code should never reach this -- default case
-        return idtable.lookup_string("Bool");
+        if (semant_debug) {
+            printf("Expression not captured\n");
+        }
+        return idtable.lookup_string("_no_class");
     }
 
     // Given a typeID and a methodID, return the least ancestor's typeID
@@ -492,6 +522,74 @@ public:
         return ret;
     }
 
+    // return the least common ancestor for 2 typeIDs
+    Symbol least_common_ancestor(Symbol typeID1, Symbol typeID2) {
+        // return directly if one typeID is another's ancester
+        if (conform(typeID1, typeID2)) {
+            if (semant_debug) {
+                printf("Lease common ancestor of %s, %s -> %s\n", typeID1->get_string(), typeID2->get_string(), typeID2->get_string());
+            }
+            return typeID2;
+        }
+        if (conform(typeID2, typeID1)) {
+            if (semant_debug) {
+                printf("Lease common ancestor of %s, %s -> %s\n", typeID1->get_string(), typeID2->get_string(), typeID1->get_string());
+            }
+            return typeID1;
+        }
+        
+        std::stack<Symbol> stack1, stack2;
+        // go from typeID1 up to Object and put it to a stack1
+        Symbol curr = typeID1;
+        while (!curr->equal_string("_no_class", 9)) {
+            stack1.push(curr);
+            curr = this->parent_map[curr];
+        }
+
+        // go from typeID2 up to Object and put it to a stack2
+        curr = typeID2;
+        while (!curr->equal_string("_no_class", 9)) {
+            stack2.push(curr);
+            curr = this->parent_map[curr];
+        }
+
+        // check first different symbol from top of stack1 and stack2
+        curr = stack1.top(); // must be object;
+        // stack1 and stack2 won't be empty before breaking out
+        // since one type cannot be another type's ancestor
+        while (!stack1.empty() && !stack2.empty()) {
+            if (equal(stack1.top(), stack2.top())) {
+                curr = stack1.top();
+                stack1.pop();
+                stack2.pop();
+            } else {
+                break;
+            }
+        }
+        if (semant_debug) {
+                printf("Lease common ancestor of %s, %s -> %s\n", typeID1->get_string(), typeID2->get_string(), curr->get_string());
+            }
+        return curr; // least common ancestor
+    }
+
+    // return true if typeID1 conform to (<=) typeID2
+    bool conform(Symbol typeID1, Symbol typeID2) {
+        Symbol curr = typeID1;
+        while (!curr->equal_string("_no_class", 9)) {
+            if (equal(curr, typeID2)) {
+                return true;
+            } else {
+                curr = this->parent_map[curr];
+            }
+        }
+        return false;
+    }
+
+    // return true if typeID1 equals to typeID2
+    bool equal(Symbol typeID1, Symbol typeID2) {
+        return strcmp(typeID1->get_string(), typeID2->get_string());
+    }
+
     bool isInt(Symbol typeID) {
         return strcmp(typeID->get_string(), "Int") == 0;
     }
@@ -502,6 +600,12 @@ public:
 
     bool isBool(Symbol typeID) {
         return strcmp(typeID->get_string(), "Bool") == 0;
+    }
+
+    // return true current expression is "self"
+    bool is_self(Expression expr) {
+        return expr->instanceof("object_class") &&
+        expr->get_objectID()->equal_string("self", 4);
     }
 
     // Print the inheritance graph for debug
