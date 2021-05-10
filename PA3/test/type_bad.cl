@@ -76,3 +76,9 @@ Class B {
         }
     };
 };
+
+Class C {
+    x : Int;
+    y : A <- new X;
+    z : Bool <- not true;
+};
