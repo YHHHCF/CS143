@@ -253,14 +253,15 @@ public:
         }
     }
 
-    void check_expression(Class_ c, Expression expr) {
+    Symbol check_expression(Class_ c, Expression expr) {
         if (expr->instanceof("let_class")) {
             curr_scope_vars->enterscope();
             // Any Let Expression checking done here
             curr_scope_vars->addid(expr->get_objectID(), new Symbol(expr->get_typeID()));
             check_expression(c, expr->get_init_expression()); // TODO: verify type of this
-            check_expression(c, expr->get_body_expression());
+            Symbol type = check_expression(c, expr->get_body_expression());
             curr_scope_vars->exitscope();
+            return type;
         }
         else if (expr->instanceof("typcase_class")) {
             curr_scope_vars->enterscope();
@@ -273,6 +274,7 @@ public:
                 curr_scope_vars->exitscope();
             }
             curr_scope_vars->exitscope();
+            // TODO
         }
         else if (expr->instanceof("dispatch_class")) {
             // dispatch
@@ -304,6 +306,7 @@ public:
               
             }
             curr_scope_vars->exitscope();
+            // TODO
         }
         else if (expr->instanceof("static_dispatch_class")) {
             // static dispatch
@@ -331,18 +334,22 @@ public:
             }
 
             curr_scope_vars->exitscope();
+            // TODO
         }
         else if (expr->instanceof("assign_class")) {
             check_expression(c, expr->get_expression());
+            // TODO
         }
         else if (expr->instanceof("cond_class")) {
             check_expression(c, expr->get_pred_expression());
             check_expression(c, expr->get_then_expression());
             check_expression(c, expr->get_else_expression());
+            // TODO
         }
         else if (expr->instanceof("loop_class") ) {
             check_expression(c, expr->get_pred_expression());
             check_expression(c, expr->get_body_expression());
+            // TODO -- need to implement most common class
         }
         else if (expr->instanceof("block_class") ) {
             Expressions exprs = expr->get_body_expressions();
@@ -350,62 +357,105 @@ public:
                 Expression curr_expr = exprs->nth(i);
                 check_expression(c, curr_expr);
             }
+            // TODO (I think it returns the type of the last expression?)
         }
         else if (expr->instanceof("new__class")) {
-            // place holder for type checking
+            return expr->get_typeID();
         }
         else if (expr->instanceof("isvoid_class")) {
             check_expression(c, expr->get_expression());
+            // TODO
         }
         else if (expr->instanceof("plus_class")) {
-            check_expression(c, expr->get_expression1());
-            check_expression(c, expr->get_expression2());
+            Symbol type_e1 = check_expression(c, expr->get_expression1());
+            Symbol type_e2 = check_expression(c, expr->get_expression2());
+            if (!isInt(type_e1) || !isInt(type_e2)) {
+                semant_error(c) << "non_Int arguments: " << type_e1 << " + " << type_e2 << "\n";
+                ++semant_errors;
+            }
+            return idtable.lookup_string("Int");
         }
         else if (expr->instanceof("sub_class")) {
-            check_expression(c, expr->get_expression1());
-            check_expression(c, expr->get_expression2());
+            Symbol type_e1 = check_expression(c, expr->get_expression1());
+            Symbol type_e2 = check_expression(c, expr->get_expression2());
+            if (!isInt(type_e1) || !isInt(type_e2)) {
+                semant_error(c) << "non_Int arguments: " << type_e1 << " - " << type_e2 << "\n";
+                ++semant_errors;
+            }
+            return idtable.lookup_string("Int");
         }
         else if (expr->instanceof("mul_class")) {
-            check_expression(c, expr->get_expression1());
-            check_expression(c, expr->get_expression2());
+            Symbol type_e1 = check_expression(c, expr->get_expression1());
+            Symbol type_e2 = check_expression(c, expr->get_expression2());
+            if (!isInt(type_e1) || !isInt(type_e2)) {
+                semant_error(c) << "non_Int arguments: " << type_e1 << " * " << type_e2 << "\n";
+                ++semant_errors;
+            }
+            return idtable.lookup_string("Int");
         }
         else if (expr->instanceof("divide_class")) {
-            check_expression(c, expr->get_expression1());
-            check_expression(c, expr->get_expression2());
+            Symbol type_e1 = check_expression(c, expr->get_expression1());
+            Symbol type_e2 = check_expression(c, expr->get_expression2());
+            if (!isInt(type_e1) || !isInt(type_e2)) {
+                semant_error(c) << "non_Int arguments: " << type_e1 << " / " << type_e2 << "\n";
+                ++semant_errors;
+            }
+            return idtable.lookup_string("Int");
         }
         else if (expr->instanceof("neg_class")) {
             check_expression(c, expr->get_expression());
+            // TODO: Placeholder below
         }
         else if (expr->instanceof("lt_class")) {
-            check_expression(c, expr->get_expression1());
-            check_expression(c, expr->get_expression2());
+            Symbol type_e1 = check_expression(c, expr->get_expression1());
+            Symbol type_e2 = check_expression(c, expr->get_expression2());
+            if (!isInt(type_e1) || !isInt(type_e2)) {
+                semant_error(c) << "non_Int arguments: " << type_e1 << " < " << type_e2 << "\n";
+                ++semant_errors;
+            }
+            return idtable.lookup_string("Bool");
         }
         else if (expr->instanceof("leq_class")) {
-            check_expression(c, expr->get_expression1());
-            check_expression(c, expr->get_expression2());
+            Symbol type_e1 = check_expression(c, expr->get_expression1());
+            Symbol type_e2 = check_expression(c, expr->get_expression2());
+            if (!isInt(type_e1) || !isInt(type_e2)) {
+                semant_error(c) << "non_Int arguments: " << type_e1 << " <= " << type_e2 << "\n";
+                ++semant_errors;
+            }
+            return idtable.lookup_string("Bool");
         }
         else if (expr->instanceof("eq_class")) {
-            check_expression(c, expr->get_expression1());
-            check_expression(c, expr->get_expression2());
+            Symbol type_e1 = check_expression(c, expr->get_expression1());
+            Symbol type_e2 = check_expression(c, expr->get_expression2());
+            if (!isInt(type_e1) || !isInt(type_e2)) {
+                semant_error(c) << "non_Int arguments: " << type_e1 << " = " << type_e2 << "\n";
+                ++semant_errors;
+            }
+            return idtable.lookup_string("Bool");
         }
         else if (expr->instanceof("comp_class")) {
-            check_expression(c, expr->get_expression());
+            return check_expression(c, expr->get_expression());
         }
         else if (expr->instanceof("object_class")) {
             if (curr_scope_vars -> lookup(expr->get_objectID()) == NULL) {
                 semant_error(c) << "Undeclared identifier " << expr->get_objectID() << ".\n";
                 ++semant_errors;
             }
+            // TODO
+            return idtable.lookup_string("Object");
         }
         else if (expr->instanceof("int_const_class")) {
-            // place holder for type checking
+            return idtable.lookup_string("Int");
         }
         else if (expr->instanceof("string_const_class")) {
-            // place holder for type checking
+            return idtable.lookup_string("String");
         }
         else if (expr->instanceof("bool_const_class")) {
-            // place holder for type checking
+            return idtable.lookup_string("Bool");
         }
+
+        // The code should never reach this -- default case
+        return idtable.lookup_string("Bool");
     }
 
     // Given a typeID and a methodID, return the least ancestor's typeID
@@ -424,6 +474,18 @@ public:
             }
         }
         return ret;
+    }
+
+    bool isInt(Symbol typeID) {
+        return strcmp(typeID->get_string(), "Int") == 0;
+    }
+
+    bool isString(Symbol typeID) {
+        return strcmp(typeID->get_string(), "String") == 0;
+    }
+
+    bool isBool(Symbol typeID) {
+        return strcmp(typeID->get_string(), "Bool") == 0;
     }
 
     // Print the inheritance graph for debug
