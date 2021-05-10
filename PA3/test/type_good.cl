@@ -90,6 +90,40 @@ Class B {
     };
 };
 
+Class B1 inherits B {};
+Class B11 inherits B1 {};
+Class B12 inherits B1 {};
+Class B2 inherits B {};
+Class B21 inherits B2 {};
+Class B22 inherits B2 {};
+
+
+Class C {
+    a : A;
+    a1 : A1;
+    a2 : A2;
+    a3: A3;
+    b : B;
+    b1 : B1;
+    b11 : B11;
+    b12 : B12;
+    b2 : B2;
+    b21 : B21;
+    b22 : B22;
+
+    cond() : Int {
+        {
+            if true then a1 else a2 fi;
+            if true then a2 else a3 fi;
+            if true then a3 else a2 fi;
+            if true then b22 else a3 fi;
+            if true then b21 else b22 fi;
+            if true then b22 else b11 fi;
+            0;
+        }
+    };
+};
+
 Class Main inherits IO {
     person1 : People <- new People;
     person2 : People <- person1.copy();

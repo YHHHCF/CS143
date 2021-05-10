@@ -281,14 +281,14 @@ public:
             // TODO
         }
         else if (expr->instanceof("dispatch_class")) {
-            // dispatch
-            Symbol T0, Ti, Ti_declare, Tret, Tret_declare;
+            // dispatch: e0.f(e1, e2, ...., en) or self.f(e1, e2, ...., en)
+            Symbol T0, Ti, Ti_declare;
             // Step 1: evaluate e0 and T0
             if (is_self(expr->get_expression())) {
-                // Step 1: T0 is current class typeID
+                // T0 is current class typeID
                 T0 = c->get_typeID();
             } else {
-                // Step 1: evaluate e0 and find its typeID T0
+                // evaluate e0 and find its typeID T0
                 T0 = check_expression(c, expr->get_expression());
             }
 
@@ -304,18 +304,20 @@ public:
 
             // Step 3: check whether each argument is a legal expression and the types conform to formal types
             Expressions arguments = expr->get_arg_expressions();
+            if (arguments->len() != formals->len()) {
+                semant_error(c) << "TODO: check error msg.\n";
+                ++semant_errors;
+            }
             for (int i = arguments->first(); arguments->more(i); i = arguments->next(i)) {
-                Expression argument = arguments->nth(i);
-                Ti = check_expression(c, argument);
+                Expression curr_argument = arguments->nth(i);
+                Ti = check_expression(c, curr_argument);
 
-                // check arguments e1 to en conform to formal types
-                for (int i = formals->first(); formals->more(i); i = formals->next(j)) {
-                    Formal curr_formal = formals->nth(i);
-                    Ti_declare = curr_formal->get_typeID();
-                    if (!conform(Ti, Ti_declare)) {
-                        semant_error(c) << "TODO: check error msg.\n";
-                        ++semant_errors;
-                    }
+                Formal curr_formal = formals->nth(i);
+                Ti_declare = curr_formal->get_typeID();
+
+                if (!conform(Ti, Ti_declare)) {
+                    semant_error(c) << "TODO: check error msg.\n";
+                    ++semant_errors;
                 }
             }
 
@@ -323,41 +325,69 @@ public:
             return feature->get_typeID();
         }
         else if (expr->instanceof("static_dispatch_class")) {
-            // static dispatch
-
-            // TODO: similar to dispatch
-
-            // Step 1: check whether each argument is a legal expression
-            Expressions arguments = expr->get_arg_expressions();
-            for (int i = arguments->first(); arguments->more(i); i = arguments->next(i)) {
-                Expression argument = arguments->nth(i);
-                check_expression(c, argument);
+            // static dispatch: e0@T.f(e1, e2, ...., en)
+            Symbol T0, Ti, Ti_declare;
+            // Step 1: evaluate e0 and T0
+            if (is_self(expr->get_expression())) {
+                // it is an error to use self object for static dispatch
+                semant_error(c) << "TODO: check error msg.\n";
+                ++semant_errors;
+            } else {
+                // evaluate e0 and find its typeID T0
+                T0 = check_expression(c, expr->get_expression());
+                if (!conform(T0, expr->get_typeID())) {
+                    semant_error(c) << "TODO: check error msg.\n";
+                    ++semant_errors;
+                }
             }
 
-            // Step 2: check the dispatch expression
-            check_expression(c, expr->get_expression());
-
-            // Step 3: TODO: check static dispatch typeID
-
-            // Step 4: TODO: check method in type part
-            // If the static dispatch has that method
-            if (check_method(expr->get_typeID(), expr->get_methodID())) {
-                // TODO: sth else in type checking?
-            } else {
+            // Step 2: find method and formals
+            // check method defined
+            Class_ method_implement_class = check_method(expr->get_typeID(), expr->get_methodID());
+            if (!method_implement_class) {
                 semant_error(c) << "Static dispatch to undefined method " << expr->get_methodID() << ".\n";
                 ++semant_errors;
             }
-            // TODO
+            Feature feature = this->method_table[method_implement_class->get_typeID()][expr->get_methodID()];
+            Formals formals = feature->get_formals();
+
+            // Step 3: check whether each argument is a legal expression and the types conform to formal types
+            Expressions arguments = expr->get_arg_expressions();
+            if (arguments->len() != formals->len()) {
+                semant_error(c) << "TODO: check error msg.\n";
+                ++semant_errors;
+            }
+            for (int i = arguments->first(); arguments->more(i); i = arguments->next(i)) {
+                Expression curr_argument = arguments->nth(i);
+                Ti = check_expression(c, curr_argument);
+
+                Formal curr_formal = formals->nth(i);
+                Ti_declare = curr_formal->get_typeID();
+
+                if (!conform(Ti, Ti_declare)) {
+                    semant_error(c) << "TODO: check error msg.\n";
+                    ++semant_errors;
+                }
+            }
+
+            // Step 4: return the declared return type
+            return feature->get_typeID();
         }
         else if (expr->instanceof("assign_class")) {
             check_expression(c, expr->get_expression());
             // TODO
         }
         else if (expr->instanceof("cond_class")) {
-            check_expression(c, expr->get_pred_expression());
-            check_expression(c, expr->get_then_expression());
-            check_expression(c, expr->get_else_expression());
-            // TODO
+            Symbol T_pred = check_expression(c, expr->get_pred_expression());
+            Symbol T_then = check_expression(c, expr->get_then_expression());
+            Symbol T_else = check_expression(c, expr->get_else_expression());
+
+            if (!isBool(T_pred)) {
+                semant_error(c) << "TODO: check error msg.\n";
+                    ++semant_errors;
+            }
+
+            return least_common_ancestor(T_then, T_else);
         }
         else if (expr->instanceof("loop_class") ) {
             check_expression(c, expr->get_pred_expression());
@@ -496,9 +526,15 @@ public:
     Symbol least_common_ancestor(Symbol typeID1, Symbol typeID2) {
         // return directly if one typeID is another's ancester
         if (conform(typeID1, typeID2)) {
+            if (semant_debug) {
+                printf("Lease common ancestor of %s, %s -> %s\n", typeID1->get_string(), typeID2->get_string(), typeID2->get_string());
+            }
             return typeID2;
         }
         if (conform(typeID2, typeID1)) {
+            if (semant_debug) {
+                printf("Lease common ancestor of %s, %s -> %s\n", typeID1->get_string(), typeID2->get_string(), typeID1->get_string());
+            }
             return typeID1;
         }
         
@@ -530,6 +566,9 @@ public:
                 break;
             }
         }
+        if (semant_debug) {
+                printf("Lease common ancestor of %s, %s -> %s\n", typeID1->get_string(), typeID2->get_string(), curr->get_string());
+            }
         return curr; // least common ancestor
     }
 
