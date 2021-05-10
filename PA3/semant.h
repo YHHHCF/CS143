@@ -166,24 +166,40 @@ public:
 
     // Checks that each variable is named properly and accessed in its own scope
     void check_naming_and_scoping() {
-        naming_and_scoping_DFS(class_map[idtable.lookup_string("Object")]);
+        naming_DFS(class_map[idtable.lookup_string("Object")]);
+        scoping_and_typing_DFS(class_map[idtable.lookup_string("Object")]);
     }
 
-    // DFS used to traverse through the inheritance tree for naming and scoping section
-    void naming_and_scoping_DFS(Class_ c) {
+    // DFS used to traverse through the inheritance tree for naming section
+    void naming_DFS(Class_ c) {
         // Enter a new scope for each new class
         curr_scope_vars->enterscope();
         
         // Checks for conflicts for the naming of attributes and methods
         check_naming(c);
 
+        // Enter the DFS to check child classes
+        auto children_typeIDs = this->inheritance_map[c->get_typeID()];
+        for (auto iter = children_typeIDs.begin(); iter != children_typeIDs.end(); ++iter) {
+            naming_DFS(this->class_map[*iter]);
+        }
+
+        // Done processing the current scope; exit the scope
+        curr_scope_vars->exitscope();
+    }
+    
+    // DFS used to traverse through the inheritance tree for scoping and typing section
+    void scoping_and_typing_DFS(Class_ c) {
+        // Enter a new scope for each new class
+        curr_scope_vars->enterscope();
+
         // Checks for conflicts in the expressions/body of methods and attributes
-        check_scoping(c);
+        check_scoping_and_typing(c);
 
         // Enter the DFS to check child classes
         auto children_typeIDs = this->inheritance_map[c->get_typeID()];
         for (auto iter = children_typeIDs.begin(); iter != children_typeIDs.end(); ++iter) {
-            naming_and_scoping_DFS(this->class_map[*iter]);
+            scoping_and_typing_DFS(this->class_map[*iter]);
         }
 
         // Done processing the current scope; exit the scope
@@ -226,7 +242,7 @@ public:
     }
 
     // Checks scoping conflicts and adds them to the current scope; also processes expressions
-    void check_scoping(Class_ c) {
+    void check_scoping_and_typing(Class_ c) {
         Features features = c->get_features();
         for (int i = features->first(); features->more(i); i = features->next(i)) {
             Feature curr_feature = features->nth(i);
