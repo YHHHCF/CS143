@@ -91,7 +91,7 @@ ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) 
     for(int i = classes->first(); classes->more(i); i = classes->next(i)) {
         this->add_class(classes->nth(i));
     }
-    bool inheritance_correct = this->check_inheritance_map();
+    this->check_inheritance_map();
     if (semant_debug) {
         this->print_class_map();
         this->print_inheritance_map();
@@ -260,6 +260,9 @@ void program_class::semant()
         cerr << "Compilation halted due to static semantic errors." << endl;
         exit(1);
     }
+
+    // Verify that variables are declared before usage (naming and scoping)
+    classtable->check_naming_and_scoping();
 
     if (semant_debug) {
         printf("=======Debugging information end==========\n");
