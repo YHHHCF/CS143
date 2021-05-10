@@ -63,3 +63,16 @@ Class A1 inherits A {
         1
     };
 };
+
+Class B {
+    x : Int;
+    y : Bool;
+
+    (* Inferred return type Int of method sum does not conform to declared return type Bool. *)
+    sum() : Bool {
+        {
+            (* non-Int arguments: Int + Bool *)
+            x + y;
+        }
+    };
+};
