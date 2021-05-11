@@ -194,6 +194,7 @@ public:
 
     // Checks naming conflicts and adds them to the current scope
     void check_naming(Class_ c) {
+        std::map<Symbol, Feature> curr_method_map;
         // Enter the scope
         Features features = c->get_features();
         for (int i = features->first(); features->more(i); i = features->next(i)) {
@@ -217,15 +218,16 @@ public:
             else if (curr_feature->instanceof("method_class")) {
                 /* ERROR 3: Duplicate Definitions of Methods in a Class */
                 // if the method table of this class contains the methodID
-                std::map<Symbol, Feature> curr_method_table = method_table[c->get_typeID()]; // the methods for that class
-                if (curr_method_table.count(curr_feature->get_methodID())) {
+                if (curr_method_map.count(curr_feature->get_methodID())) {
                     semant_error(c) << "Method " << curr_feature->get_methodID() << " is multiply defined.\n";
                     ++semant_errors;
                 } else {
-                    curr_method_table[curr_feature->get_methodID()] = curr_feature;
+                    curr_method_map[curr_feature->get_methodID()] = curr_feature;
                 }
             }
         }
+        // the methods for current class
+        this->method_table[c->get_typeID()] = curr_method_map;
     }
 
     // Checks scoping conflicts and adds them to the current scope; also processes expressions
@@ -249,9 +251,15 @@ public:
                     curr_scope_vars->addid(curr_formal->get_objectID(), new Symbol(curr_formal->get_typeID()));
                 }
                 // TODO: need to check return type from expression conforms to return type declared
+                if (semant_debug) {
+                    printf("class %s : check expression for method %s\n", c->get_typeID()->get_string(), curr_feature->get_methodID()->get_string());
+                }
                 check_expression(c, curr_feature->get_expression());
                 curr_scope_vars->exitscope();
             } else {
+                if (semant_debug) {
+                    printf("class %s : check expression for attribute\n", c->get_typeID()->get_string());
+                }
                 check_expression(c, curr_feature->get_expression());
             }
         }
@@ -265,6 +273,10 @@ public:
             check_expression(c, expr->get_init_expression()); // TODO: verify type of this
             Symbol type = check_expression(c, expr->get_body_expression());
             curr_scope_vars->exitscope();
+
+            if (semant_debug) {
+                printf("let_class : %s\n", type->get_string());
+            }
             return type;
         }
         else if (expr->instanceof("typcase_class")) {                                                    // I am a little confused about the implementation; only basic skeleton code ahead
@@ -292,7 +304,11 @@ public:
             }
             curr_scope_vars->exitscope();
             // TODO: Implement assignment of expr0 to selected_case ( I don't really understand case, sorry :( )
-            return check_expression(c, selected_case->get_expression());  // technically computing twice
+            Symbol type = check_expression(c, selected_case->get_expression());  // technically computing twice
+            if (semant_debug) {
+                printf("typcase_class : %s\n", type->get_string());
+            }
+            return type;
         }
         else if (expr->instanceof("dispatch_class")) {
             // dispatch: e0.f(e1, e2, ...., en) or self.f(e1, e2, ...., en)
@@ -301,9 +317,15 @@ public:
             if (is_self(expr->get_expression())) {
                 // T0 is current class typeID
                 T0 = c->get_typeID();
+                if (semant_debug) {
+                    printf("Dispatch on self : %s\n", T0->get_string());
+                }
             } else {
                 // evaluate e0 and find its typeID T0
                 T0 = check_expression(c, expr->get_expression());
+                if (semant_debug) {
+                    printf("Dispatch on an object : %s\n", T0->get_string());
+                }
             }
 
             // Step 2: find method and formals
@@ -312,6 +334,7 @@ public:
             if (!method_implement_class) {
                 semant_error(c) << "Dispatch to undefined method " << expr->get_methodID() << ".\n";
                 ++semant_errors;
+                // TODO: what to return
             }
             Feature feature = this->method_table[method_implement_class->get_typeID()][expr->get_methodID()];
             Formals formals = feature->get_formals();
@@ -336,7 +359,11 @@ public:
             }
 
             // Step 4: return the declared return type
-            return feature->get_typeID();
+            Symbol type = feature->get_typeID();
+            if (semant_debug) {
+                printf("dispatch_class : %s\n", type->get_string());
+            }
+            return type;
         }
         else if (expr->instanceof("static_dispatch_class")) {
             // static dispatch: e0@T.f(e1, e2, ...., en)
@@ -385,21 +412,36 @@ public:
             }
 
             // Step 4: return the declared return type
-            return feature->get_typeID();
+            Symbol type = feature->get_typeID();
+            if (semant_debug) {
+                printf("static_dispatch_class : %s\n", type->get_string());
+            }
+            return type;
         }
         else if (expr->instanceof("assign_class")) {
-            Symbol type_e = check_expression(c, expr->get_expression());                                          // TODO: Implementation needs checking; not confident about it 
-            Symbol attr_assigned = expr->get_typeID();                                                            // I believe this is the name of the attribute (ex: x in the case of x <- 1)
-            Symbol type_expected = *(curr_scope_vars->lookup(attr_assigned));
-            if (type_expected == NULL) {
-                semant_error(c) << "Assignment to undeclared identifier " << attr_assigned << ".\n";
+            // type_expr is the type of init expression
+            Symbol type_expr = check_expression(c, expr->get_expression());
+
+            // attr_objectID is the objectID of the attribute to be assigned
+            Symbol attr_objectID = expr->get_objectID();
+
+            // type_expected is the typeID fo the attribute to be assigned
+            Symbol type_expected = *(curr_scope_vars->lookup(attr_objectID));
+
+            if (!type_expected) {
+                semant_error(c) << "Assignment to undeclared identifier " << attr_objectID << ".\n";
                 ++semant_errors;
+                return type_expr;
             }
-            else if (!conform(type_e, type_expected)) {
-                semant_error(c) << "Type " << type_e <<" of assigned expression does not conform to declared type " << type_expected << " of identifier " << attr_assigned << ".\n";
+            else if (!conform(type_expr, type_expected)) {
+                semant_error(c) << "Type " << type_expr <<" of assigned expression does not conform to declared type " << type_expected << " of identifier " << attr_objectID << ".\n";
                 ++semant_errors;
+                return type_expr;
             }
-            return type_expected;
+            if (semant_debug) {
+                printf("assign_class : %s\n", type_expected->get_string());
+            }
+            return type_expr;
         }
         else if (expr->instanceof("cond_class")) {
             Symbol type_pred = check_expression(c, expr->get_pred_expression());
@@ -409,7 +451,11 @@ public:
             }
             Symbol type_then = check_expression(c, expr->get_then_expression());
             Symbol type_else = check_expression(c, expr->get_else_expression());
-            return least_common_ancestor(type_then, type_else);
+            Symbol type_ret = least_common_ancestor(type_then, type_else);
+            if (semant_debug) {
+                printf("cond_class : %s\n", type_ret->get_string());
+            }
+            return type_ret;
         }
         else if (expr->instanceof("loop_class") ) {
             Symbol type_pred = check_expression(c, expr->get_pred_expression());
@@ -417,23 +463,50 @@ public:
                 semant_error(c) << "Loop condition does not have type Bool.\n";
                 ++semant_errors;
             }
-            return check_expression(c, expr->get_body_expression());
+            check_expression(c, expr->get_body_expression());
+            if (semant_debug) {
+                printf("loop_class : Object\n");
+            }
+            // return a void, which is Object type
+            return idtable.lookup_string("Object");
         }
         else if (expr->instanceof("block_class") ) {
             Expressions exprs = expr->get_body_expressions();
+
+            // If the body is empty, return Object
+            if (exprs->len() == 0) {
+                semant_error(c) << "The block expression is empty.\n";
+                ++semant_errors;
+                return idtable.lookup_string("Object");
+            }
+
             Symbol type_e;  // Keeps track of the TYPEID of expressions, used for type checking
             for (int i = exprs->first(); exprs->more(i); i = exprs->next(i)) {
                 Expression curr_expr = exprs->nth(i);
                 type_e = check_expression(c, curr_expr);
             }
+            if (semant_debug) {
+                printf("block_class : %s\n", type_e->get_string());
+            }
             return type_e;  // Contains the TYPEID of the last expression
         }
         else if (expr->instanceof("new__class")) {
+            if (semant_debug) {
+                printf("new__class : %s\n", expr->get_typeID()->get_string());
+            }
+            if (!this->class_map.count(expr->get_typeID())) {
+                semant_error(c) << "'new' used with undefined class " << expr->get_typeID() << "\n";
+                ++semant_errors;
+                return idtable.lookup_string("Object");
+            }
             return expr->get_typeID();
         }
         else if (expr->instanceof("isvoid_class")) {
-           *check_expression(c, expr->get_expression());                                                       // Maybe strange interaction with SELF_TYPE? Need to think about this more
-            return idtable.lookup_string("Bool");                                                              // TODO: Implementation may need checking, but I think any input expr is legal
+            check_expression(c, expr->get_expression());
+            if (semant_debug) {
+                printf("isvoid_class : Bool\n");
+            }
+            return idtable.lookup_string("Bool");
         }
         else if (expr->instanceof("plus_class")) {
             Symbol type_e1 = check_expression(c, expr->get_expression1());
@@ -441,6 +514,9 @@ public:
             if (!isInt(type_e1) || !isInt(type_e2)) {
                 semant_error(c) << "non_Int arguments: " << type_e1 << " + " << type_e2 << "\n";
                 ++semant_errors;
+            }
+            if (semant_debug) {
+                printf("plus_class : Int\n");
             }
             return idtable.lookup_string("Int");
         }
@@ -451,6 +527,9 @@ public:
                 semant_error(c) << "non_Int arguments: " << type_e1 << " - " << type_e2 << "\n";
                 ++semant_errors;
             }
+            if (semant_debug) {
+                printf("sub_class : Int\n");
+            }
             return idtable.lookup_string("Int");
         }
         else if (expr->instanceof("mul_class")) {
@@ -459,6 +538,9 @@ public:
             if (!isInt(type_e1) || !isInt(type_e2)) {
                 semant_error(c) << "non_Int arguments: " << type_e1 << " * " << type_e2 << "\n";
                 ++semant_errors;
+            }
+            if (semant_debug) {
+                printf("mul_class : Int\n");
             }
             return idtable.lookup_string("Int");
         }
@@ -469,6 +551,9 @@ public:
                 semant_error(c) << "non_Int arguments: " << type_e1 << " / " << type_e2 << "\n";
                 ++semant_errors;
             }
+            if (semant_debug) {
+                printf("divide_class : Int\n");
+            }
             return idtable.lookup_string("Int");
         }
         else if (expr->instanceof("neg_class")) {
@@ -476,6 +561,9 @@ public:
             if (!isInt(type_e)) {
                 semant_error(c) << "Argument of ~ has type " << type_e << " instead of Int.\n";
                 ++semant_errors;
+            }
+            if (semant_debug) {
+                printf("neg_class : Int\n");
             }
             return idtable.lookup_string("Int");
         }
@@ -486,6 +574,9 @@ public:
                 semant_error(c) << "non_Int arguments: " << type_e1 << " < " << type_e2 << "\n";
                 ++semant_errors;
             }
+            if (semant_debug) {
+                printf("lt_class : Bool\n");
+            }
             return idtable.lookup_string("Bool");
         }
         else if (expr->instanceof("leq_class")) {
@@ -494,6 +585,9 @@ public:
             if (!isInt(type_e1) || !isInt(type_e2)) {
                 semant_error(c) << "non_Int arguments: " << type_e1 << " <= " << type_e2 << "\n";
                 ++semant_errors;
+            }
+            if (semant_debug) {
+                printf("leq_class : Bool\n");
             }
             return idtable.lookup_string("Bool");
         }
@@ -504,39 +598,74 @@ public:
                 semant_error(c) << "non_Int arguments: " << type_e1 << " = " << type_e2 << "\n";
                 ++semant_errors;
             }
+            if (semant_debug) {
+                printf("eq_class : Bool\n");
+            }
             return idtable.lookup_string("Bool");
         }
         else if (expr->instanceof("comp_class")) {
-            return check_expression(c, expr->get_expression());
-        }
-        else if (expr->instanceof("object_class")) {
-            if (curr_scope_vars -> lookup(expr->get_objectID()) == NULL) {
-                semant_error(c) << "Undeclared identifier " << expr->get_objectID() << ".\n";
+            if (semant_debug) {
+                printf("comp_class : %s\n", check_expression(c, expr->get_expression())->get_string());
+            }
+            Symbol type = check_expression(c, expr->get_expression());
+            if (!isBool(type)) {
+                semant_error(c) << "Argument of 'not' has type " << type << " instead of Bool." << "\n";
                 ++semant_errors;
             }
-            // TODO
-            return idtable.lookup_string("Object");
+            return idtable.lookup_string("Bool");
+        }
+        else if (expr->instanceof("object_class")) {
+            if (!curr_scope_vars->lookup(expr->get_objectID())) {
+                semant_error(c) << "Undeclared identifier " << expr->get_objectID() << ".\n";
+                ++semant_errors;
+                // If cannot find this object, return Object
+                return idtable.lookup_string("Object");
+            }
+            Symbol type = *(curr_scope_vars->lookup(expr->get_objectID()));
+            if (semant_debug) {
+                printf("object_class : %s\n", type->get_string());
+            }
+            return type;
         }
         else if (expr->instanceof("int_const_class")) {
+            if (semant_debug) {
+                printf("int_const_class : Int\n");
+            }
             return idtable.lookup_string("Int");
         }
         else if (expr->instanceof("string_const_class")) {
+            if (semant_debug) {
+                printf("string_const_class : String\n");
+            }
             return idtable.lookup_string("String");
         }
         else if (expr->instanceof("bool_const_class")) {
+            if (semant_debug) {
+                printf("bool_const_class : Bool\n");
+            }
             return idtable.lookup_string("Bool");
+        } else if (expr->instanceof("no_expr_class")) {
+            // TODO1: need to handle more special cases in basic classes
+            // TODO2: need to review when implementing SELF_TYPE
+            if (semant_debug) {
+                printf("class %s : has a no_expr that needs to be handled later\n", c->get_typeID()->get_string());
+            }
+            return idtable.lookup_string("_no_type");
+        } else {
+            // The code should never reach this -- default case
+            if (semant_debug) {
+                printf("class %s : has a expression not captured\n", c->get_typeID()->get_string());
+            }
+            return idtable.lookup_string("_no_type");
         }
-
-        // The code should never reach this -- default case
-        if (semant_debug) {
-            printf("Expression not captured\n");
-        }
-        return idtable.lookup_string("_no_class");
     }
 
     // Given a typeID and a methodID, return the least ancestor's typeID
     // who has this methodID overidden or implemented
     Class_ check_method(Symbol typeID, Symbol methodID) {
+        if (semant_debug) {
+            print_method_table();
+        }
         Class_ ret = nullptr;
         while (!typeID->equal_string("_no_class", 9)) {
             if (semant_debug) {
@@ -544,12 +673,30 @@ public:
             }
             if (this->method_table[typeID].count(methodID)) {
                 ret = this->class_map[typeID];
+                if (semant_debug) {
+                    printf("found in %s\n", typeID->get_string());
+                }
                 break;
             } else {
                 typeID = this->parent_map[typeID];
             }
         }
         return ret;
+    }
+
+    // print all methods in method table for debug
+    void print_method_table() {
+        printf("========Print method_table Start=========\n");
+        for (auto class_entry : this->method_table) {
+            Symbol typeID = class_entry.first;
+            printf("Class %s has methods: ", typeID->get_string());
+            for (auto method_entry : class_entry.second) {
+                Symbol methodID = method_entry.first;
+                printf("%s ", methodID->get_string());
+            }
+            printf("\n");
+        }
+        printf("=========Print method_table End==========\n");
     }
 
     // return the least common ancestor for 2 typeIDs
@@ -598,7 +745,7 @@ public:
         }
         if (semant_debug) {
                 printf("Lease common ancestor of %s, %s -> %s\n", typeID1->get_string(), typeID2->get_string(), curr->get_string());
-            }
+        }
         return curr; // least common ancestor
     }
 
