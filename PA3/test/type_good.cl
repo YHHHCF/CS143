@@ -125,10 +125,16 @@ Class C {
 };
 
 Class Main inherits IO {
+    (* Class People of attribute person1 is undefined. *)
+    (* 'new' used with undefined class People. *)
     person1 : People <- new People;
     person2 : Int <- person1@Int.copy();
 
+    (* Class Male of attribute man1 is undefined. *)
+    (* 'new' used with undefined class Male. *)
     man1 : Male <- new Male;
+    (* Class Male of attribute man2 is undefined. *)
+    (* Dispatch on undefined class Male. *)
     man2 : Male <- man1.copy();
 
     a : A <- new A;
@@ -138,41 +144,60 @@ Class Main inherits IO {
 
     main() : Int {
         {
-            (* First round dispatch *)
-            out_string("dispatch method_A on a: ").out_string(a.method_A()).out_string("\n");
-            out_string("dispatch method_A on a1: ").out_string(a1.method_A()).out_string("\n");
-            out_string("dispatch method_A on a2: ").out_string(a2.method_A()).out_string("\n");
-            out_string("dispatch method_A on a3: ").out_string(a3.method_A()).out_string("\n");
+            a.method_A();
+            a1.method_A();
+            a2.method_A();
+            a3.method_A();
 
-            out_string("dispatch method_A1 on a1: ").out_string(a1.method_A1()).out_string("\n");
-            out_string("dispatch method_A1 on a2: ").out_string(a2.method_A1()).out_string("\n");
-            out_string("dispatch method_A1 on a3: ").out_string(a3.method_A1()).out_string("\n");
+            a1.method_A1();
+            a2.method_A1();
+            a3.method_A1();
 
-            out_string("dispatch method_A2 on a2: ").out_string(a2.method_A2()).out_string("\n");
-            out_string("dispatch method_A2 on a3: ").out_string(a3.method_A2()).out_string("\n");
+            a2.method_A2();
+            a3.method_A2();
 
-            out_string("dispatch method_A2 on a3: ").out_string(a3.method_A2()).out_string("\n");
+            a3.method_A3();
 
-            (* Second round dispatch *)
-            out_string("dispatch method_A on a: ").out_string(a.method_A()).out_string("\n");
-            out_string("dispatch method_A on a1: ").out_string(a1.method_A()).out_string("\n");
-            out_string("dispatch method_A on a2: ").out_string(a2.method_A()).out_string("\n");
-            out_string("dispatch method_A on a3: ").out_string(a3.method_A()).out_string("\n");
+            a@A.method_A();
+            a1@A.method_A();
+            a2@A1.method_A1();
 
-            out_string("dispatch method_A1 on a1: ").out_string(a1.method_A1()).out_string("\n");
-            out_string("dispatch method_A1 on a2: ").out_string(a2.method_A1()).out_string("\n");
-            out_string("dispatch method_A1 on a3: ").out_string(a3.method_A1()).out_string("\n");
+            (* (* First round dispatch *)
+            * out_string("dispatch method_A on a: ").out_string(a.method_A()).out_string("\n");
+            * out_string("dispatch method_A on a1: ").out_string(a1.method_A()).out_string("\n");
+            * out_string("dispatch method_A on a2: ").out_string(a2.method_A()).out_string("\n");
+            * out_string("dispatch method_A on a3: ").out_string(a3.method_A()).out_string("\n");
 
-            out_string("dispatch method_A2 on a2: ").out_string(a2.method_A2()).out_string("\n");
-            out_string("dispatch method_A2 on a3: ").out_string(a3.method_A2()).out_string("\n");
+            * out_string("dispatch method_A1 on a1: ").out_string(a1.method_A1()).out_string("\n");
+            * out_string("dispatch method_A1 on a2: ").out_string(a2.method_A1()).out_string("\n");
+            * out_string("dispatch method_A1 on a3: ").out_string(a3.method_A1()).out_string("\n");
 
-            out_string("dispatch method_A2 on a3: ").out_string(a3.method_A2()).out_string("\n");
+            * out_string("dispatch method_A2 on a2: ").out_string(a2.method_A2()).out_string("\n");
+            * out_string("dispatch method_A2 on a3: ").out_string(a3.method_A2()).out_string("\n");
 
-            (* Static dispatch *)
-            out_string("static dispatch method_A on object a type A: ").out_string(a@A.method_A()).out_string("\n");
-            out_string("static dispatch method_A on object a1 type A: ").out_string(a1@A.method_A()).out_string("\n");
-            out_string("static dispatch method_A1 on object a2 type A1: ").out_string(a2@A1.method_A1()).out_string("\n");
+            * out_string("dispatch method_A2 on a3: ").out_string(a3.method_A3()).out_string("\n");
 
+            * (* Second round dispatch *)
+            * out_string("dispatch method_A on a: ").out_string(a.method_A()).out_string("\n");
+            * out_string("dispatch method_A on a1: ").out_string(a1.method_A()).out_string("\n");
+            * out_string("dispatch method_A on a2: ").out_string(a2.method_A()).out_string("\n");
+            * out_string("dispatch method_A on a3: ").out_string(a3.method_A()).out_string("\n");
+
+            * out_string("dispatch method_A1 on a1: ").out_string(a1.method_A1()).out_string("\n");
+            * out_string("dispatch method_A1 on a2: ").out_string(a2.method_A1()).out_string("\n");
+            * out_string("dispatch method_A1 on a3: ").out_string(a3.method_A1()).out_string("\n");
+
+            * out_string("dispatch method_A2 on a2: ").out_string(a2.method_A2()).out_string("\n");
+            * out_string("dispatch method_A2 on a3: ").out_string(a3.method_A2()).out_string("\n");
+
+            * out_string("dispatch method_A2 on a3: ").out_string(a3.method_A2()).out_string("\n");
+
+            * (* Static dispatch *)
+            * out_string("static dispatch method_A on object a type A: ").out_string(a@A.method_A()).out_string("\n");
+            * out_string("static dispatch method_A on object a1 type A: ").out_string(a1@A.method_A()).out_string("\n");
+            * out_string("static dispatch method_A1 on object a2 type A1: ").out_string(a2@A1.method_A1()).out_string("\n");
+            *)
+            
             0;
         }   
     };
