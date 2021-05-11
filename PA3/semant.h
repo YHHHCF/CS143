@@ -267,18 +267,32 @@ public:
             curr_scope_vars->exitscope();
             return type;
         }
-        else if (expr->instanceof("typcase_class")) {
+        else if (expr->instanceof("typcase_class")) {                                                    // I am a little confused about the implementation; only basic skeleton code ahead
             curr_scope_vars->enterscope();
+            Expression e = expr->get_expression();                                                       // Is this an attribute? What if it doesn't exist?
+            Symbol type_e = *(curr_scope_vars->lookup(e->get_objectID()));                               // This should be dynamic type -- not sure if I am correct in doing this
             Cases cases_ = expr->get_cases();
+            Case selected_case = cases_->nth(1);
+
+            // Selecting the correct branch
             for (int i = cases_->first(); cases_->more(i); i = cases_->next(i)) {
                 Case curr_case = cases_->nth(i);
                 curr_scope_vars->enterscope();
+
+                // Inside case variable scope
                 curr_scope_vars->addid(curr_case->get_objectID(), new Symbol(curr_case->get_typeID()));
-                check_expression(c, curr_case->get_expression());
+                Symbol type_k = curr_case->get_typeID();
+                if (conform(type_k, type_e)) {  // if the typek conforms to type of expr0
+                    if (equal(type_k, least_common_ancestor(type_k, selected_case->get_typeID()))) {    // If the case we are evaluating has a type closer bound to expr0 than selected_case
+                        selected_case = curr_case;                                                       // If there are multiple of the same type_k, we choose the last one -- is this correct?
+                    }
+                }
+                check_expression(c, curr_case->get_expression());                                        // Do all the branches need to be correct expressions, or just the one we evaluate to?
                 curr_scope_vars->exitscope();
             }
             curr_scope_vars->exitscope();
-            // TODO
+            // TODO: Implement assignment of expr0 to selected_case ( I don't really understand case, sorry :( )
+            return check_expression(c, selected_case->get_expression());  // technically computing twice
         }
         else if (expr->instanceof("dispatch_class")) {
             // dispatch: e0.f(e1, e2, ...., en) or self.f(e1, e2, ...., en)
@@ -374,40 +388,52 @@ public:
             return feature->get_typeID();
         }
         else if (expr->instanceof("assign_class")) {
-            check_expression(c, expr->get_expression());
-            // TODO
+            Symbol type_e = check_expression(c, expr->get_expression());                                          // TODO: Implementation needs checking; not confident about it 
+            Symbol attr_assigned = expr->get_typeID();                                                            // I believe this is the name of the attribute (ex: x in the case of x <- 1)
+            Symbol type_expected = *(curr_scope_vars->lookup(attr_assigned));
+            if (type_expected == NULL) {
+                semant_error(c) << "Assignment to undeclared identifier " << attr_assigned << ".\n";
+                ++semant_errors;
+            }
+            else if (!conform(type_e, type_expected)) {
+                semant_error(c) << "Type " << type_e <<" of assigned expression does not conform to declared type " << type_expected << " of identifier " << attr_assigned << ".\n";
+                ++semant_errors;
+            }
+            return type_expected;
         }
         else if (expr->instanceof("cond_class")) {
-            Symbol T_pred = check_expression(c, expr->get_pred_expression());
-            Symbol T_then = check_expression(c, expr->get_then_expression());
-            Symbol T_else = check_expression(c, expr->get_else_expression());
-
-            if (!isBool(T_pred)) {
-                semant_error(c) << "TODO: check error msg.\n";
-                    ++semant_errors;
+            Symbol type_pred = check_expression(c, expr->get_pred_expression());
+            if (!isBool(type_pred)) {
+                semant_error(c) << "Predicate of 'if' does not have type Bool.\n";
+                ++semant_errors;
             }
-
-            return least_common_ancestor(T_then, T_else);
+            Symbol type_then = check_expression(c, expr->get_then_expression());
+            Symbol type_else = check_expression(c, expr->get_else_expression());
+            return least_common_ancestor(type_then, type_else);
         }
         else if (expr->instanceof("loop_class") ) {
-            check_expression(c, expr->get_pred_expression());
-            check_expression(c, expr->get_body_expression());
-            // TODO -- need to implement most common class
+            Symbol type_pred = check_expression(c, expr->get_pred_expression());
+            if (!isBool(type_pred)) {
+                semant_error(c) << "Loop condition does not have type Bool.\n";
+                ++semant_errors;
+            }
+            return check_expression(c, expr->get_body_expression());
         }
         else if (expr->instanceof("block_class") ) {
             Expressions exprs = expr->get_body_expressions();
+            Symbol type_e;  // Keeps track of the TYPEID of expressions, used for type checking
             for (int i = exprs->first(); exprs->more(i); i = exprs->next(i)) {
                 Expression curr_expr = exprs->nth(i);
-                check_expression(c, curr_expr);
+                type_e = check_expression(c, curr_expr);
             }
-            // TODO (I think it returns the type of the last expression?)
+            return type_e;  // Contains the TYPEID of the last expression
         }
         else if (expr->instanceof("new__class")) {
             return expr->get_typeID();
         }
         else if (expr->instanceof("isvoid_class")) {
-            check_expression(c, expr->get_expression());
-            // TODO
+           *check_expression(c, expr->get_expression());                                                       // Maybe strange interaction with SELF_TYPE? Need to think about this more
+            return idtable.lookup_string("Bool");                                                              // TODO: Implementation may need checking, but I think any input expr is legal
         }
         else if (expr->instanceof("plus_class")) {
             Symbol type_e1 = check_expression(c, expr->get_expression1());
@@ -446,8 +472,12 @@ public:
             return idtable.lookup_string("Int");
         }
         else if (expr->instanceof("neg_class")) {
-            check_expression(c, expr->get_expression());
-            // TODO: Placeholder below
+            Symbol type_e = check_expression(c, expr->get_expression());
+            if (!isInt(type_e)) {
+                semant_error(c) << "Argument of ~ has type " << type_e << " instead of Int.\n";
+                ++semant_errors;
+            }
+            return idtable.lookup_string("Int");
         }
         else if (expr->instanceof("lt_class")) {
             Symbol type_e1 = check_expression(c, expr->get_expression1());

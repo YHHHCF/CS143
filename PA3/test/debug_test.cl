@@ -16,15 +16,51 @@ Class B inherits A {
 };
 
 Class C {
-    foo() : Int {
-        false
+    x : Bool;
+    foo() : Bool {
+        x <- 2
     };
 };
 
 (* Just to check sample output *)
 Class D {
-    x : Int <- 1 <= false;
+    x : Int;
 };
 Class E {
     x : Int <- 1 < false;
+};
+
+(* Checks if statement *)
+Class F {
+    x : Bool;
+    foo() : Bool {
+        if 1 then 1 else 0 fi
+    };
+};
+
+(* Checks while loop *)
+Class G {
+    x : Bool;
+    foo() : Bool {
+        while 1 loop 1 pool
+    };
+};
+
+(* Checks assign operator *)
+Class H {
+    x : Bool;
+    foo() : Bool {
+        x <- 2
+    };
+};
+
+(* Checks case statements *)
+class I {
+    x : C;
+    foo() : C {
+        case var of
+            a : A => 1;
+            b : B => 2;
+        esac
+    };
 };
