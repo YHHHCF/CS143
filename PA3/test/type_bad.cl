@@ -82,3 +82,12 @@ Class C {
     y : A <- new X;
     z : Bool <- not true;
 };
+
+Class D {
+    x : Int <- 1;
+    method() : Bool {
+        {
+            x <- "Ha";
+        }
+    };
+};

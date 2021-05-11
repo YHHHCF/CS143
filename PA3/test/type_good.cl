@@ -126,7 +126,7 @@ Class C {
 
 Class Main inherits IO {
     person1 : People <- new People;
-    person2 : People <- person1.copy();
+    person2 : Int <- person1@Int.copy();
 
     man1 : Male <- new Male;
     man2 : Male <- man1.copy();
