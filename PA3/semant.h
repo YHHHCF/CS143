@@ -211,12 +211,21 @@ public:
                     ++semant_errors;
                 }
                 else {
-                    idtable.lookup_string(curr_feature->get_typeID()->get_string());
+                    /* ERROR 3: Class typeID of attribute objectID is undefined. */
+                    Symbol attr_typeID = curr_feature->get_typeID();
+                    if (!this->class_map.count(attr_typeID)) {
+                        semant_error(c) << "Class " << attr_typeID << " of attribute " << \
+                        curr_feature->get_objectID() << " is undefined.\n";
+                        ++semant_errors;
+                        return;
+                    }
+
+                    idtable.lookup_string(attr_typeID->get_string());
                     curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(curr_feature->get_typeID()));
                 }
             }
             else if (curr_feature->instanceof("method_class")) {
-                /* ERROR 3: Duplicate Definitions of Methods in a Class */
+                /* ERROR 4: Duplicate Definitions of Methods in a Class */
                 // if the method table of this class contains the methodID
                 if (curr_method_map.count(curr_feature->get_methodID())) {
                     semant_error(c) << "Method " << curr_feature->get_methodID() << " is multiply defined.\n";
