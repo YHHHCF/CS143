@@ -459,7 +459,7 @@ public:
                 ++semant_errors;
                 return type_expr;
             }
-            else if (!conform(type_expr, type_expected)) {
+            if (!conform(type_expr, type_expected)) {
                 semant_error(c) << "Type " << type_expr <<" of assigned expression does not conform to declared type " \
                 << type_expected << " of identifier " << attr_objectID << ".\n";
                 ++semant_errors;
@@ -520,6 +520,7 @@ public:
         else if (expr->instanceof("new__class")) {
             if (semant_debug) {
                 printf("new__class : %s\n", expr->get_typeID()->get_string());
+                // printf("Debug new class: %ld\n", this->class_map.count(expr->get_typeID()));
             }
             if (!this->class_map.count(expr->get_typeID())) {
                 semant_error(c) << "'new' used with undefined class " << expr->get_typeID() << "\n";
@@ -690,9 +691,9 @@ public:
     // Given a typeID and a methodID, return the least ancestor's typeID
     // who has this methodID overidden or implemented
     Class_ check_method(Symbol typeID, Symbol methodID) {
-        if (semant_debug) {
-            print_method_table();
-        }
+        // if (semant_debug) {
+        //     print_method_table();
+        // }
         Class_ ret = nullptr;
         while (!typeID->equal_string("_no_class", 9)) {
             if (semant_debug) {
@@ -791,7 +792,8 @@ public:
 
     // return true if typeID1 equals to typeID2
     bool equal(Symbol typeID1, Symbol typeID2) {
-        return strcmp(typeID1->get_string(), typeID2->get_string());
+
+        return strcmp(typeID1->get_string(), typeID2->get_string()) == 0;
     }
 
     bool isInt(Symbol typeID) {
