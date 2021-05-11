@@ -4,7 +4,7 @@
 Class A {
     a : String <- "a";
 
-    method_A() : String {
+    method_A(x : Int, y : Int) : String {
         a
     };
 };
@@ -12,7 +12,7 @@ Class A {
 Class A1 inherits A {
     a1 : String <- "a1";
 
-    method_A() : String {
+    method_A(x : Int, y : Int) : String {
         {
             a <- "a1";
         }
@@ -60,7 +60,13 @@ Class A3 inherits A2 {
 };
 
 Class Main {
+    a : A;
+    a1 : A1;
+    a2 : A2;
+    a3 : A3;
     main() : Int {
-      1
+        {
+            a@A.method_A(false, true);
+        }
     };
 };

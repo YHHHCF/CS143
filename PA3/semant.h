@@ -328,13 +328,20 @@ public:
                 }
             }
 
+            // check T0 defined
+            if (!this->class_map.count(T0)) {
+                semant_error(c) << "Dispatch on undefined class " << T0 << ".\n";
+                ++semant_errors;
+                return idtable.lookup_string("Object");
+            }
+
             // Step 2: find method and formals
             // check method defined
             Class_ method_implement_class = check_method(T0, expr->get_methodID());
             if (!method_implement_class) {
                 semant_error(c) << "Dispatch to undefined method " << expr->get_methodID() << ".\n";
                 ++semant_errors;
-                // TODO: what to return
+                return idtable.lookup_string("Object");
             }
             Feature feature = this->method_table[method_implement_class->get_typeID()][expr->get_methodID()];
             Formals formals = feature->get_formals();
@@ -342,8 +349,10 @@ public:
             // Step 3: check whether each argument is a legal expression and the types conform to formal types
             Expressions arguments = expr->get_arg_expressions();
             if (arguments->len() != formals->len()) {
-                semant_error(c) << "TODO: check error msg.\n";
+                semant_error(c) << "Method " << expr->get_methodID() << " invoked with wrong number of arguments.\n";
                 ++semant_errors;
+                // return the declared return type in this case
+                return feature->get_typeID();
             }
             for (int i = arguments->first(); arguments->more(i); i = arguments->next(i)) {
                 Expression curr_argument = arguments->nth(i);
@@ -353,7 +362,9 @@ public:
                 Ti_declare = curr_formal->get_typeID();
 
                 if (!conform(Ti, Ti_declare)) {
-                    semant_error(c) << "TODO: check error msg.\n";
+                    // do not return in the for loop, want to show all this kind of parameter errors in a dispatch
+                    semant_error(c) << "In call of method " << expr->get_methodID() << ", type " << Ti << " of parameter " \
+                    << curr_formal->get_objectID() << " does not conform to declared type " << Ti_declare << ".\n";
                     ++semant_errors;
                 }
             }
@@ -370,16 +381,26 @@ public:
             Symbol T0, Ti, Ti_declare;
             // Step 1: evaluate e0 and T0
             if (is_self(expr->get_expression())) {
-                // it is an error to use self object for static dispatch
-                semant_error(c) << "TODO: check error msg.\n";
-                ++semant_errors;
+                // it is legal to use self as e0
+                T0 = c->get_typeID();
             } else {
                 // evaluate e0 and find its typeID T0
                 T0 = check_expression(c, expr->get_expression());
-                if (!conform(T0, expr->get_typeID())) {
-                    semant_error(c) << "TODO: check error msg.\n";
-                    ++semant_errors;
-                }
+            }
+
+            // check T defined
+            if (!this->class_map.count(expr->get_typeID())) {
+                semant_error(c) << "Static dispatch on undefined class " << expr->get_typeID() << ".\n";
+                ++semant_errors;
+                return idtable.lookup_string("Object");
+            }
+
+            // check conform for static dispatch
+            if (!conform(T0, expr->get_typeID())) {
+                semant_error(c) << "Expression type " << T0 << " does not conform to declared static dispatch type " \
+                << expr->get_typeID() << ".\n";
+                ++semant_errors;
+                return idtable.lookup_string("Object");
             }
 
             // Step 2: find method and formals
@@ -388,6 +409,7 @@ public:
             if (!method_implement_class) {
                 semant_error(c) << "Static dispatch to undefined method " << expr->get_methodID() << ".\n";
                 ++semant_errors;
+                return idtable.lookup_string("Object");
             }
             Feature feature = this->method_table[method_implement_class->get_typeID()][expr->get_methodID()];
             Formals formals = feature->get_formals();
@@ -395,8 +417,10 @@ public:
             // Step 3: check whether each argument is a legal expression and the types conform to formal types
             Expressions arguments = expr->get_arg_expressions();
             if (arguments->len() != formals->len()) {
-                semant_error(c) << "TODO: check error msg.\n";
+                semant_error(c) << "Method " << expr->get_methodID() << " invoked with wrong number of arguments.\n";
                 ++semant_errors;
+                // return the declared return type in this case
+                return feature->get_typeID();
             }
             for (int i = arguments->first(); arguments->more(i); i = arguments->next(i)) {
                 Expression curr_argument = arguments->nth(i);
@@ -406,7 +430,9 @@ public:
                 Ti_declare = curr_formal->get_typeID();
 
                 if (!conform(Ti, Ti_declare)) {
-                    semant_error(c) << "TODO: check error msg.\n";
+                    // do not return in the for loop, want to show all this kind of parameter errors in a dispatch
+                    semant_error(c) << "In call of method " << expr->get_methodID() << ", type " << Ti << " of parameter " \
+                    << curr_formal->get_objectID() << " does not conform to declared type " << Ti_declare << ".\n";
                     ++semant_errors;
                 }
             }
@@ -434,7 +460,8 @@ public:
                 return type_expr;
             }
             else if (!conform(type_expr, type_expected)) {
-                semant_error(c) << "Type " << type_expr <<" of assigned expression does not conform to declared type " << type_expected << " of identifier " << attr_objectID << ".\n";
+                semant_error(c) << "Type " << type_expr <<" of assigned expression does not conform to declared type " \
+                << type_expected << " of identifier " << attr_objectID << ".\n";
                 ++semant_errors;
                 return type_expr;
             }
