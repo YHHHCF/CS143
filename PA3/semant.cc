@@ -45,6 +45,7 @@ static Symbol
     str_field,
     substr,
     type_name,
+    no_expression,
     val;
 //
 // Initializing the predefined symbols.
@@ -78,6 +79,7 @@ static void initialize_constants(void)
     str_field   = idtable.add_string("_str_field");
     substr      = idtable.add_string("substr");
     type_name   = idtable.add_string("type_name");
+    no_expression     = idtable.add_string("no_expression");
     val         = idtable.add_string("_val");
 }
 
