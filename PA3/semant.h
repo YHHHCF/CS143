@@ -42,10 +42,13 @@ private:
     // Used to manage current scope for naming_and_scoping_DFS; maps an attribute's objectID to typeID
     SymbolTable<Symbol, Symbol> *curr_scope_vars = new SymbolTable<Symbol, Symbol>();
     
+    // key is a class's typeID, value is aan attribute map for that class
+    // an attribute map's key is objectID, value is the Feature class
+    std::map<Symbol, std::map<Symbol, Feature> > attribute_table;
+
     // key is a class's typeID, value is a method map for that class
     // a method map's key is methodID, value is the Feature class
     std::map<Symbol, std::map<Symbol, Feature> > method_table;
-    
 
     void install_basic_classes();
     ostream& error_stream;
@@ -221,6 +224,8 @@ public:
             printf("check_naming for class: %s\n", c->get_typeID()->get_string());
         }
         std::map<Symbol, Feature> curr_method_map;
+        std::map<Symbol, Feature> curr_attribute_map;
+        
         // Enter the scope
         Features features = c->get_features();
         for (int i = features->first(); features->more(i); i = features->next(i)) {
@@ -253,9 +258,11 @@ public:
                         ++semant_errors;
                         // Add to the table with default type Object
                         curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(idtable.lookup_string("Object")));
+                        curr_attribute_map[curr_feature->get_objectID()] = curr_feature;
                     }
                     else {
                         curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(curr_feature->get_typeID()));
+                        curr_attribute_map[curr_feature->get_objectID()] = curr_feature;
                     }
                 }
             }
@@ -273,7 +280,8 @@ public:
                 }
             }
         }
-        // the methods for current class
+        // the attributes and methods for current class
+        this->attribute_table[c->get_typeID()] = curr_attribute_map;
         this->method_table[c->get_typeID()] = curr_method_map;
     }
 
