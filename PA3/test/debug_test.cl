@@ -114,9 +114,21 @@ class K {
 
 (* Case Behavior *)
 class L {
-    x : D;
+    x : Int;
     foo() : C {
-        case x of
+        case x+1 of
+            a : A => new B;
+            b : B => new A;
+            b2 : B => new C;
+        esac
+    };
+};
+
+(* Case Behavior *)
+class M {
+    x : Int;
+    foo() : C {
+        case x+1 of
             a : A => new B;
             b : B => new A;
             b2 : B => new C;

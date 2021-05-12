@@ -42,7 +42,7 @@ private:
     // Used to manage current scope for naming_and_scoping_DFS; maps an attribute's objectID to typeID
     SymbolTable<Symbol, Symbol> *curr_scope_vars = new SymbolTable<Symbol, Symbol>();
     
-    // key is a class's typeID, value is aan attribute map for that class
+    // key is a class's typeID, value is an attribute map for that class
     // an attribute map's key is objectID, value is the Feature class
     std::map<Symbol, std::map<Symbol, Feature> > attribute_table;
 
@@ -376,39 +376,63 @@ public:
             if (semant_debug) {
                 printf("check_expression for typcase_class\n");
             }
-            curr_scope_vars->enterscope();
-            Expression e = expr->get_expression();
-            Symbol type_e = *(curr_scope_vars->lookup(e->get_objectID()));                               // This should be dynamic type -- not sure if I am correct in doing this
+
+            // Step 1: evaluate e0 and check T0
+            Expression e0 = expr->get_expression();
+            Symbol T0 = check_expression(c, e0);
+            if (!this->class_map.count(T0)) {
+                // This should not happen, just add for debugging
+                semant_error(c) << "E0 type has error.\n";
+                ++semant_errors;
+            }
             
+            // Step 2: check Ti (type for e1, e2,.., en) and update T_ret
+            Symbol Ti;
+            Symbol T_ret = nullptr;
+
             Cases cases_ = expr->get_cases();
-            Symbol return_type = cases_->nth(1)->get_typeID();
-            std::set<Symbol> encountered_types;
+            if (cases_->len() > 0) {
+                std::set<Symbol> encountered_T_declare; // for declared type of each case
+                for (int i = cases_->first(); cases_->more(i); i = cases_->next(i)) {
+                    Case curr_case = cases_->nth(i);
 
-            // Selecting the correct branch
-            for (int i = cases_->first(); cases_->more(i); i = cases_->next(i)) {
-                Case curr_case = cases_->nth(i);
-                curr_scope_vars->enterscope();
+                    // check no duplicate for declared types of each case
+                    if (encountered_T_declare.count(curr_case->get_typeID()) != 0) {
+                        semant_error(c) << "Duplicate branch" << curr_case->get_typeID() << " in case statement.\n";
+                        ++semant_errors;
+                    }
+                    encountered_T_declare.insert(curr_case->get_typeID());
+                    
+                    curr_scope_vars->enterscope();
+                    // Inside case variable scope
+                    curr_scope_vars->addid(curr_case->get_objectID(), new Symbol(curr_case->get_typeID()));
+                    Ti = check_expression(c, curr_case->get_expression());
+                    if (!this->class_map.count(Ti)) {
+                        // This should not happen, just add for debugging
+                        semant_error(c) << "Ei type has error.\n";
+                        ++semant_errors;
+                    }
 
-                // Inside case variable scope
-                curr_scope_vars->addid(curr_case->get_objectID(), new Symbol(curr_case->get_typeID()));
-                Symbol type_k = curr_case->get_typeID();
+                    // Update T_ret using the current case's Ti evaluated from ei
+                    if (T_ret) {
+                        T_ret = least_common_ancestor(T_ret, Ti);
+                    } else {
+                        T_ret = Ti;
+                    }
 
-                return_type = least_common_ancestor(type_k, return_type);
-                if (encountered_types.count(type_k) != 0) {
-                    semant_error(c) << "Duplicate branch" << type_k << " in case statement.\n";
-                    ++semant_errors;
+                    curr_scope_vars->exitscope();
                 }
-
-                encountered_types.insert(type_k);
-                check_expression(c, curr_case->get_expression());                                                 // does the return type of this expression matter?
-                curr_scope_vars->exitscope();
+                
+                if (semant_debug) {
+                    printf("typcase_class : %s\n", T_ret->get_string());
+                }
+            } else {
+                // This should not happen, since it will be reported in parser, just add for debugging
+                semant_error(c) << "No case branch.\n";
+                ++semant_errors;
+                T_ret = idtable.lookup_string("Object");
             }
-            
-            curr_scope_vars->exitscope();
-            if (semant_debug) {
-                printf("typcase_class : %s\n", return_type->get_string());
-            }
-            return return_type;
+            return T_ret;
         }
         else if (expr->instanceof("dispatch_class")) {
             if (semant_debug) {
@@ -1008,6 +1032,4 @@ public:
     ostream& semant_error(Symbol filename, tree_node *t);
 };
 
-
 #endif
-
