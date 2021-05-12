@@ -335,19 +335,30 @@ public:
 
                 Symbol expected_typeID = curr_feature->get_typeID();
                 Symbol evaluated_typeID = check_expression(c, curr_feature->get_expression());
-                if (!conform(expected_typeID, evaluated_typeID)) {
-                    semant_error(c) << "Inferred type " << evaluated_typeID << " of attribute " << curr_feature->get_objectID() 
-                                    << " does not conform to declared type " << expected_typeID << ".\n";
-                    ++semant_errors;
-                    curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(idtable.lookup_string("Object")));
-                }
-                else {
-                    curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(curr_feature->get_typeID()));
-                }
-                print_symbol_table();
+
                 if (semant_debug) {
-                    printf("class %s : finish check expression for attribute\n", c->get_typeID()->get_string());
+                    printf("expected typeID: %s; evaluated typeID: %s\n", expected_typeID->get_string(), evaluated_typeID->get_string());
                 }
+                // If expected_typeID is not defined, report error
+                if (!this->class_map.count(expected_typeID)) {
+                    semant_error(c) << "Class " << expected_typeID << " of attribute " << curr_feature->get_objectID() << " is undefined.\n";
+                    ++semant_errors;
+                } else {
+                    if (!conform(expected_typeID, evaluated_typeID)) {
+                        semant_error(c) << "Inferred type " << evaluated_typeID << " of attribute " << curr_feature->get_objectID() 
+                                        << " does not conform to declared type " << expected_typeID << ".\n";
+                        ++semant_errors;
+                        curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(idtable.lookup_string("Object")));
+                    }
+                    else {
+                        curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(curr_feature->get_typeID()));
+                    }
+
+                    if (semant_debug) {
+                        print_symbol_table();
+                        printf("class %s : finish check expression for attribute\n", c->get_typeID()->get_string());
+                    }
+                }                
             }
         }
     }
@@ -631,14 +642,17 @@ public:
             if (semant_debug) {
                 printf("check_expression for new__class\n");
             }
-            if (semant_debug) {
-                printf("new__class : %s\n", expr->get_typeID()->get_string());
-                // printf("Debug new class: %ld\n", this->class_map.count(expr->get_typeID()));
-            }
             if (!this->class_map.count(expr->get_typeID())) {
                 semant_error(c) << "'new' used with undefined class " << expr->get_typeID() << "\n";
                 ++semant_errors;
+                if (semant_debug) {
+                    printf("new__class : Object\n");
+                }
                 return idtable.lookup_string("Object");
+            }
+            if (semant_debug) {
+                printf("new__class : %s\n", expr->get_typeID()->get_string());
+                // printf("Debug new class: %ld\n", this->class_map.count(expr->get_typeID()));
             }
             return expr->get_typeID();
         }
