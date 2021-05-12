@@ -111,3 +111,15 @@ class K {
         a_ob
     };
 };
+
+(* Case Behavior *)
+class L {
+    x : D;
+    foo() : C {
+        case x of
+            a : A => new B;
+            b : B => new A;
+            b2 : B => new C;
+        esac
+    };
+};

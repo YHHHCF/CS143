@@ -372,15 +372,17 @@ public:
             }
             return type;
         }
-        else if (expr->instanceof("typcase_class")) {                                                    // I am a little confused about the implementation; only basic skeleton code ahead
+        else if (expr->instanceof("typcase_class")) {
             if (semant_debug) {
                 printf("check_expression for typcase_class\n");
             }
             curr_scope_vars->enterscope();
-            Expression e = expr->get_expression();                                                       // Is this an attribute? What if it doesn't exist?
+            Expression e = expr->get_expression();
             Symbol type_e = *(curr_scope_vars->lookup(e->get_objectID()));                               // This should be dynamic type -- not sure if I am correct in doing this
+            
             Cases cases_ = expr->get_cases();
-            Case selected_case = cases_->nth(1);
+            Symbol return_type = cases_->nth(1)->get_typeID();
+            std::set<Symbol> encountered_types;
 
             // Selecting the correct branch
             for (int i = cases_->first(); cases_->more(i); i = cases_->next(i)) {
@@ -390,21 +392,23 @@ public:
                 // Inside case variable scope
                 curr_scope_vars->addid(curr_case->get_objectID(), new Symbol(curr_case->get_typeID()));
                 Symbol type_k = curr_case->get_typeID();
-                if (conform(type_k, type_e)) {  // if the typek conforms to type of expr0
-                    if (equal(type_k, least_common_ancestor(type_k, selected_case->get_typeID()))) {    // If the case we are evaluating has a type closer bound to expr0 than selected_case
-                        selected_case = curr_case;                                                       // If there are multiple of the same type_k, we choose the last one -- is this correct?
-                    }
+
+                return_type = least_common_ancestor(type_k, return_type);
+                if (encountered_types.count(type_k) != 0) {
+                    semant_error(c) << "Duplicate branch" << type_k << " in case statement.\n";
+                    ++semant_errors;
                 }
-                check_expression(c, curr_case->get_expression());                                        // Do all the branches need to be correct expressions, or just the one we evaluate to?
+
+                encountered_types.insert(type_k);
+                check_expression(c, curr_case->get_expression());                                                 // does the return type of this expression matter?
                 curr_scope_vars->exitscope();
             }
+            
             curr_scope_vars->exitscope();
-            // TODO: Implement assignment of expr0 to selected_case ( I don't really understand case, sorry :( )
-            Symbol type = check_expression(c, selected_case->get_expression());  // technically computing twice
             if (semant_debug) {
-                printf("typcase_class : %s\n", type->get_string());
+                printf("typcase_class : %s\n", return_type->get_string());
             }
-            return type;
+            return return_type;
         }
         else if (expr->instanceof("dispatch_class")) {
             if (semant_debug) {
