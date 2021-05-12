@@ -266,6 +266,10 @@ public:
             if (curr_feature->instanceof("method_class")) {
                 Formals formals = curr_feature->get_formals();
                 curr_scope_vars->enterscope();
+
+                if (semant_debug) {
+                    printf("class %s : begin check expression for method %s\n", c->get_typeID()->get_string(), curr_feature->get_methodID()->get_string());
+                }
                 
                 // Check Formals
                 for (int j = formals->first(); formals->more(j); j = formals->next(j)) {
@@ -290,13 +294,17 @@ public:
                 }
 
                 if (semant_debug) {
-                    printf("class %s : check expression for method %s\n", c->get_typeID()->get_string(), curr_feature->get_methodID()->get_string());
+                    printf("class %s : finish check expression for method %s\n", c->get_typeID()->get_string(), curr_feature->get_methodID()->get_string());
                 }
 
                 curr_scope_vars->exitscope();
             }
             // Handling Attributes
             else {
+                if (semant_debug) {
+                    printf("class %s : begin check expression for attribute %s\n", c->get_typeID()->get_string(), curr_feature->get_objectID()->get_string());
+                }
+
                 Symbol expected_typeID = curr_feature->get_typeID();
                 Symbol evaluated_typeID = check_expression(c, curr_feature->get_expression());
                 if (!conform(expected_typeID, evaluated_typeID)) {
@@ -305,7 +313,7 @@ public:
                     ++semant_errors;
                 }
                 if (semant_debug) {
-                    printf("class %s : check expression for attribute\n", c->get_typeID()->get_string());
+                    printf("class %s : finish check expression for attribute\n", c->get_typeID()->get_string());
                 }
             }
         }
