@@ -229,6 +229,12 @@ public:
                 else {
                     /* ERROR 3: Class typeID of attribute objectID is undefined. */
                     Symbol attr_typeID = curr_feature->get_typeID();
+
+                    if (attr_typeID->equal_string("_prim_slot", 10)) {
+                        curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(c->get_typeID()));
+                        continue;
+                    }
+                    
                     if (!this->class_map.count(attr_typeID)) {
                         semant_error(c) << "Class " << attr_typeID << " of attribute " << \
                         curr_feature->get_objectID() << " is undefined.\n";
@@ -274,7 +280,7 @@ public:
                 // Check Formals
                 for (int j = formals->first(); formals->more(j); j = formals->next(j)) {
                     Formal curr_formal = formals->nth(j);
-                    /* ERROR 4: Duplicate Definitions of Formals in a Method */
+                    // ERROR 5: Duplicate Definitions of Formals in a Method 
                     if (curr_scope_vars->probe(curr_formal->get_objectID()) != NULL) {
                         semant_error(c) << "Formal Parameter " << curr_formal->get_objectID() << " is multiply defined.\n";
                         ++semant_errors;
@@ -519,7 +525,6 @@ public:
 
             // attr_objectID is the objectID of the attribute to be assigned
             Symbol attr_objectID = expr->get_objectID();
-
             if (!curr_scope_vars->lookup(attr_objectID)) {
                 semant_error(c) << "Assignment to undeclared identifier " << attr_objectID << ".\n";
                 ++semant_errors;
