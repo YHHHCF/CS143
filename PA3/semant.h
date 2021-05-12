@@ -251,19 +251,8 @@ public:
                         curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(c->get_typeID()));
                         continue;
                     }
-                    /* ERROR 3: Class typeID of attribute objectID is undefined. */
-                    if (!this->class_map.count(attr_typeID)) {
-                        semant_error(c) << "Class " << attr_typeID << " of attribute " << \
-                        curr_feature->get_objectID() << " is undefined.\n";
-                        ++semant_errors;
-                        // Add to the table with default type Object
-                        curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(idtable.lookup_string("Object")));
-                        curr_attribute_map[curr_feature->get_objectID()] = curr_feature;
-                    }
-                    else {
-                        curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(curr_feature->get_typeID()));
-                        curr_attribute_map[curr_feature->get_objectID()] = curr_feature;
-                    }
+                    curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(curr_feature->get_typeID()));
+                    curr_attribute_map[curr_feature->get_objectID()] = curr_feature;
                 }
             }
             else if (curr_feature->instanceof("method_class")) {
@@ -311,14 +300,16 @@ public:
                 }
                 // Handles Correctly Defined Methods
                 Symbol expected_typeID = curr_feature->get_typeID();
-                
                 Symbol evaluated_typeID = check_expression(c, curr_feature->get_expression());
-                
+
                 // basic classes may have null method body
-                if (!idtable.lookup_string("no_expression") && !conform(expected_typeID, evaluated_typeID)) {
-                    semant_error(c) << "Inferred return type " << evaluated_typeID << " of method " << curr_feature->get_methodID() 
+                // if (!idtable.lookup_string("no_expression")) {   <-- this is previous code
+                if (strcmp(evaluated_typeID->get_string(), "no_expression") != 0) {  //  <-- I changed to this; resolved an error
+                    if (!conform(expected_typeID, evaluated_typeID)) {
+                        semant_error(c) << "Inferred return type " << evaluated_typeID << " of method " << curr_feature->get_methodID() 
                                     << " does not conform to declared return type " << expected_typeID << ".\n";
-                    ++semant_errors;
+                        ++semant_errors;
+                    }
                 }
 
                 if (semant_debug) {
@@ -341,10 +332,11 @@ public:
                 }
                 // If expected_typeID is not defined, report error
                 if (!this->class_map.count(expected_typeID)) {
-                    semant_error(c) << "Class " << expected_typeID << " of attribute " << curr_feature->get_objectID() << " is undefined.\n";
+                    semant_error(c) << "Class " << expected_typeID << " of boobo attribute " << curr_feature->get_objectID() << " is undefined.\n";
                     ++semant_errors;
+                    curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(idtable.lookup_string("Object")));
                 } else {
-                    if (!conform(expected_typeID, evaluated_typeID)) {
+                    if ((!conform(expected_typeID, evaluated_typeID)) && (strcmp(evaluated_typeID->get_string(), "no_expression") != 0)) {
                         semant_error(c) << "Inferred type " << evaluated_typeID << " of attribute " << curr_feature->get_objectID() 
                                         << " does not conform to declared type " << expected_typeID << ".\n";
                         ++semant_errors;
