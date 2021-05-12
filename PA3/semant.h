@@ -336,7 +336,7 @@ public:
                     ++semant_errors;
                     curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(idtable.lookup_string("Object")));
                 } else {
-                    if ((!conform(expected_typeID, evaluated_typeID)) && (strcmp(evaluated_typeID->get_string(), "no_expression") != 0)) {
+                    if ((strcmp(evaluated_typeID->get_string(), "no_expression") != 0) && (!conform(expected_typeID, evaluated_typeID))) {
                         semant_error(c) << "Inferred type " << evaluated_typeID << " of attribute " << curr_feature->get_objectID() 
                                         << " does not conform to declared type " << expected_typeID << ".\n";
                         ++semant_errors;
