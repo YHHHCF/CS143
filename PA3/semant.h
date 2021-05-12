@@ -376,7 +376,6 @@ public:
             if (semant_debug) {
                 printf("check_expression for typcase_class\n");
             }
-            curr_scope_vars->enterscope();
 
             // Step 1: evaluate e0 and check T0
             Expression e0 = expr->get_expression();
@@ -421,7 +420,6 @@ public:
                     curr_scope_vars->exitscope();
                 }
                 
-                curr_scope_vars->exitscope();
                 if (semant_debug) {
                     printf("typcase_class : %s\n", T_ret->get_string());
                 }
