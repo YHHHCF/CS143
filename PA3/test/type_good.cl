@@ -14,7 +14,7 @@ Class A1 inherits A {
 
     method_A() : String {
         {
-            a <- "a1";
+            a11 <- "a1";
         }
     };
     method_A1() : String {
