@@ -885,9 +885,9 @@ public:
 
     // print all symbols in symboltable
     void print_symbol_table() {
-        printf("========Print method_table Start=========\n");
+        printf("========Print symbol_table Start=========\n");
         curr_scope_vars->dump();
-        printf("=========Print method_table End==========\n");
+        printf("=========Print symbol_table End==========\n");
     }
 
     // return the least common ancestor for 2 typeIDs
