@@ -42,7 +42,7 @@ private:
     // Used to manage current scope for naming_and_scoping_DFS; maps an attribute's objectID to typeID
     SymbolTable<Symbol, Symbol> *curr_scope_vars = new SymbolTable<Symbol, Symbol>();
     
-    // key is a class's typeID, value is aan attribute map for that class
+    // key is a class's typeID, value is an attribute map for that class
     // an attribute map's key is objectID, value is the Feature class
     std::map<Symbol, std::map<Symbol, Feature> > attribute_table;
 
@@ -387,7 +387,9 @@ public:
             }
             
             // Step 2: check Ti (type for e1, e2,.., en) and update T_ret
-            Symbol Ti, T_ret;
+            Symbol Ti;
+            Symbol T_ret = nullptr;
+
             Cases cases_ = expr->get_cases();
             if (cases_->len() > 0) {
                 std::set<Symbol> encountered_T_declare; // for declared type of each case
@@ -417,6 +419,7 @@ public:
                     } else {
                         T_ret = Ti;
                     }
+
                     curr_scope_vars->exitscope();
                 }
                 
@@ -1029,6 +1032,4 @@ public:
     ostream& semant_error(Symbol filename, tree_node *t);
 };
 
-
 #endif
-
