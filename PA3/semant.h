@@ -210,12 +210,18 @@ public:
 
     // Checks naming conflicts and adds them to the current scope
     void check_naming(Class_ c) {
+        if (semant_debug) {
+            printf("check_naming for class: %s\n", c->get_typeID()->get_string());
+        }
         std::map<Symbol, Feature> curr_method_map;
         // Enter the scope
         Features features = c->get_features();
         for (int i = features->first(); features->more(i); i = features->next(i)) {
             Feature curr_feature = features->nth(i);
             if (curr_feature->instanceof("attr_class")) {
+                if (semant_debug) {
+                    printf("checking attr: %s, %s\n", curr_feature->get_objectID()->get_string(), curr_feature->get_typeID()->get_string());
+                }
                 /* ERROR 1: Duplicate Definitions of Attributes*/
                 if (curr_scope_vars->probe(curr_feature->get_objectID()) != NULL) {
                     semant_error(c) << "Attribute " << curr_feature->get_objectID() << " is multiply defined in class.\n";
@@ -227,19 +233,17 @@ public:
                     ++semant_errors;
                 }
                 else {
-                    /* ERROR 3: Class typeID of attribute objectID is undefined. */
                     Symbol attr_typeID = curr_feature->get_typeID();
-
+                    // Handle prim_slot for Int, Bool, String
                     if (attr_typeID->equal_string("_prim_slot", 10)) {
                         curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(c->get_typeID()));
                         continue;
                     }
-                    
+                    /* ERROR 3: Class typeID of attribute objectID is undefined. */
                     if (!this->class_map.count(attr_typeID)) {
                         semant_error(c) << "Class " << attr_typeID << " of attribute " << \
                         curr_feature->get_objectID() << " is undefined.\n";
                         ++semant_errors;
-
                         // Add to the table with default type Object
                         curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(idtable.lookup_string("Object")));
                     }
@@ -249,6 +253,9 @@ public:
                 }
             }
             else if (curr_feature->instanceof("method_class")) {
+                if (semant_debug) {
+                    printf("checking method: %s\n", curr_feature->get_methodID()->get_string());
+                }
                 /* ERROR 4: Duplicate Definitions of Methods in a Class */
                 // if the method table of this class contains the methodID
                 if (curr_method_map.count(curr_feature->get_methodID())) {
