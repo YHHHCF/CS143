@@ -14,7 +14,7 @@ Class A1 inherits A {
 
     method_A() : String {
         {
-            a11 <- "a1";
+            a <- "a1";
         }
     };
     method_A1() : String {
@@ -57,6 +57,13 @@ Class A3 inherits A2 {
     check_A3() : String {
         method_A3()
     };
+    check_test() : Bool {
+        false
+    };
+};
+
+Class A4 {
+    x : Int;
 };
 
 Class B {

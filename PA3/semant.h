@@ -201,7 +201,14 @@ public:
         // Enter the DFS to check child classes
         auto children_typeIDs = this->inheritance_map[c->get_typeID()];
         for (auto iter = children_typeIDs.begin(); iter != children_typeIDs.end(); ++iter) {
-            scoping_and_typing_DFS(this->class_map[*iter]);
+            Class_ next = this->class_map[*iter];
+            if ((strcmp(next->get_typeID()->get_string(), "String") != 0)) {
+                if ((strcmp(next->get_typeID()->get_string(), "Bool") != 0)) {
+                    if ((strcmp(next->get_typeID()->get_string(), "Int") != 0)) {
+                        scoping_and_typing_DFS(this->class_map[*iter]);
+                    }
+                }
+            }
         }
 
         // Done processing the current scope; exit the scope
@@ -324,7 +331,12 @@ public:
                     semant_error(c) << "Inferred type " << evaluated_typeID << " of attribute " << curr_feature->get_objectID() 
                                     << " does not conform to declared type " << expected_typeID << ".\n";
                     ++semant_errors;
+                    curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(idtable.lookup_string("Object")));
                 }
+                else {
+                    curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(curr_feature->get_typeID()));
+                }
+                print_symbol_table();
                 if (semant_debug) {
                     printf("class %s : finish check expression for attribute\n", c->get_typeID()->get_string());
                 }
@@ -850,6 +862,13 @@ public:
             }
             printf("\n");
         }
+        printf("=========Print method_table End==========\n");
+    }
+
+    // print all symbols in symboltable
+    void print_symbol_table() {
+        printf("========Print method_table Start=========\n");
+        curr_scope_vars->dump();
         printf("=========Print method_table End==========\n");
     }
 
