@@ -64,3 +64,50 @@ class I {
         esac
     };
 };
+
+(* What happens if an attribute is initialized as undeclared class? *)
+class J {
+    foo(i : Object) : Int {
+        1
+    };
+};
+
+class J_caller {
+    y : J;
+    x : People;
+    foo1() : Int {
+        y.foo(x)
+    };
+};
+
+(* Checking error messages for type mismatches *)
+class K {
+    bool1 : Bool <- 1;
+    bool2 : Bool <- "1";
+    int1 : Int <- true;
+    int2 : Int <- "1";
+    string1 : String <- true;
+    string2 : String <- 1;
+
+    b1 : B;
+    a1 : A <- a1;
+
+    bool_foo() : Bool {
+        1
+    };
+    int_foo() : Int {
+        "string"
+    };
+    string_foo() : String {
+        false
+    };
+
+    a_ob : A;
+    b_ob : B;
+    fooA() : A {
+        b_ob
+    };
+    fooB() : B {
+        a_ob
+    };
+};

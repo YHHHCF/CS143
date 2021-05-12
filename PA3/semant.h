@@ -168,24 +168,40 @@ public:
 
     // Checks that each variable is named properly and accessed in its own scope
     void check_naming_and_scoping() {
-        naming_and_scoping_DFS(class_map[idtable.lookup_string("Object")]);
+        naming_DFS(class_map[idtable.lookup_string("Object")]);
+        scoping_and_typing_DFS(class_map[idtable.lookup_string("Object")]);
     }
 
-    // DFS used to traverse through the inheritance tree for naming and scoping section
-    void naming_and_scoping_DFS(Class_ c) {
+    // DFS used to traverse through the inheritance tree for naming section
+    void naming_DFS(Class_ c) {
         // Enter a new scope for each new class
         curr_scope_vars->enterscope();
-        
-        // Checks for conflicts for the naming of attributes and methods
-        check_naming(c);
 
         // Checks for conflicts in the expressions/body of methods and attributes
-        check_scoping(c);
+        check_naming(c);
 
         // Enter the DFS to check child classes
         auto children_typeIDs = this->inheritance_map[c->get_typeID()];
         for (auto iter = children_typeIDs.begin(); iter != children_typeIDs.end(); ++iter) {
-            naming_and_scoping_DFS(this->class_map[*iter]);
+            naming_DFS(this->class_map[*iter]);
+        }
+
+        // Done processing the current scope; exit the scope
+        curr_scope_vars->exitscope();
+    }
+
+    // DFS used to traverse through the inheritance tree for scoping and typing section
+    void scoping_and_typing_DFS(Class_ c) {
+        // Enter a new scope for each new class
+        curr_scope_vars->enterscope();
+        
+        // Checks for conflicts in the expressions/body of methods and attributes
+        check_scoping_and_typing(c);
+
+        // Enter the DFS to check child classes
+        auto children_typeIDs = this->inheritance_map[c->get_typeID()];
+        for (auto iter = children_typeIDs.begin(); iter != children_typeIDs.end(); ++iter) {
+            scoping_and_typing_DFS(this->class_map[*iter]);
         }
 
         // Done processing the current scope; exit the scope
@@ -217,11 +233,13 @@ public:
                         semant_error(c) << "Class " << attr_typeID << " of attribute " << \
                         curr_feature->get_objectID() << " is undefined.\n";
                         ++semant_errors;
-                        return;
-                    }
 
-                    idtable.lookup_string(attr_typeID->get_string());
-                    curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(curr_feature->get_typeID()));
+                        // Add to the table with default type Object
+                        curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(idtable.lookup_string("Object")));
+                    }
+                    else {
+                        curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(curr_feature->get_typeID()));
+                    }
                 }
             }
             else if (curr_feature->instanceof("method_class")) {
@@ -240,7 +258,7 @@ public:
     }
 
     // Checks scoping conflicts and adds them to the current scope; also processes expressions
-    void check_scoping(Class_ c) {
+    void check_scoping_and_typing(Class_ c) {
         Features features = c->get_features();
         for (int i = features->first(); features->more(i); i = features->next(i)) {
             Feature curr_feature = features->nth(i);
@@ -249,7 +267,8 @@ public:
             if (curr_feature->instanceof("method_class")) {
                 Formals formals = curr_feature->get_formals();
                 curr_scope_vars->enterscope();
-                // check formals
+                
+                // Check Formals
                 for (int j = formals->first(); formals->more(j); j = formals->next(j)) {
                     Formal curr_formal = formals->nth(j);
                     /* ERROR 4: Duplicate Definitions of Formals in a Method */
@@ -259,17 +278,33 @@ public:
                     }
                     curr_scope_vars->addid(curr_formal->get_objectID(), new Symbol(curr_formal->get_typeID()));
                 }
-                // TODO: need to check return type from expression conforms to return type declared
+                
+                // Handles Correctly Defined Methods
+                Symbol expected_typeID = curr_feature->get_typeID();
+                Symbol evaluated_typeID = check_expression(c, curr_feature->get_expression());
+                if (!conform(expected_typeID, evaluated_typeID)) {
+                    semant_error(c) << "Inferred return type " << evaluated_typeID << " of method " << curr_feature->get_methodID() 
+                                    << " does not conform to declared return type " << expected_typeID << ".\n";
+                    ++semant_errors;
+                }
+                
                 if (semant_debug) {
                     printf("class %s : check expression for method %s\n", c->get_typeID()->get_string(), curr_feature->get_methodID()->get_string());
                 }
-                check_expression(c, curr_feature->get_expression());
                 curr_scope_vars->exitscope();
-            } else {
+            }
+            // Handling Attributes
+            else {
+                Symbol expected_typeID = curr_feature->get_typeID();
+                Symbol evaluated_typeID = check_expression(c, curr_feature->get_expression());
+                if (!conform(expected_typeID, evaluated_typeID)) {
+                    semant_error(c) << "Inferred type " << evaluated_typeID << " of attribute " << curr_feature->get_objectID() 
+                                    << " does not conform to declared type " << expected_typeID << ".\n";
+                    ++semant_errors;
+                }
                 if (semant_debug) {
                     printf("class %s : check expression for attribute\n", c->get_typeID()->get_string());
                 }
-                check_expression(c, curr_feature->get_expression());
             }
         }
     }
