@@ -135,3 +135,14 @@ class M {
         esac
     };
 };
+
+Class N {
+    x : Bool <- false;
+    init(num1 : Int, num2 : Int) : Int {
+        (* each x has a new scope *)
+        let x : String <- "3", x : Int <- "4", x : Object, x : Int <- 6 in {
+            (* binded with x : Int <- 6 *)
+            x + 1;
+        }
+    };
+};

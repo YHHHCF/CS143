@@ -360,17 +360,32 @@ public:
             if (semant_debug) {
                 printf("check_expression for let_class\n");
             }
+            // Step 1: evaluate init expression outside let variable scope
+            Symbol init_expr_typeID = check_expression(c, expr->get_init_expression());
+            Symbol T_ret = nullptr;
+
+            // Step 2: evaluate body expression inside let variable scope
             curr_scope_vars->enterscope();
-            // Any Let Expression checking done here
+
+            // add [x/T_declared] to environment
             curr_scope_vars->addid(expr->get_objectID(), new Symbol(expr->get_typeID()));
-            check_expression(c, expr->get_init_expression()); // TODO: verify type of this
-            Symbol type = check_expression(c, expr->get_body_expression());
+
+            // check init_expr conforms to T_declared let with init
+            if (!init_expr_typeID->equal_string("no_expression", 13)) {
+                if (!conform(init_expr_typeID, expr->get_typeID())) {
+                    semant_error(c) << "Inferred type " << init_expr_typeID << " of initialization of " << \
+                    expr->get_objectID() << " does not conform to identifier's declared type " << \
+                    expr->get_typeID() << ".\n";
+                    ++semant_errors;
+                }
+            }
+            T_ret = check_expression(c, expr->get_body_expression());
             curr_scope_vars->exitscope();
 
             if (semant_debug) {
-                printf("let_class : %s\n", type->get_string());
+                printf("let_class : %s\n", T_ret->get_string());
             }
-            return type;
+            return T_ret;
         }
         else if (expr->instanceof("typcase_class")) {
             if (semant_debug) {
