@@ -1225,6 +1225,25 @@ public:
         return nullptr; // TODO
     }
 
+    // consider SELF_TYPE and normal type
+    bool conform_full(Class_ c, Symbol typeID1, Symbol typeID2) {
+        bool is_conform = false;
+        if (is_SELF_TYPE(typeID1)) {
+            if (is_SELF_TYPE(typeID2)) {
+                is_conform = true;
+            } else {
+                is_conform = conform(c->get_typeID(), typeID2);
+            }
+        } else {
+            if (is_SELF_TYPE(typeID2)) {
+                is_conform = false;
+            } else {
+                is_conform = conform(typeID1, typeID2);
+            }
+        }
+        return is_conform;
+    }
+
     // return true if typeID1 conform to (<=) typeID2
     bool conform(Symbol typeID1, Symbol typeID2) {
         if (semant_debug) {
