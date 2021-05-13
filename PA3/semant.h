@@ -741,7 +741,6 @@ public:
                 " of assigned expression does not conform to declared type " \
                 << type_expected << " of identifier " << attr_objectID << ".\n";
                 ++semant_errors;
-                return type_expected;
             }
             
             if (semant_debug) {
@@ -1190,6 +1189,11 @@ public:
         if (semant_debug) {
             printf("check conform: %s, %s\n", typeID1->get_string(), typeID2->get_string());
         }
+        if (is_no_type(typeID1)) {
+            // no type comes from no init, so the check will be good
+            return true;
+        }
+
         bool is_conform = false;
         if (is_SELF_TYPE(typeID1)) {
             if (is_SELF_TYPE(typeID2)) {
@@ -1227,10 +1231,6 @@ public:
 
     // return true if typeID1 conform to (<=) typeID2
     bool conform(Symbol typeID1, Symbol typeID2) {
-        if (is_no_type(typeID1)) {
-            // no type comes from no init, so the check will be good
-            return true;
-        }
         Symbol curr = typeID1;
         while (!curr->equal_string("_no_class", 9)) {
             if (equal(curr, typeID2)) {
