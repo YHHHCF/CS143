@@ -361,57 +361,17 @@ public:
                 Symbol expected_typeID = curr_feature->get_typeID();
                 Symbol evaluated_typeID = check_expression(c, curr_feature->get_expression());
 
-                if (is_SELF_TYPE(expected_typeID)) {
-                    // declared return type is SELF_TYPE
-                    if (is_no_type(evaluated_typeID)) {
-                        if (semant_debug) {
-                            printf("Should not print this, basic classes are skipped\n");
-                        }
-                    } else if (!conform_SELF_TYPE(evaluated_typeID, false, c->get_typeID(), true)) {
-                        // check conform using the type of this class
-                        semant_error(c) << "Inferred return type " << evaluated_typeID << \
-                            " of method " << curr_feature->get_methodID() << \
-                            " does not conform to declared return type " << expected_typeID << ".\n";
-                        ++semant_errors;
-                    } else {
-                        if (semant_debug) {
-                            printf("Method body conforms to declared return type\n");
-                        }
-                    }
-                } else if (is_SELF_TYPE(evaluated_typeID)) {
-                    if (!this->class_map.count(expected_typeID)) {
-                        semant_error(c) << "Undefined return type " << expected_typeID << \
-                            " in method " << curr_feature->get_methodID() << ".\n";
-                        ++semant_errors;
-                    } else {
-                        if (!conform_SELF_TYPE(c->get_typeID(), true, expected_typeID, false)) {
-                            // check conform using the type of this class
-                            semant_error(c) << "Inferred return type " << evaluated_typeID << \
-                            " of method " << curr_feature->get_methodID() << \
-                            " does not conform to declared return type " << expected_typeID << ".\n";
-                            ++semant_errors;
-                        }
-                    }
-                } else {
-                    // declared and evaluated return types are not SELF_TYPE
-                    if (!this->class_map.count(expected_typeID)) {
-                        semant_error(c) << "Undefined return type " << expected_typeID << \
-                            " in method " << curr_feature->get_methodID() << ".\n";
-                        ++semant_errors;
-                    } else if (is_no_type(evaluated_typeID)) {
-                        if (semant_debug) {
-                            printf("Processing basic class\n");
-                        }
-                    } else if (!conform(evaluated_typeID, expected_typeID)) {
-                        semant_error(c) << "Inferred return type " << evaluated_typeID << \
-                            " of method " << curr_feature->get_methodID() << \
-                            " does not conform to declared return type " << expected_typeID << ".\n";
-                        ++semant_errors;
-                    } else {
-                        if (semant_debug) {
-                            printf("Method body conforms to declared return type\n");
-                        }
-                    }
+                if (!this->class_map.count(expected_typeID)) {
+                    semant_error(c) << "Undefined return type " << expected_typeID << \
+                        " in method " << curr_feature->get_methodID() << ".\n";
+                    ++semant_errors;
+                }
+
+                if (!conform_full(c, evaluated_typeID, expected_typeID)) {
+                    semant_error(c) << "Inferred return type " << evaluated_typeID << \
+                        " of method " << curr_feature->get_methodID() << \
+                        " does not conform to declared return type " << expected_typeID << ".\n";
+                    ++semant_errors;
                 }
 
                 if (semant_debug) {
@@ -439,13 +399,19 @@ public:
                     printf("expected typeID: %s; evaluated typeID: %s\n", \
                         expected_typeID->get_string(), evaluated_typeID->get_string());
                 }
-                if (is_SELF_TYPE(expected_typeID)) {
-                    // handle attributes of SELF_TYPE
+                if (!this->class_map.count(expected_typeID) && !is_SELF_TYPE(expected_typeID)) {
+                    // If expected_typeID is not defined, report error and use Object as type
+                    semant_error(c) << "Class " << expected_typeID << " of attribute " << \
+                    curr_feature->get_objectID() << " is undefined.\n";
+                    ++semant_errors;
+                    curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(idtable.lookup_string("Object")));
+                } else {
                     if (is_no_type(evaluated_typeID)) {
                         // declare attribute without init
                         curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(expected_typeID));
                     } else {
-                        if (!conform_SELF_TYPE(evaluated_typeID, false, c->get_typeID(), true)) {
+                        // declare attribute with init
+                        if (!conform_full(c, evaluated_typeID, expected_typeID)) {
                             semant_error(c) << "Inferred type " << evaluated_typeID << \
                                     " of initialization of attribute " << curr_feature->get_objectID() << \
                                     " does not conform to declared type " << expected_typeID << ".\n";
@@ -453,41 +419,6 @@ public:
                             curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(idtable.lookup_string("Object")));
                         } else {
                             curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(expected_typeID));
-                        }
-                    }
-                    curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(expected_typeID));
-                } else if (is_SELF_TYPE(evaluated_typeID)) {
-                    if (!conform_SELF_TYPE(c->get_typeID(), true, expected_typeID, false)) {
-                        semant_error(c) << "Inferred type " << evaluated_typeID << \
-                                    " of initialization of attribute " << curr_feature->get_objectID() << \
-                                    " does not conform to declared type " << expected_typeID << ".\n";
-                        ++semant_errors;
-                        curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(idtable.lookup_string("Object")));
-                    } else {
-                        curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(expected_typeID));
-                    }
-                } else {
-                    if (!this->class_map.count(expected_typeID)) {
-                        // If expected_typeID is not defined, report error and use Object as type
-                        semant_error(c) << "Class " << expected_typeID << " of attribute " << \
-                        curr_feature->get_objectID() << " is undefined.\n";
-                        ++semant_errors;
-                        curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(idtable.lookup_string("Object")));
-                    } else {
-                        // expected_ID is defined
-                        if (is_no_type(evaluated_typeID)) {
-                            // declare attribute without init, add it directly
-                            curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(expected_typeID));
-                        } else {
-                            if (!conform(evaluated_typeID, expected_typeID)) {
-                                semant_error(c) << "Inferred type " << evaluated_typeID << \
-                                    " of initialization of attribute " << curr_feature->get_objectID() << \
-                                    " does not conform to declared type " << expected_typeID << ".\n";
-                                ++semant_errors;
-                                curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(idtable.lookup_string("Object")));
-                            } else {
-                                curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(expected_typeID));
-                            }
                         }
                     }
                 }
@@ -653,7 +584,7 @@ public:
                 Formal curr_formal = formals->nth(i);
                 Ti_declare = curr_formal->get_typeID();
 
-                if (!conform(Ti, Ti_declare)) {
+                if (!conform_full(c, Ti, Ti_declare)) {
                     // do not return in the for loop, want to show all this kind of parameter errors in a dispatch
                     semant_error(c) << "In call of method " << expr->get_methodID() << \
                     ", type " << Ti << " of parameter " << curr_formal->get_objectID() << \
@@ -694,7 +625,7 @@ public:
             }
 
             // check conform for static dispatch
-            if (!conform(T0, expr->get_typeID())) {
+            if (!conform_full(c, T0, expr->get_typeID())) {
                 semant_error(c) << "Expression type " << T0 << \
                 " does not conform to declared static dispatch type " \
                 << expr->get_typeID() << ".\n";
@@ -775,42 +706,12 @@ public:
                 type_expected = attribute_table[c->get_typeID()].find(attr_objectID)->second;
             }
 
-            if (is_SELF_TYPE(type_expr)) {
-                if (is_SELF_TYPE(type_expected)) {
-                    if (!conform_SELF_TYPE(c->get_typeID(), true, c->get_typeID(), true)) {
-                        semant_error(c) << "Type " << type_expr << \
-                        " of assigned expression does not conform to declared type " \
-                        << type_expected << " of identifier " << attr_objectID << ".\n";
-                        ++semant_errors;
-                        return type_expected;
-                    }
-                } else {
-                    if (!conform_SELF_TYPE(c->get_typeID(), true, type_expected, false)) {
-                        semant_error(c) << "Type " << type_expr << \
-                        " of assigned expression does not conform to declared type " \
-                        << type_expected << " of identifier " << attr_objectID << ".\n";
-                        ++semant_errors;
-                        return type_expected;
-                    }
-                }
-            } else {
-                if (is_SELF_TYPE(type_expected)) {
-                    if (!conform_SELF_TYPE(type_expr, false, c->get_typeID(), true)) {
-                        semant_error(c) << "Type " << type_expr << \
-                        " of assigned expression does not conform to declared type " \
-                        << type_expected << " of identifier " << attr_objectID << ".\n";
-                        ++semant_errors;
-                        return type_expected;
-                    }
-                } else {
-                    if (!conform(type_expr, type_expected)) {
-                        semant_error(c) << "Type " << type_expr << \
-                        " of assigned expression does not conform to declared type " \
-                        << type_expected << " of identifier " << attr_objectID << ".\n";
-                        ++semant_errors;
-                        return type_expected;
-                    }
-                }
+            if (!conform_full(c, type_expr, type_expected)) {
+                semant_error(c) << "Type " << type_expr << \
+                " of assigned expression does not conform to declared type " \
+                << type_expected << " of identifier " << attr_objectID << ".\n";
+                ++semant_errors;
+                return type_expected;
             }
             
             if (semant_debug) {
@@ -1225,6 +1126,25 @@ public:
         return nullptr; // TODO
     }
 
+    // consider SELF_TYPE and normal type
+    bool conform_full(Class_ c, Symbol typeID1, Symbol typeID2) {
+        bool is_conform = false;
+        if (is_SELF_TYPE(typeID1)) {
+            if (is_SELF_TYPE(typeID2)) {
+                is_conform = true;
+            } else {
+                is_conform = conform(c->get_typeID(), typeID2);
+            }
+        } else {
+            if (is_SELF_TYPE(typeID2)) {
+                is_conform = false;
+            } else {
+                is_conform = conform(typeID1, typeID2);
+            }
+        }
+        return is_conform;
+    }
+
     // return true if typeID1 conform to (<=) typeID2
     bool conform(Symbol typeID1, Symbol typeID2) {
         if (semant_debug) {
@@ -1239,29 +1159,6 @@ public:
             }
         }
         return false;
-    }
-
-    // there must be at least one SELF_TYPE in typeID1 or typeID2
-    bool conform_SELF_TYPE(Symbol typeID1, bool is_SELF_TYPE1, Symbol typeID2, bool is_SELF_TYPE2) {
-        if (semant_debug) {
-            printf("check conform_SELF_TYPE: %s, %s\n", typeID1->get_string(), typeID2->get_string());
-        }
-        if (is_SELF_TYPE1) {
-            if (is_SELF_TYPE2) {
-                return true;
-            } else {
-                return conform(typeID1, typeID2);
-            }
-        } else {
-            if (is_SELF_TYPE2) {
-                return false;
-            } else {
-                if (semant_debug) {
-                    printf("Should not reaching here, should use conform() instead");
-                }
-                return conform(typeID1, typeID2);
-            }
-        }
     }
 
     // return true if typeID1 equals to typeID2
