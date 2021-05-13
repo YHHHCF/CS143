@@ -285,7 +285,7 @@ public:
                 }
                 /* ERROR 2: Overriding Attributes */
                 else if (curr_scope_vars->lookup(curr_feature->get_objectID()) != NULL) {
-                    semant_error(c) << "Attribute " << curr_feature->get_objectID() << \
+                    semant_error(c->get_filename(), curr_feature) << "Attribute " << curr_feature->get_objectID() << \
                     " is an attribute of an inherited class.\n";
                     ++semant_errors;
                 }
@@ -311,7 +311,7 @@ public:
                     Class_ located_class = check_method(c, c->get_typeID(), curr_feature->get_methodID());
                     Feature overridden_method = find_method(located_class->get_typeID(), curr_feature->get_methodID());
                     if (overridden_method->get_typeID() != curr_feature->get_typeID()) {
-                        semant_error(c) << "In redefined " << curr_feature->get_methodID() << ", return type " << curr_feature->get_typeID() <<
+                        semant_error(c->get_filename(), curr_feature) << "In redefined " << curr_feature->get_methodID() << ", return type " << curr_feature->get_typeID() <<
                             " is different from original return type " << overridden_method->get_typeID() << ".\n";
                         ++semant_errors;
                     }
@@ -326,7 +326,7 @@ public:
                             prev_counter++;
                         }
                         if (curr_counter != prev_counter) {
-                            semant_error(c) << "Incompatible number of formal parameters in redefined method " << curr_feature->get_methodID() << "\n";
+                            semant_error(c->get_filename(), curr_feature) << "Incompatible number of formal parameters in redefined method " << curr_feature->get_methodID() << "\n";
                             ++semant_errors;
                         }
                         else {
@@ -334,7 +334,7 @@ public:
                                 Formal curr_formal = curr_feature->get_formals()->nth(j);
                                 Formal prev_formal = overridden_method->get_formals()->nth(j);
                                 if (equal(curr_formal->get_typeID(), prev_formal->get_typeID())) {
-                                    semant_error(c) << "In redefined " << curr_feature->get_methodID() << ", parameter type " << curr_feature->get_typeID() <<
+                                    semant_error(c->get_filename(), curr_formal) << "In redefined " << curr_feature->get_methodID() << ", parameter type " << curr_feature->get_typeID() <<
                                         " is different from original type " << overridden_method->get_typeID() << ".\n";
                                     ++semant_errors;
                                 }
@@ -345,7 +345,7 @@ public:
                 /* ERROR 4: Duplicate Definitions of Methods in a Class */
                 // if the method table of this class contains the methodID
                 else if (curr_method_map.count(curr_feature->get_methodID())) {
-                    semant_error(c) << "Method " << curr_feature->get_methodID() << " is multiply defined.\n";
+                    semant_error(c->get_filename(), curr_feature) << "Method " << curr_feature->get_methodID() << " is multiply defined.\n";
                     ++semant_errors;
                 }
                 else {
@@ -378,31 +378,31 @@ public:
                     Formal curr_formal = formals->nth(j);
                     // ERROR 5: Duplicate Definitions of Formals in a Method 
                     if (curr_scope_vars->probe(curr_formal->get_objectID()) != NULL) {
-                        semant_error(c) << "Formal Parameter " << \
+                        semant_error(c->get_filename(), curr_formal) << "Formal Parameter " << \
                         curr_formal->get_objectID() << " is multiply defined.\n";
                         ++semant_errors;
                     }
 
                     // ERROR 6: formal cannot have SELF_TYPE
                     if (is_SELF_TYPE(curr_formal->get_typeID())) {
-                        semant_error(c) << "Formal Parameter " << \
+                        semant_error(c->get_filename(), curr_formal) << "Formal Parameter " << \
                         curr_formal->get_objectID() << " cannot have type SELF_TYPE.\n";
                         ++semant_errors;
                     }
                     curr_scope_vars->addid(curr_formal->get_objectID(), new Symbol(curr_formal->get_typeID()));
                 }
-                // Handles Correctly Defined Methods
+                // Handles Correctly Defined Formals
                 Symbol expected_typeID = curr_feature->get_typeID();
                 Symbol evaluated_typeID = check_expression(c, curr_feature->get_expression());
 
                 if (!has_typeID(expected_typeID)) {
-                    semant_error(c) << "Undefined return type " << expected_typeID << \
+                    semant_error(c->get_filename(), curr_feature) << "Undefined return type " << expected_typeID << \
                         " in method " << curr_feature->get_methodID() << ".\n";
                     ++semant_errors;
                 }
 
                 if (!conform_full(c, evaluated_typeID, expected_typeID)) {
-                    semant_error(c) << "Inferred return type " << evaluated_typeID << \
+                    semant_error(c->get_filename(), curr_feature) << "Inferred return type " << evaluated_typeID << \
                         " of method " << curr_feature->get_methodID() << \
                         " does not conform to declared return type " << expected_typeID << ".\n";
                     ++semant_errors;
@@ -435,13 +435,13 @@ public:
                 }
                 if (!has_typeID(expected_typeID)) {
                     // If expected_typeID is not defined, report error and use Object as type
-                    semant_error(c) << "Class " << expected_typeID << " of attribute " << \
+                    semant_error(c->get_filename(), curr_feature) << "Class " << expected_typeID << " of attribute " << \
                     curr_feature->get_objectID() << " is undefined.\n";
                     ++semant_errors;
                     curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(idtable.lookup_string("Object")));
                 } else {
                     if (!conform_full(c, evaluated_typeID, expected_typeID)) {
-                        semant_error(c) << "Inferred type " << evaluated_typeID << \
+                        semant_error(c->get_filename(), curr_feature) << "Inferred type " << evaluated_typeID << \
                                 " of initialization of attribute " << curr_feature->get_objectID() << \
                                 " does not conform to declared type " << expected_typeID << ".\n";
                         ++semant_errors;
@@ -476,7 +476,7 @@ public:
             // check init_expr conforms to T_declared let with init
             // both can be SELF_TYPE
             if (!conform_full(c, init_expr_typeID, expr->get_typeID())) {
-                semant_error(c) << "Inferred type " << init_expr_typeID << \
+                semant_error(c->get_filename(), expr) << "Inferred type " << init_expr_typeID << \
                 " of initialization of " << expr->get_objectID() << \
                 " does not conform to identifier's declared type " << \
                 expr->get_typeID() << ".\n";
@@ -501,7 +501,7 @@ public:
             Symbol T0 = check_expression(c, e0);
             if (!has_typeID(T0)) {
                 // This should not happen, just add for debugging
-                semant_error(c) << "E0 type has error.\n";
+                semant_error(c->get_filename(), expr) << "E0 type has error.\n";
                 ++semant_errors;
             }
             
@@ -517,7 +517,7 @@ public:
 
                     // check no duplicate for declared types of each case
                     if (encountered_T_declare.count(curr_case->get_typeID()) != 0) {
-                        semant_error(c) << "Duplicate branch " << \
+                        semant_error(c->get_filename(), curr_case) << "Duplicate branch " << \
                         curr_case->get_typeID() << " in case statement.\n";
                         ++semant_errors;
                     }
@@ -529,7 +529,7 @@ public:
                     Ti = check_expression(c, curr_case->get_expression());
                     if (!has_typeID(Ti)) {
                         // This should not happen, just add for debugging
-                        semant_error(c) << "Ei type has error.\n";
+                        semant_error(c->get_filename(), curr_case) << "Ei type has error.\n";
                         ++semant_errors;
                     }
 
@@ -548,7 +548,7 @@ public:
                 }
             } else {
                 // This should not happen, since it will be reported in parser, just add for debugging
-                semant_error(c) << "No case branch.\n";
+                semant_error(c->get_filename(), expr) << "No case branch.\n";
                 ++semant_errors;
                 T_ret = idtable.lookup_string("Object");
             }
@@ -578,7 +578,7 @@ public:
 
             // check T0 defined
             if (!has_typeID(T0)) {
-                semant_error(c) << "Dispatch on undefined class " << T0 << ".\n";
+                semant_error(c->get_filename(), expr) << "Dispatch on undefined class " << T0 << ".\n";
                 ++semant_errors;
                 expr->set_type(idtable.add_string("Object"));
                 return idtable.lookup_string("Object");
@@ -588,7 +588,7 @@ public:
             // check method defined
             Class_ method_implement_class = check_method(c, T0, expr->get_methodID());
             if (!method_implement_class) {
-                semant_error(c) << "Dispatch to undefined method " << expr->get_methodID() << ".\n";
+                semant_error(c->get_filename(), expr) << "Dispatch to undefined method " << expr->get_methodID() << ".\n";
                 ++semant_errors;
                 expr->set_type(idtable.add_string("Object"));
                 return idtable.lookup_string("Object");
@@ -599,7 +599,7 @@ public:
             // Step 3: check whether each argument is a legal expression and the types conform to formal types
             Expressions arguments = expr->get_arg_expressions();
             if (arguments->len() != formals->len()) {
-                semant_error(c) << "Method " << expr->get_methodID() << \
+                semant_error(c->get_filename(), expr) << "Method " << expr->get_methodID() << \
                 " invoked with wrong number of arguments.\n";
                 ++semant_errors;
                 // return the declared return type in this case
@@ -615,7 +615,7 @@ public:
 
                 if (!conform_full(c, Ti, Ti_declare)) {
                     // do not return in the for loop, want to show all this kind of parameter errors in a dispatch
-                    semant_error(c) << "In call of method " << expr->get_methodID() << \
+                    semant_error(c->get_filename(), expr) << "In call of method " << expr->get_methodID() << \
                     ", type " << Ti << " of parameter " << curr_formal->get_objectID() << \
                     " does not conform to declared type " << Ti_declare << ".\n";
                     ++semant_errors;
@@ -647,7 +647,7 @@ public:
 
             // check T defined
             if (!has_typeID(expr->get_typeID())) {
-                semant_error(c) << "Static dispatch on undefined class " << expr->get_typeID() << ".\n";
+                semant_error(c->get_filename(), expr) << "Static dispatch on undefined class " << expr->get_typeID() << ".\n";
                 ++semant_errors;
                 expr->set_type(idtable.add_string("Object"));
                 return idtable.lookup_string("Object");
@@ -655,7 +655,7 @@ public:
 
             // check conform for static dispatch
             if (!conform_full(c, T0, expr->get_typeID())) {
-                semant_error(c) << "Expression type " << T0 << \
+                semant_error(c->get_filename(), expr) << "Expression type " << T0 << \
                 " does not conform to declared static dispatch type " \
                 << expr->get_typeID() << ".\n";
                 ++semant_errors;
@@ -667,7 +667,7 @@ public:
             // check method defined
             Class_ method_implement_class = check_method(c, expr->get_typeID(), expr->get_methodID());
             if (!method_implement_class) {
-                semant_error(c) << "Static dispatch to undefined method " << expr->get_methodID() << ".\n";
+                semant_error(c->get_filename(), expr) << "Static dispatch to undefined method " << expr->get_methodID() << ".\n";
                 ++semant_errors;
                 expr->set_type(idtable.add_string("Object"));
                 return idtable.lookup_string("Object");
@@ -678,7 +678,7 @@ public:
             // Step 3: check whether each argument is a legal expression and the types conform to formal types
             Expressions arguments = expr->get_arg_expressions();
             if (arguments->len() != formals->len()) {
-                semant_error(c) << "Method " << expr->get_methodID() << " invoked with wrong number of arguments.\n";
+                semant_error(c->get_filename(), expr) << "Method " << expr->get_methodID() << " invoked with wrong number of arguments.\n";
                 ++semant_errors;
                 // return the declared return type in this case
                 expr->set_type(idtable.add_string(feature->get_typeID()->get_string()));
@@ -694,7 +694,7 @@ public:
                 // Ti_declare is checked not being SELF_TYPE in formal, only need to check Ti
                 if (!conform_full(c, Ti, Ti_declare)) {
                     // do not return in the for loop, want to show all this kind of parameter errors in a dispatch
-                    semant_error(c) << "In call of method " << expr->get_methodID() << \
+                    semant_error(c->get_filename(), expr) << "In call of method " << expr->get_methodID() << \
                     ", type " << Ti << " of parameter " << curr_formal->get_objectID() << \
                     " does not conform to declared type " << Ti_declare << ".\n";
                     ++semant_errors;
@@ -721,7 +721,7 @@ public:
             // if (attribute_table[c->get_typeID()].count(attr_objectID) == 0) {
             // if (!curr_scope_vars->lookup(attr_objectID)) { // tentatively replaced
             if (attribute_table[c->get_typeID()].count(attr_objectID) == 0 && !curr_scope_vars->lookup(attr_objectID)) {
-                semant_error(c) << "Assignment to undeclared identifier " << attr_objectID << ".\n";
+                semant_error(c->get_filename(), expr) << "Assignment to undeclared identifier " << attr_objectID << ".\n";
                 ++semant_errors;
                 expr->set_type(idtable.add_string(type_expr->get_string()));
                 return type_expr;
@@ -737,7 +737,7 @@ public:
             }
 
             if (!conform_full(c, type_expr, type_expected)) {
-                semant_error(c) << "Type " << type_expr << \
+                semant_error(c->get_filename(), expr) << "Type " << type_expr << \
                 " of assigned expression does not conform to declared type " \
                 << type_expected << " of identifier " << attr_objectID << ".\n";
                 ++semant_errors;
@@ -755,7 +755,7 @@ public:
             }
             Symbol type_pred = check_expression(c, expr->get_pred_expression());
             if (!isBool(type_pred)) {
-                semant_error(c) << "Predicate of 'if' does not have type Bool.\n";
+                semant_error(c->get_filename(), expr) << "Predicate of 'if' does not have type Bool.\n";
                 ++semant_errors;
             }
             Symbol type_then = check_expression(c, expr->get_then_expression());
@@ -773,7 +773,7 @@ public:
             }
             Symbol type_pred = check_expression(c, expr->get_pred_expression());
             if (!isBool(type_pred)) {
-                semant_error(c) << "Loop condition does not have type Bool.\n";
+                semant_error(c->get_filename(), expr) << "Loop condition does not have type Bool.\n";
                 ++semant_errors;
             }
             check_expression(c, expr->get_body_expression());
@@ -792,7 +792,7 @@ public:
 
             // If the body is empty, return Object
             if (exprs->len() == 0) {
-                semant_error(c) << "The block expression is empty.\n";
+                semant_error(c->get_filename(), expr) << "The block expression is empty.\n";
                 ++semant_errors;
                 expr->set_type(idtable.add_string("Object"));
                 return idtable.lookup_string("Object");
@@ -814,7 +814,7 @@ public:
                 printf("check_expression for new__class\n");
             }
             if (!has_typeID(expr->get_typeID())) {
-                semant_error(c) << "'new' used with undefined class " << expr->get_typeID() << "\n";
+                semant_error(c->get_filename(), expr) << "'new' used with undefined class " << expr->get_typeID() << "\n";
                 ++semant_errors;
                 if (semant_debug) {
                     printf("new__class : Object\n");
@@ -847,7 +847,7 @@ public:
             Symbol type_e1 = check_expression(c, expr->get_expression1());
             Symbol type_e2 = check_expression(c, expr->get_expression2());
             if (!isInt(type_e1) || !isInt(type_e2)) {
-                semant_error(c) << "non_Int arguments: " << type_e1 << " + " << type_e2 << "\n";
+                semant_error(c->get_filename(), expr) << "non_Int arguments: " << type_e1 << " + " << type_e2 << "\n";
                 ++semant_errors;
             }
             if (semant_debug) {
@@ -863,7 +863,7 @@ public:
             Symbol type_e1 = check_expression(c, expr->get_expression1());
             Symbol type_e2 = check_expression(c, expr->get_expression2());
             if (!isInt(type_e1) || !isInt(type_e2)) {
-                semant_error(c) << "non_Int arguments: " << type_e1 << " - " << type_e2 << "\n";
+                semant_error(c->get_filename(), expr) << "non_Int arguments: " << type_e1 << " - " << type_e2 << "\n";
                 ++semant_errors;
             }
             if (semant_debug) {
@@ -879,7 +879,7 @@ public:
             Symbol type_e1 = check_expression(c, expr->get_expression1());
             Symbol type_e2 = check_expression(c, expr->get_expression2());
             if (!isInt(type_e1) || !isInt(type_e2)) {
-                semant_error(c) << "non_Int arguments: " << type_e1 << " * " << type_e2 << "\n";
+                semant_error(c->get_filename(), expr) << "non_Int arguments: " << type_e1 << " * " << type_e2 << "\n";
                 ++semant_errors;
             }
             if (semant_debug) {
@@ -895,7 +895,7 @@ public:
             Symbol type_e1 = check_expression(c, expr->get_expression1());
             Symbol type_e2 = check_expression(c, expr->get_expression2());
             if (!isInt(type_e1) || !isInt(type_e2)) {
-                semant_error(c) << "non_Int arguments: " << type_e1 << " / " << type_e2 << "\n";
+                semant_error(c->get_filename(), expr) << "non_Int arguments: " << type_e1 << " / " << type_e2 << "\n";
                 ++semant_errors;
             }
             if (semant_debug) {
@@ -910,7 +910,7 @@ public:
             }
             Symbol type_e = check_expression(c, expr->get_expression());
             if (!isInt(type_e)) {
-                semant_error(c) << "Argument of ~ has type " << type_e << " instead of Int.\n";
+                semant_error(c->get_filename(), expr) << "Argument of ~ has type " << type_e << " instead of Int.\n";
                 ++semant_errors;
             }
             if (semant_debug) {
@@ -926,7 +926,7 @@ public:
             Symbol type_e1 = check_expression(c, expr->get_expression1());
             Symbol type_e2 = check_expression(c, expr->get_expression2());
             if (!isInt(type_e1) || !isInt(type_e2)) {
-                semant_error(c) << "non_Int arguments: " << type_e1 << \
+                semant_error(c->get_filename(), expr) << "non_Int arguments: " << type_e1 << \
                 " < " << type_e2 << "\n";
                 ++semant_errors;
             }
@@ -943,7 +943,7 @@ public:
             Symbol type_e1 = check_expression(c, expr->get_expression1());
             Symbol type_e2 = check_expression(c, expr->get_expression2());
             if (!isInt(type_e1) || !isInt(type_e2)) {
-                semant_error(c) << "non_Int arguments: " << type_e1 << \
+                semant_error(c->get_filename(), expr) << "non_Int arguments: " << type_e1 << \
                 " <= " << type_e2 << "\n";
                 ++semant_errors;
             }
@@ -960,7 +960,7 @@ public:
             Symbol type_e1 = check_expression(c, expr->get_expression1());
             Symbol type_e2 = check_expression(c, expr->get_expression2());
             if (!isInt(type_e1) || !isInt(type_e2)) {
-                semant_error(c) << "non_Int arguments: " << type_e1 << \
+                semant_error(c->get_filename(), expr) << "non_Int arguments: " << type_e1 << \
                 " = " << type_e2 << "\n";
                 ++semant_errors;
             }
@@ -976,7 +976,7 @@ public:
             }
             Symbol type = check_expression(c, expr->get_expression());
             if (!isBool(type)) {
-                semant_error(c) << "Argument of 'not' has type " << type << \
+                semant_error(c->get_filename(), expr) << "Argument of 'not' has type " << type << \
                 " instead of Bool." << "\n";
                 ++semant_errors;
             }
@@ -993,7 +993,7 @@ public:
             // if (attribute_table[c->get_typeID()].count(expr->get_objectID()) == 0) {
             // if (!curr_scope_vars->lookup(expr->get_objectID())) { // tentatively replaced
             if (!curr_scope_vars->lookup(expr->get_objectID()) && attribute_table[c->get_typeID()].count(expr->get_objectID()) == 0) {
-                semant_error(c) << "Undeclared identifier " << expr->get_objectID() << ".\n";
+                semant_error(c->get_filename(), expr) << "Undeclared identifier " << expr->get_objectID() << ".\n";
                 ++semant_errors;
                 // If cannot find this object, return Object
                 expr->set_type(idtable.add_string("Object"));
