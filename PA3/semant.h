@@ -43,8 +43,8 @@ private:
     SymbolTable<Symbol, Symbol> *curr_scope_vars = new SymbolTable<Symbol, Symbol>();
     
     // key is a class's typeID, value is an attribute map for that class
-    // an attribute map's key is objectID, value is the Feature class
-    std::map<Symbol, std::map<Symbol, Feature> > attribute_table;
+    // an attribute map's key is objectID, value is the expected type
+    std::map<Symbol, std::map<Symbol, Symbol> > attribute_table;
 
     // key is a class's typeID, value is a method map for that class
     // a method map's key is methodID, value is the Feature class
@@ -265,8 +265,11 @@ public:
         if (semant_debug) {
             printf("check_naming for class: %s\n", c->get_typeID()->get_string());
         }
+        std::map<Symbol, Symbol> curr_attr_map;
+        if (c->get_parent_typeID()) {
+            curr_attr_map = attribute_table[parent_map[c->get_typeID()]]; // inheritance
+        }
         std::map<Symbol, Feature> curr_method_map;
-        std::map<Symbol, Feature> curr_attribute_map;
         
         // Enter the scope
         Features features = c->get_features();
@@ -297,7 +300,7 @@ public:
                         continue;
                     }
                     curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(curr_feature->get_typeID()));
-                    curr_attribute_map[curr_feature->get_objectID()] = curr_feature;
+                    curr_attr_map[curr_feature->get_objectID()] = curr_feature->get_typeID();
                 }
             }
             else if (curr_feature->instanceof("method_class")) {
@@ -312,10 +315,12 @@ public:
                 } else {
                     curr_method_map[curr_feature->get_methodID()] = curr_feature;
                 }
+                /* ERROR 5: Redefinition of Method has different Formals */
+                // TODO
             }
         }
         // the attributes and methods for current class
-        this->attribute_table[c->get_typeID()] = curr_attribute_map;
+        this->attribute_table[c->get_typeID()] = curr_attr_map;
         this->method_table[c->get_typeID()] = curr_method_map;
     }
 
@@ -669,15 +674,25 @@ public:
 
             // attr_objectID is the objectID of the attribute to be assigned
             Symbol attr_objectID = expr->get_objectID();
-            if (!curr_scope_vars->lookup(attr_objectID)) {
+            // if (attribute_table[c->get_typeID()].count(attr_objectID) == 0) {
+            // if (!curr_scope_vars->lookup(attr_objectID)) { // tentatively replaced
+            if (attribute_table[c->get_typeID()].count(attr_objectID) == 0 && !curr_scope_vars->lookup(attr_objectID)) {
                 semant_error(c) << "Assignment to undeclared identifier " << attr_objectID << ".\n";
                 ++semant_errors;
                 expr->set_type(idtable.add_string(type_expr->get_string()));
                 return type_expr;
             }
 
-            // type_expected is the typeID fo the attribute to be assigned
-            Symbol type_expected = *(curr_scope_vars->lookup(attr_objectID));
+            // type_expected is the typeID for the attribute to be assigned
+            // Symbol type_expected = attribute_table[c->get_typeID()].find(attr_objectID)->second;
+            // Symbol type_expected = *(curr_scope_vars->lookup(attr_objectID)); // tentatively replaced
+            Symbol type_expected;
+            if (curr_scope_vars->lookup(attr_objectID)) {
+                type_expected = *(curr_scope_vars->lookup(attr_objectID));
+            }
+            else {
+                type_expected = attribute_table[c->get_typeID()].find(attr_objectID)->second;
+            }
             if (!conform(type_expr, type_expected)) {
                 semant_error(c) << "Type " << type_expr << \
                 " of assigned expression does not conform to declared type " \
@@ -933,14 +948,24 @@ public:
             if (semant_debug) {
                 printf("check_expression for object_class\n");
             }
-            if (!curr_scope_vars->lookup(expr->get_objectID())) {
+            // if (attribute_table[c->get_typeID()].count(expr->get_objectID()) == 0) {
+            // if (!curr_scope_vars->lookup(expr->get_objectID())) { // tentatively replaced
+            if (!curr_scope_vars->lookup(expr->get_objectID()) && attribute_table[c->get_typeID()].count(expr->get_objectID()) == 0) {
                 semant_error(c) << "Undeclared identifier " << expr->get_objectID() << ".\n";
                 ++semant_errors;
                 // If cannot find this object, return Object
                 expr->set_type(idtable.add_string("Object"));
                 return idtable.lookup_string("Object");
             }
-            Symbol type = *(curr_scope_vars->lookup(expr->get_objectID()));
+            // Symbol type = attribute_table[c->get_typeID()].find(expr->get_objectID())->second;
+            // Symbol type = *(curr_scope_vars->lookup(expr->get_objectID())); // tentatively repalced
+            Symbol type;
+            if (curr_scope_vars->lookup(expr->get_objectID())) {
+                type = *(curr_scope_vars->lookup(expr->get_objectID()));
+            }
+            else {
+                type = attribute_table[c->get_typeID()].find(expr->get_objectID())->second;
+            }
             if (semant_debug) {
                 printf("object_class : %s\n", type->get_string());
             }
@@ -974,7 +999,7 @@ public:
                 printf("class %s : has a no_expr that needs to be handled later\n", \
                     c->get_typeID()->get_string());
             }
-            expr->set_type(idtable.add_string("No_type"));
+            expr->set_type(idtable.add_string("_no_type"));
             return idtable.lookup_string("no_expression");
         } else {
             // The code should never reach this -- default case
@@ -982,7 +1007,7 @@ public:
                 printf("class %s : has a expression not captured\n", \
                     c->get_typeID()->get_string());
             }
-            expr->set_type(idtable.add_string("No_type"));
+            expr->set_type(idtable.add_string("_no_type"));
             return idtable.lookup_string("_no_type");
         }
     }
