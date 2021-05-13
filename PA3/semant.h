@@ -406,20 +406,14 @@ public:
                     ++semant_errors;
                     curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(idtable.lookup_string("Object")));
                 } else {
-                    if (is_no_type(evaluated_typeID)) {
-                        // declare attribute without init
-                        curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(expected_typeID));
+                    if (!conform_full(c, evaluated_typeID, expected_typeID)) {
+                        semant_error(c) << "Inferred type " << evaluated_typeID << \
+                                " of initialization of attribute " << curr_feature->get_objectID() << \
+                                " does not conform to declared type " << expected_typeID << ".\n";
+                        ++semant_errors;
+                        curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(idtable.lookup_string("Object")));
                     } else {
-                        // declare attribute with init
-                        if (!conform_full(c, evaluated_typeID, expected_typeID)) {
-                            semant_error(c) << "Inferred type " << evaluated_typeID << \
-                                    " of initialization of attribute " << curr_feature->get_objectID() << \
-                                    " does not conform to declared type " << expected_typeID << ".\n";
-                            ++semant_errors;
-                            curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(idtable.lookup_string("Object")));
-                        } else {
-                            curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(expected_typeID));
-                        }
+                        curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(expected_typeID));
                     }
                 }
                 if (semant_debug) {
@@ -446,7 +440,7 @@ public:
             curr_scope_vars->addid(expr->get_objectID(), new Symbol(expr->get_typeID()));
 
             // check init_expr conforms to T_declared let with init
-            if (!is_no_type(init_expr_typeID) && !conform(init_expr_typeID, expr->get_typeID())) {
+            if (!conform(init_expr_typeID, expr->get_typeID())) {
                 semant_error(c) << "Inferred type " << init_expr_typeID << \
                 " of initialization of " << expr->get_objectID() << \
                 " does not conform to identifier's declared type " << \
@@ -1129,6 +1123,9 @@ public:
 
     // consider SELF_TYPE and normal type
     bool conform_full(Class_ c, Symbol typeID1, Symbol typeID2) {
+        if (semant_debug) {
+            printf("check conform: %s, %s\n", typeID1->get_string(), typeID2->get_string());
+        }
         bool is_conform = false;
         if (is_SELF_TYPE(typeID1)) {
             if (is_SELF_TYPE(typeID2)) {
@@ -1148,8 +1145,9 @@ public:
 
     // return true if typeID1 conform to (<=) typeID2
     bool conform(Symbol typeID1, Symbol typeID2) {
-        if (semant_debug) {
-            printf("check conform: %s, %s\n", typeID1->get_string(), typeID2->get_string());
+        if (is_no_type(typeID1)) {
+            // no type comes from no init, so the check will be good
+            return true;
         }
         Symbol curr = typeID1;
         while (!curr->equal_string("_no_class", 9)) {
