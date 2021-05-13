@@ -307,8 +307,8 @@ public:
                     printf("checking method: %s\n", curr_feature->get_methodID()->get_string());
                 }
                 /* ERROR 3.5 AND 3.6: Redefinitions of Methods */
-                if (check_method(c->get_typeID(), curr_feature->get_methodID()) != nullptr) {
-                    Class_ located_class = check_method(c->get_typeID(), curr_feature->get_methodID());
+                if (check_method(c, c->get_typeID(), curr_feature->get_methodID()) != nullptr) {
+                    Class_ located_class = check_method(c, c->get_typeID(), curr_feature->get_methodID());
                     Feature overridden_method = find_method(located_class->get_typeID(), curr_feature->get_methodID());
                     if (overridden_method->get_typeID() != curr_feature->get_typeID()) {
                         semant_error(c) << "In redefined " << curr_feature->get_methodID() << ", return type " << curr_feature->get_typeID() <<
@@ -499,7 +499,7 @@ public:
             // Step 1: evaluate e0 and check T0
             Expression e0 = expr->get_expression();
             Symbol T0 = check_expression(c, e0);
-            if (!this->class_map.count(T0)) {
+            if (!has_typeID(T0)) {
                 // This should not happen, just add for debugging
                 semant_error(c) << "E0 type has error.\n";
                 ++semant_errors;
@@ -527,7 +527,7 @@ public:
                     // Inside case variable scope
                     curr_scope_vars->addid(curr_case->get_objectID(), new Symbol(curr_case->get_typeID()));
                     Ti = check_expression(c, curr_case->get_expression());
-                    if (!this->class_map.count(Ti)) {
+                    if (!has_typeID(Ti)) {
                         // This should not happen, just add for debugging
                         semant_error(c) << "Ei type has error.\n";
                         ++semant_errors;
@@ -577,7 +577,7 @@ public:
             }
 
             // check T0 defined
-            if (!this->class_map.count(T0)) {
+            if (!has_typeID(T0)) {
                 semant_error(c) << "Dispatch on undefined class " << T0 << ".\n";
                 ++semant_errors;
                 expr->set_type(idtable.add_string("Object"));
@@ -586,7 +586,7 @@ public:
 
             // Step 2: find method and formals
             // check method defined
-            Class_ method_implement_class = check_method(T0, expr->get_methodID());
+            Class_ method_implement_class = check_method(c, T0, expr->get_methodID());
             if (!method_implement_class) {
                 semant_error(c) << "Dispatch to undefined method " << expr->get_methodID() << ".\n";
                 ++semant_errors;
@@ -646,7 +646,7 @@ public:
             }
 
             // check T defined
-            if (!this->class_map.count(expr->get_typeID())) {
+            if (!has_typeID(expr->get_typeID())) {
                 semant_error(c) << "Static dispatch on undefined class " << expr->get_typeID() << ".\n";
                 ++semant_errors;
                 expr->set_type(idtable.add_string("Object"));
@@ -665,7 +665,7 @@ public:
 
             // Step 2: find method and formals
             // check method defined
-            Class_ method_implement_class = check_method(expr->get_typeID(), expr->get_methodID());
+            Class_ method_implement_class = check_method(c, expr->get_typeID(), expr->get_methodID());
             if (!method_implement_class) {
                 semant_error(c) << "Static dispatch to undefined method " << expr->get_methodID() << ".\n";
                 ++semant_errors;
@@ -813,7 +813,7 @@ public:
             if (semant_debug) {
                 printf("check_expression for new__class\n");
             }
-            if (!this->class_map.count(expr->get_typeID()) && !is_SELF_TYPE(expr->get_typeID())) {
+            if (!has_typeID(expr->get_typeID())) {
                 semant_error(c) << "'new' used with undefined class " << expr->get_typeID() << "\n";
                 ++semant_errors;
                 if (semant_debug) {
@@ -824,7 +824,6 @@ public:
             }
             if (semant_debug) {
                 printf("new__class : %s\n", expr->get_typeID()->get_string());
-                // printf("Debug new class: %ld\n", this->class_map.count(expr->get_typeID()));
             }
             // Can be SELF_TYPE
             expr->set_type(idtable.add_string(expr->get_typeID()->get_string()));
@@ -1054,24 +1053,29 @@ public:
 
     // Given a typeID and a methodID, return the least ancestor's typeID
     // who has this methodID overidden or implemented
-    Class_ check_method(Symbol typeID, Symbol methodID) {
+    Class_ check_method(Class_ c, Symbol typeID, Symbol methodID) {
         // if (semant_debug) {
         //     print_method_table();
         // }
+        Symbol curr_typeID = typeID;
+        if (is_SELF_TYPE(typeID)) {
+            curr_typeID = c->get_typeID();
+        }
+
         Class_ ret = nullptr;
-        while (!typeID->equal_string("_no_class", 9)) {
+        while (!curr_typeID->equal_string("_no_class", 9)) {
             if (semant_debug) {
                 printf("check_method %s from class %s\n", \
-                    methodID->get_string(), typeID->get_string());
+                    methodID->get_string(), curr_typeID->get_string());
             }
-            if (this->method_table[typeID].count(methodID)) {
-                ret = this->class_map[typeID];
+            if (this->method_table[curr_typeID].count(methodID)) {
+                ret = this->class_map[curr_typeID];
                 if (semant_debug) {
-                    printf("found in %s\n", typeID->get_string());
+                    printf("found in %s\n", curr_typeID->get_string());
                 }
                 break;
             } else {
-                typeID = this->parent_map[typeID];
+                curr_typeID = this->parent_map[curr_typeID];
             }
         }
         return ret;
@@ -1079,6 +1083,14 @@ public:
 
     // Given a class and a methodID, return the Method defined in the class named the methodID
     Feature find_method(Symbol typeID, Symbol methodID) {
+        if (semant_debug) {
+            if (is_SELF_TYPE(typeID)) {
+                printf("Class cannot be SELF_TYPE for this method.\n");
+            }
+            if (!typeID) {
+                printf("Class cannot be null for this method.\n");
+            }
+        }
         Features features = class_map[typeID]->get_features();
         for (int i = features->first(); features->more(i); i = features->next(i)) {
             Feature curr_feature = features->nth(i);
@@ -1177,6 +1189,11 @@ public:
         if (semant_debug) {
             printf("check conform: %s, %s\n", typeID1->get_string(), typeID2->get_string());
         }
+        if (is_no_type(typeID1)) {
+            // no type comes from no init, so the check will be good
+            return true;
+        }
+
         bool is_conform = false;
         if (is_SELF_TYPE(typeID1)) {
             if (is_SELF_TYPE(typeID2)) {
@@ -1214,10 +1231,6 @@ public:
 
     // return true if typeID1 conform to (<=) typeID2
     bool conform(Symbol typeID1, Symbol typeID2) {
-        if (is_no_type(typeID1)) {
-            // no type comes from no init, so the check will be good
-            return true;
-        }
         Symbol curr = typeID1;
         while (!curr->equal_string("_no_class", 9)) {
             if (equal(curr, typeID2)) {
