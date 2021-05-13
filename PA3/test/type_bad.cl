@@ -50,13 +50,13 @@ Class TODO {
 };
 
 Class A {
-    method_A() : Int {
+    method_A(y : Bool, z : Int) : Int {
         0
     };
 };
 
 Class A1 inherits A {
-    method_A(x : Int) : Int {
+    method_A(x : Int, y : Bool) : Int {
         x
     };
     method_A() : Int {

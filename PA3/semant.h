@@ -307,16 +307,51 @@ public:
                 if (semant_debug) {
                     printf("checking method: %s\n", curr_feature->get_methodID()->get_string());
                 }
+                /* ERROR 3.5 AND 3.6: Redefinitions of Methods */
+                if (check_method(c->get_typeID(), curr_feature->get_methodID()) != nullptr) {
+                    Class_ located_class = check_method(c->get_typeID(), curr_feature->get_methodID());
+                    Feature overridden_method = find_method(located_class->get_typeID(), curr_feature->get_methodID());
+                    if (overridden_method->get_typeID() != curr_feature->get_typeID()) {
+                        semant_error(c) << "In redefined " << curr_feature->get_methodID() << ", return type " << curr_feature->get_typeID() <<
+                            " is different from original return type " << overridden_method->get_typeID() << ".\n";
+                        ++semant_errors;
+                    }
+                    else {
+                        // Counting number of elements in each set of formals (there must be a better way)
+                        int curr_counter = 0;
+                        int prev_counter = 0;
+                        for (int j = curr_feature->get_formals()->first(); curr_feature->get_formals()->more(j); j = curr_feature->get_formals()->next(j)) {
+                            curr_counter++;
+                        }
+                        for (int j = overridden_method->get_formals()->first(); overridden_method->get_formals()->more(j); j = overridden_method->get_formals()->next(j)) {
+                            prev_counter++;
+                        }
+                        if (curr_counter != prev_counter) {
+                            semant_error(c) << "Incompatible number of formal parameters in redefined method " << curr_feature->get_methodID() << "\n";
+                            ++semant_errors;
+                        }
+                        else {
+                            for (int j = curr_feature->get_formals()->first(); curr_feature->get_formals()->more(j); j = curr_feature->get_formals()->next(j)) {
+                                Formal curr_formal = curr_feature->get_formals()->nth(j);
+                                Formal prev_formal = overridden_method->get_formals()->nth(j);
+                                if (equal(curr_formal->get_typeID(), prev_formal->get_typeID())) {
+                                    semant_error(c) << "In redefined " << curr_feature->get_methodID() << ", parameter type " << curr_feature->get_typeID() <<
+                                        " is different from original type " << overridden_method->get_typeID() << ".\n";
+                                    ++semant_errors;
+                                }
+                            }
+                        }
+                    }
+                }
                 /* ERROR 4: Duplicate Definitions of Methods in a Class */
                 // if the method table of this class contains the methodID
-                if (curr_method_map.count(curr_feature->get_methodID())) {
+                else if (curr_method_map.count(curr_feature->get_methodID())) {
                     semant_error(c) << "Method " << curr_feature->get_methodID() << " is multiply defined.\n";
                     ++semant_errors;
-                } else {
+                }
+                else {
                     curr_method_map[curr_feature->get_methodID()] = curr_feature;
                 }
-                /* ERROR 5: Redefinition of Method has different Formals */
-                // TODO
             }
         }
         // the attributes and methods for current class
@@ -1144,6 +1179,20 @@ public:
             }
         }
         return ret;
+    }
+
+    // Given a class and a methodID, return the Method defined in the class named the methodID
+    Feature find_method(Symbol typeID, Symbol methodID) {
+        Features features = class_map[typeID]->get_features();
+        for (int i = features->first(); features->more(i); i = features->next(i)) {
+            Feature curr_feature = features->nth(i);
+            if (curr_feature->instanceof("method_class")) {
+                if (curr_feature->get_methodID() == methodID) {
+                    return curr_feature;
+                }
+            }
+        }
+        return nullptr; // Should never get here (bottom)
     }
 
     // print all methods in method table for debug
