@@ -24,7 +24,7 @@ Class C inherits B {
 	x : SELF_TYPE <- 2;
 	z : String <- m2(1);
 	m2(x : SELF_TYPE) : SELF_TYPE {
-		1
+		x@SELF_TYPE.m()
 	};
 };
 
