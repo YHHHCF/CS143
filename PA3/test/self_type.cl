@@ -7,7 +7,7 @@ Class Main {
 
 Class A {
 	a : SELF_TYPE;
-	m() : SELF_TYPE {
+	m() : Int {
 		a
 	};
 };
@@ -15,8 +15,8 @@ Class A {
 Class B inherits A {
 	b : B;
 	c : C;
-	m() : SELF_TYPE {
-		c <- a
+	m() : Int {
+		c1 <- a
 	};
 };
 
