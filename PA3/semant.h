@@ -299,7 +299,6 @@ public:
                         // Other normal cases (typeID can be SELF_TYPE)
                         curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(curr_feature->get_typeID()));
                     }
-                    curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(curr_feature->get_typeID()));
                     curr_attr_map[curr_feature->get_objectID()] = curr_feature->get_typeID();
                 }
             }
@@ -361,7 +360,7 @@ public:
                 Symbol expected_typeID = curr_feature->get_typeID();
                 Symbol evaluated_typeID = check_expression(c, curr_feature->get_expression());
 
-                if (!this->class_map.count(expected_typeID)) {
+                if (!has_typeID(expected_typeID)) {
                     semant_error(c) << "Undefined return type " << expected_typeID << \
                         " in method " << curr_feature->get_methodID() << ".\n";
                     ++semant_errors;
@@ -399,7 +398,7 @@ public:
                     printf("expected typeID: %s; evaluated typeID: %s\n", \
                         expected_typeID->get_string(), evaluated_typeID->get_string());
                 }
-                if (!this->class_map.count(expected_typeID) && !is_SELF_TYPE(expected_typeID)) {
+                if (!has_typeID(expected_typeID)) {
                     // If expected_typeID is not defined, report error and use Object as type
                     semant_error(c) << "Class " << expected_typeID << " of attribute " << \
                     curr_feature->get_objectID() << " is undefined.\n";
@@ -440,7 +439,8 @@ public:
             curr_scope_vars->addid(expr->get_objectID(), new Symbol(expr->get_typeID()));
 
             // check init_expr conforms to T_declared let with init
-            if (!conform(init_expr_typeID, expr->get_typeID())) {
+            // both can be SELF_TYPE
+            if (!conform_full(c, init_expr_typeID, expr->get_typeID())) {
                 semant_error(c) << "Inferred type " << init_expr_typeID << \
                 " of initialization of " << expr->get_objectID() << \
                 " does not conform to identifier's declared type " << \
@@ -779,7 +779,7 @@ public:
             if (semant_debug) {
                 printf("check_expression for new__class\n");
             }
-            if (!this->class_map.count(expr->get_typeID())) {
+            if (!this->class_map.count(expr->get_typeID()) && !is_SELF_TYPE(expr->get_typeID())) {
                 semant_error(c) << "'new' used with undefined class " << expr->get_typeID() << "\n";
                 ++semant_errors;
                 if (semant_debug) {
@@ -792,6 +792,7 @@ public:
                 printf("new__class : %s\n", expr->get_typeID()->get_string());
                 // printf("Debug new class: %ld\n", this->class_map.count(expr->get_typeID()));
             }
+            // Can be SELF_TYPE
             expr->set_type(idtable.add_string(expr->get_typeID()->get_string()));
             return expr->get_typeID();
         }
@@ -1064,6 +1065,12 @@ public:
         printf("=========Print symbol_table End==========\n");
     }
 
+    // Consider SELF_TYPE
+    Symbol least_common_ancestor_full(Symbol typeID1, Symbol typeID2) {
+        // TODO: implement this
+        return nullptr;
+    }
+
     // return the least common ancestor for 2 typeIDs
     Symbol least_common_ancestor(Symbol typeID1, Symbol typeID2) {
         // return directly if one typeID is another's ancester
@@ -1117,10 +1124,6 @@ public:
         return curr; // least common ancestor
     }
 
-    Symbol least_common_ancestor_SELF_TYPE(Symbol typeID1, Symbol typeID2) {
-        return nullptr; // TODO
-    }
-
     // consider SELF_TYPE and normal type
     bool conform_full(Class_ c, Symbol typeID1, Symbol typeID2) {
         if (semant_debug) {
@@ -1141,6 +1144,24 @@ public:
             }
         }
         return is_conform;
+    }
+
+    Class_ get_class_from_typeID(Class_ c, Symbol typeID) {
+        if (is_SELF_TYPE(typeID)) {
+            return c;
+        }
+        if (!this->class_map.count(typeID)) {
+            return nullptr;
+        } else {
+            return this->class_map[typeID];
+        }
+    }
+
+    bool has_typeID(Symbol typeID) {
+        if (is_SELF_TYPE(typeID)) {
+            return true;
+        }
+        return (this->class_map.count(typeID) > 0);
     }
 
     // return true if typeID1 conform to (<=) typeID2
