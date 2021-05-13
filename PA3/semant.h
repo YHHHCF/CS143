@@ -522,7 +522,7 @@ public:
                         ++semant_errors;
                     }
                     encountered_T_declare.insert(curr_case->get_typeID());
-                    
+
                     curr_scope_vars->enterscope();
                     // Inside case variable scope
                     curr_scope_vars->addid(curr_case->get_objectID(), new Symbol(curr_case->get_typeID()));
@@ -535,14 +535,14 @@ public:
 
                     // Update T_ret using the current case's Ti evaluated from ei
                     if (T_ret) {
-                        T_ret = least_common_ancestor(T_ret, Ti);
+                        T_ret = least_common_ancestor_full(c, T_ret, Ti);
                     } else {
                         T_ret = Ti;
                     }
 
                     curr_scope_vars->exitscope();
                 }
-                
+
                 if (semant_debug) {
                     printf("typcase_class : %s\n", T_ret->get_string());
                 }
@@ -760,7 +760,7 @@ public:
             }
             Symbol type_then = check_expression(c, expr->get_then_expression());
             Symbol type_else = check_expression(c, expr->get_else_expression());
-            Symbol type_ret = least_common_ancestor(type_then, type_else);
+            Symbol type_ret = least_common_ancestor_full(c, type_then, type_else);
             if (semant_debug) {
                 printf("cond_class : %s\n", type_ret->get_string());
             }
@@ -1126,9 +1126,33 @@ public:
     }
 
     // Consider SELF_TYPE
-    Symbol least_common_ancestor_full(Symbol typeID1, Symbol typeID2) {
-        // TODO: implement this
-        return nullptr;
+    Symbol least_common_ancestor_full(Class_ c, Symbol typeID1, Symbol typeID2) {
+        if (!typeID1 || !typeID2) {
+            if (semant_debug) {
+                printf("Null pointer in least_common_ancestor_full.\n");
+            }
+        }
+
+        if (is_no_type(typeID1) || is_no_type(typeID2)) {
+            // this should not be happenging, just for debug
+            if (semant_debug) {
+                printf("_no_type in least_common_ancestor_full.\n");
+            }
+        }
+
+        if (is_SELF_TYPE(typeID1)) {
+            if (is_SELF_TYPE(typeID2)) {
+                return typeID1;
+            } else {
+                return least_common_ancestor(c->get_typeID(), typeID2);
+            }
+        } else {
+            if (is_SELF_TYPE(typeID1)) {
+                return least_common_ancestor(typeID1, c->get_typeID());
+            } else {
+                return least_common_ancestor(typeID1, typeID2);
+            }
+        }
     }
 
     // return the least common ancestor for 2 typeIDs
@@ -1148,7 +1172,7 @@ public:
             }
             return typeID1;
         }
-        
+
         std::stack<Symbol> stack1, stack2;
         // go from typeID1 up to Object and put it to a stack1
         Symbol curr = typeID1;
