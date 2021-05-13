@@ -279,7 +279,7 @@ public:
                 }
                 /* ERROR 1: Duplicate Definitions of Attributes*/
                 if (curr_scope_vars->probe(curr_feature->get_objectID()) != NULL) {
-                    semant_error(c) << "Attribute " << curr_feature->get_objectID() << \
+                    semant_error(c->get_filename(), curr_feature) << "Attribute " << curr_feature->get_objectID() << \
                     " is multiply defined in class.\n";
                     ++semant_errors;
                 }
@@ -517,7 +517,7 @@ public:
 
                     // check no duplicate for declared types of each case
                     if (encountered_T_declare.count(curr_case->get_typeID()) != 0) {
-                        semant_error(c) << "Duplicate branch" << \
+                        semant_error(c) << "Duplicate branch " << \
                         curr_case->get_typeID() << " in case statement.\n";
                         ++semant_errors;
                     }
@@ -741,7 +741,6 @@ public:
                 " of assigned expression does not conform to declared type " \
                 << type_expected << " of identifier " << attr_objectID << ".\n";
                 ++semant_errors;
-                return type_expected;
             }
             
             if (semant_debug) {
@@ -1089,7 +1088,7 @@ public:
                 }
             }
         }
-        return nullptr; // Should never get here (bottom)
+        return nullptr; // Should never get here
     }
 
     // print all methods in method table for debug
@@ -1285,6 +1284,8 @@ public:
         printf("=========Print class_map End==========\n");
         return;
     }
+
+    // bottom
 
     int errors() { return semant_errors; }
     ostream& semant_error();

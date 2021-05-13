@@ -8,6 +8,7 @@ Class Main {
 (* Checks if the ground truth cascades typing errors *)
 Class A {
     x : Bool <- false;
+    x : Int;
 };
 
 Class B inherits A {

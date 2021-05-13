@@ -205,7 +205,7 @@ public:
    Features get_features() {
       return this->features;
    }
-
+    
    void dump(ostream& stream, int n);
 
 #ifdef Class__SHARED_EXTRAS
