@@ -57,7 +57,13 @@ Class A {
 
 Class A1 inherits A {
     method_A(x : Int) : Int {
+        x
+    };
+    method_A() : Int {
         1
+    };
+    method_A() : Bool {
+        2
     };
     method_A1() : Int {
         1
@@ -67,6 +73,11 @@ Class A1 inherits A {
 Class B {
     x : Int;
     y : Bool;
+
+    a1 : A1;
+    foo() : Int {
+        a1.method_A(1)
+    };
 
     (* Inferred return type Int of method sum does not conform to declared return type Bool. *)
     sum() : Bool {
