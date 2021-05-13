@@ -5,37 +5,28 @@ Class Main {
     };
 };
 
-Class A inherits SELF_TYPE {
-
+Class A {
+	a : SELF_TYPE;
+	m() : Int {
+		a
+	};
 };
 
-Class SELF_TYPE inherits A {
-
+Class B inherits A {
+	b : B;
+	c : C;
+	m() : Int {
+		c1 <- a
+	};
 };
 
-Class B inherits Int {
-
+Class C inherits B {
+	x : SELF_TYPE <- 2;
+	z : String <- m2(1);
+	m2(x : SELF_TYPE) : SELF_TYPE {
+		x@SELF_TYPE.m()
+	};
 };
 
-Class C inherits BA {
-
-};
-
-Class String {
-
-};
-Class IO {
-
-};
-Class Object {
-
-};
-Class Int {
-
-};
-Class Bool {
-
-};
-Class SELF_TYPE {
-
+Class D inherits C {
 };
