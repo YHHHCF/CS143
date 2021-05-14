@@ -403,18 +403,24 @@ public:
                         semant_error(c) << "'self' cannot be the name of a formal parameter.\n";
                         ++semant_errors;
                     }
+                    curr_scope_vars->addid(curr_formal->get_objectID(), new Symbol(curr_formal->get_typeID()));
                 }
                 // Handles Correctly Defined Formals
                 Symbol expected_typeID = curr_feature->get_typeID();
                 Symbol evaluated_typeID = check_expression(c, curr_feature->get_expression());
-
+                
                 if (!has_typeID(expected_typeID)) {
                     semant_error(c->get_filename(), curr_feature) << "Undefined return type " << expected_typeID << \
                         " in method " << curr_feature->get_methodID() << ".\n";
                     ++semant_errors;
                 }
+                if (!has_typeID(evaluated_typeID)) {
+                    semant_error(c->get_filename(), curr_feature) << "Undefined return type " << expected_typeID << \
+                        " in method " << curr_feature->get_methodID() << ".\n";
+                    ++semant_errors;
+                }
 
-                if (!conform_full(c, evaluated_typeID, expected_typeID)) {
+                else if (!conform_full(c, evaluated_typeID, expected_typeID)) {
                     semant_error(c->get_filename(), curr_feature) << "Inferred return type " << evaluated_typeID << \
                         " of method " << curr_feature->get_methodID() << \
                         " does not conform to declared return type " << expected_typeID << ".\n";
@@ -456,6 +462,7 @@ public:
                     semant_error(c->get_filename(), curr_feature) << "Class " << expected_typeID << " of attribute " << \
                     curr_feature->get_objectID() << " is undefined.\n";
                     ++semant_errors;
+                    // curr_scope_vars->addid(curr_feature->get_objectID(), expected_typeID);
                     curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(idtable.lookup_string("Object")));
                 } else {
                     if (!conform_full(c, evaluated_typeID, expected_typeID)) {
@@ -1002,7 +1009,7 @@ public:
             }
             Symbol type_e1 = check_expression(c, expr->get_expression1());
             Symbol type_e2 = check_expression(c, expr->get_expression2());
-            if (!isInt(type_e1) || !isInt(type_e2)) {
+            if (!equal(type_e1, type_e2)) {
                 semant_error(c->get_filename(), expr) << "non_Int arguments: " << type_e1 << \
                 " = " << type_e2 << "\n";
                 ++semant_errors;
@@ -1169,6 +1176,20 @@ public:
         printf("========Print symbol_table Start=========\n");
         curr_scope_vars->dump();
         printf("=========Print symbol_table End==========\n");
+    }
+
+    void print_attribute_table() {
+        printf("============ Print Attribute_table Start ===========\n");
+        for (auto class_entry : this->attribute_table) {
+            Symbol typeID = class_entry.first;
+            printf("Class %s has Attributes: ", typeID->get_string());
+            for (auto attr_entry : class_entry.second) {
+                Symbol attrID = attr_entry.first;
+                printf("%s ", attrID->get_string());
+            }
+            printf("\n");
+        }
+        printf("============ Print Attribute_table Start ===========\n");
     }
 
     // Consider SELF_TYPE

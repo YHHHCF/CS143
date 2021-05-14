@@ -5,6 +5,19 @@ Class Main {
     };
 };
 
+
+Class Test {
+    foo (self:Int1) : Int {
+        self
+    };
+};
+
+Class Test1 inherits Test {
+    foo (s:Int) : Int {
+        self
+    };
+};
+
 (* Checks if the ground truth cascades typing errors *)
 Class A {
     x : Bool <- false;
@@ -16,7 +29,8 @@ Class B inherits A {
     a : Int <- t.foo();
 };
 
-Class C {
+Class C inherits B {
+    axel : Int;
     x : Bool;
     foo() : Bool {
         x <- 2
