@@ -414,11 +414,6 @@ public:
                         " in method " << curr_feature->get_methodID() << ".\n";
                     ++semant_errors;
                 }
-                if (!has_typeID(evaluated_typeID)) {
-                    semant_error(c->get_filename(), curr_feature) << "Undefined return type " << expected_typeID << \
-                        " in method " << curr_feature->get_methodID() << ".\n";
-                    ++semant_errors;
-                }
 
                 else if (!conform_full(c, evaluated_typeID, expected_typeID)) {
                     semant_error(c->get_filename(), curr_feature) << "Inferred return type " << evaluated_typeID << \
@@ -476,7 +471,7 @@ public:
                     }
                 }
                 if (semant_debug) {
-                    print_symbol_table();
+                    // print_symbol_table();
                     printf("class %s : finish check expression for attribute\n", c->get_typeID()->get_string());
                 }
             }
@@ -1020,7 +1015,7 @@ public:
         }
         else if (expr->instanceof("object_class")) {
             if (semant_debug) {
-                printf("check_expression for object_class\n");
+                printf("check_expression for object_class: %s\n", expr->get_objectID()->get_string());
             }
             if (is_self(expr->get_objectID())) {
                 expr->set_type(idtable.add_string("SELF_TYPE"));
@@ -1035,6 +1030,7 @@ public:
                 expr->set_type(idtable.add_string("Object"));
                 return idtable.lookup_string("Object");
             }
+
             // It can be SELF_TYPE
             Symbol type;
             if (curr_scope_vars->lookup(expr->get_objectID())) {
@@ -1298,6 +1294,9 @@ public:
 
     bool has_typeID(Symbol typeID) {
         if (is_SELF_TYPE(typeID)) {
+            return true;
+        }
+        if (is_no_type(typeID)) {
             return true;
         }
         return (this->class_map.count(typeID) > 0);
