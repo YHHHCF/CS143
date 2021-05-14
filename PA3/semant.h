@@ -338,9 +338,10 @@ public:
                             for (int j = curr_feature->get_formals()->first(); curr_feature->get_formals()->more(j); j = curr_feature->get_formals()->next(j)) {
                                 Formal curr_formal = curr_feature->get_formals()->nth(j);
                                 Formal prev_formal = overridden_method->get_formals()->nth(j);
+                                printf("CURRENT TYPE: %s, PREVIOUS TYPE: %s\n", curr_formal->get_typeID()->get_string(), prev_formal->get_typeID()->get_string());
                                 if (equal(curr_formal->get_typeID(), prev_formal->get_typeID())) {
-                                    semant_error(c->get_filename(), curr_formal) << "In redefined " << curr_feature->get_methodID() << ", parameter type " << curr_feature->get_typeID() <<
-                                        " is different from original type " << overridden_method->get_typeID() << ".\n";
+                                    semant_error(c->get_filename(), curr_formal) << "In redefined " << curr_feature->get_methodID() << ", parameter type " << curr_formal->get_typeID() <<
+                                        " is different from original type " << prev_formal->get_typeID() << ".\n";
                                     ++semant_errors;
                                 }
                             }
@@ -405,7 +406,7 @@ public:
                     }
                     curr_scope_vars->addid(curr_formal->get_objectID(), new Symbol(curr_formal->get_typeID()));
                 }
-                // Handles Correctly Defined Formals
+                // Handles Correctly Defined Formals jumper
                 Symbol expected_typeID = curr_feature->get_typeID();
                 Symbol evaluated_typeID = check_expression(c, curr_feature->get_expression());
                 
@@ -420,6 +421,7 @@ public:
                     ++semant_errors;
                 }
 
+                // TODO -- needs review
                 else if (!conform_full(c, evaluated_typeID, expected_typeID)) {
                     semant_error(c->get_filename(), curr_feature) << "Inferred return type " << evaluated_typeID << \
                         " of method " << curr_feature->get_methodID() << \
