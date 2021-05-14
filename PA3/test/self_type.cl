@@ -22,11 +22,16 @@ Class B inherits A {
 
 Class C inherits B {
 	x : SELF_TYPE <- 2;
-	z : String <- m2(1);
-	m2(x : SELF_TYPE) : SELF_TYPE {
+	self : String <- m2(1);
+	self(x : SELF_TYPE) : SELF_TYPE {
 		x@SELF_TYPE.m()
 	};
 };
 
-Class D inherits C {
+Class D {
+	a : SELF_TYPE;
+
+	m(self : Int) : Int {
+		isvoid (self)
+	};
 };
