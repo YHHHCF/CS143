@@ -486,8 +486,8 @@ public:
             if (semant_debug) {
                 printf("check_expression for let_class\n");
             }
-            // Step 1: evaluate init expression outside let variable scope
-            Symbol init_expr_typeID = check_expression(c, expr->get_init_expression());
+            // Step 1: evaluate e1 outside let variable scope
+            Symbol e1_typeID = check_expression(c, expr->get_init_expression());
             Symbol T_ret = nullptr;
 
             // Step 2: evaluate body expression inside let variable scope
@@ -498,13 +498,18 @@ public:
                 semant_error(c) << "'self' cannot be bound in a 'let' expression.\n";
                 ++semant_errors;
             } else {
+                if (!has_typeID(expr->get_typeID())) {
+                    semant_error(c) << "Class " << expr->get_typeID() << \
+                    " of let-bound identifier " << expr->get_objectID() << " is undefined.\n";
+                    ++semant_errors;
+                }
                 curr_scope_vars->addid(expr->get_objectID(), new Symbol(expr->get_typeID()));
             }
 
             // check init_expr conforms to T_declared let with init
             // both can be SELF_TYPE
-            if (!conform_full(c, init_expr_typeID, expr->get_typeID())) {
-                semant_error(c->get_filename(), expr) << "Inferred type " << init_expr_typeID << \
+            if (!conform_full(c, e1_typeID, expr->get_typeID())) {
+                semant_error(c->get_filename(), expr) << "Inferred type " << e1_typeID << \
                 " of initialization of " << expr->get_objectID() << \
                 " does not conform to identifier's declared type " << \
                 expr->get_typeID() << ".\n";

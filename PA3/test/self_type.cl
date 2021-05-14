@@ -30,8 +30,13 @@ Class C inherits B {
 
 Class D {
 	a : SELF_TYPE;
+	o : Object;
 
 	m(self : Int) : Int {
-		isvoid (self)
+		{
+			1=2;
+			2="String";
+			a=o;
+		}
 	};
 };
