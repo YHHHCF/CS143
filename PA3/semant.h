@@ -211,6 +211,14 @@ public:
         }
     }
 
+    // Checks class main is defined
+    void check_main() {
+        if (!this->class_map.count(idtable.add_string("Main"))) {
+            semant_error() << "Class Main is not defined.\n";
+            ++semant_errors;
+        }
+    }
+
     // Checks that each variable is named properly and accessed in its own scope
     void check_naming_and_scoping() {
         naming_DFS(class_map[idtable.lookup_string("Object")]);
@@ -291,7 +299,7 @@ public:
                 }
                 /* ERROR 3: define a 'self' Attribute */
                 else if (is_self(curr_feature->get_objectID())) {
-                    semant_error(c) << "'self' cannot be the name of an attribute.\n";
+                    semant_error(c->get_filename(), curr_feature) << "'self' cannot be the name of an attribute.\n";
                     ++semant_errors;
                 }
                 /* Good case */
@@ -402,7 +410,7 @@ public:
                     // ERROR 8: 'self' cannot be the name of a formal parameter.
                     if (is_self(curr_formal->get_objectID())) {
                         // Do not add the formal to environment in this case
-                        semant_error(c) << "'self' cannot be the name of a formal parameter.\n";
+                        semant_error(c->get_filename(), curr_formal) << "'self' cannot be the name of a formal parameter.\n";
                         ++semant_errors;
                     }
                     curr_scope_vars->addid(curr_formal->get_objectID(), new Symbol(curr_formal->get_typeID()));
@@ -417,7 +425,6 @@ public:
                     ++semant_errors;
                 }
 
-                // TODO -- needs review
                 else if (!conform_full(c, evaluated_typeID, expected_typeID)) {
                     semant_error(c->get_filename(), curr_feature) << "Inferred return type " << evaluated_typeID << \
                         " of method " << curr_feature->get_methodID() << \
@@ -439,14 +446,13 @@ public:
                         c->get_typeID()->get_string(), curr_feature->get_objectID()->get_string());
                 }
 
-                // if this is self objectID then skip
-                if (is_self(curr_feature->get_objectID())) {
-                    continue;
-                }
-
                 // Need to add the attribute to the scope to evaluate its own expression, but replaced later for the correct type
                 curr_scope_vars->enterscope();
-                curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(curr_feature->get_typeID()));
+                // if this is self objectID then skip adding to symbol table
+                if (!is_self(curr_feature->get_objectID())) {
+                    curr_scope_vars->addid(curr_feature->get_objectID(), new Symbol(curr_feature->get_typeID()));
+                }
+
                 Symbol expected_typeID = curr_feature->get_typeID();
                 Symbol evaluated_typeID = check_expression(c, curr_feature->get_expression());
                 curr_scope_vars->exitscope();
@@ -495,11 +501,11 @@ public:
 
             // add [x/T_declared] to environment if x is not 'self'
             if (is_self(expr->get_objectID())) {
-                semant_error(c) << "'self' cannot be bound in a 'let' expression.\n";
+                semant_error(c->get_filename(), expr) << "'self' cannot be bound in a 'let' expression.\n";
                 ++semant_errors;
             } else {
                 if (!has_typeID(expr->get_typeID())) {
-                    semant_error(c) << "Class " << expr->get_typeID() << \
+                    semant_error(c->get_filename(), expr) << "Class " << expr->get_typeID() << \
                     " of let-bound identifier " << expr->get_objectID() << " is undefined.\n";
                     ++semant_errors;
                 }
@@ -559,7 +565,7 @@ public:
                     curr_scope_vars->enterscope();
                     // Inside case variable scope
                     if (is_self(curr_case->get_objectID())) {
-                        semant_error(c) << "'self' bound in 'case'.\n";
+                        semant_error(c->get_filename(), curr_case) << "'self' bound in 'case'.\n";
                         ++semant_errors;
                     } else {
                         curr_scope_vars->addid(curr_case->get_objectID(), new Symbol(curr_case->get_typeID()));
@@ -642,7 +648,7 @@ public:
 
                 if (!conform_full(c, Ti, Ti_declare)) {
                     // do not return in the for loop, want to show all this kind of parameter errors in a dispatch
-                    semant_error(c->get_filename(), expr) << "In call of method " << expr->get_methodID() << \
+                    semant_error(c->get_filename(), curr_argument) << "In call of method " << expr->get_methodID() << \
                     ", type " << Ti << " of parameter " << curr_formal->get_objectID() << \
                     " does not conform to declared type " << Ti_declare << ".\n";
                     ++semant_errors;
@@ -673,6 +679,14 @@ public:
             // check T defined
             if (!has_typeID(expr->get_typeID())) {
                 semant_error(c->get_filename(), expr) << "Static dispatch on undefined class " << expr->get_typeID() << ".\n";
+                ++semant_errors;
+                expr->set_type(idtable.add_string("Object"));
+                return idtable.lookup_string("Object");
+            }
+
+            // Static dispatch to SELF_TYPE.
+            if (is_SELF_TYPE(expr->get_typeID())) {
+                semant_error(c->get_filename(), expr) << "Static dispatch to SELF_TYPE.\n";
                 ++semant_errors;
                 expr->set_type(idtable.add_string("Object"));
                 return idtable.lookup_string("Object");
@@ -719,7 +733,7 @@ public:
                 // Ti_declare is checked not being SELF_TYPE in formal, only need to check Ti
                 if (!conform_full(c, Ti, Ti_declare)) {
                     // do not return in the for loop, want to show all this kind of parameter errors in a dispatch
-                    semant_error(c->get_filename(), expr) << "In call of method " << expr->get_methodID() << \
+                    semant_error(c->get_filename(), curr_argument) << "In call of method " << expr->get_methodID() << \
                     ", type " << Ti << " of parameter " << curr_formal->get_objectID() << \
                     " does not conform to declared type " << Ti_declare << ".\n";
                     ++semant_errors;
@@ -748,7 +762,7 @@ public:
             Symbol attr_objectID = expr->get_objectID();
 
             if (is_self(attr_objectID)) {
-                semant_error(c) << "Cannot assign to 'self'.\n";
+                semant_error(c->get_filename(), expr) << "Cannot assign to 'self'.\n";
                 ++semant_errors;
                 return type_expr;
             }

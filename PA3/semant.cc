@@ -92,11 +92,6 @@ ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) 
         this->add_class(classes->nth(i));
     }
 
-    if (!this->class_map.count(Main)) {
-        semant_error() << "Class Main is not defined.\n";
-        ++semant_errors;
-    }
-
     this->check_inheritance_map();
     if (semant_debug) {
         this->print_class_map();
@@ -273,6 +268,9 @@ void program_class::semant()
     if (semant_debug) {
         printf("=======Debugging information end==========\n");
     }
+
+    // check main is defined
+    classtable->check_main();
 
     /* some semantic analysis code may go here */
 
