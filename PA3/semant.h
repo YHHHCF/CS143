@@ -289,6 +289,11 @@ public:
                     " is an attribute of an inherited class.\n";
                     ++semant_errors;
                 }
+                /* ERROR 3: define a 'self' Attribute */
+                else if (is_self(curr_feature->get_objectID())) {
+                    semant_error(c) << "'self' cannot be the name of an attribute.\n";
+                    ++semant_errors;
+                }
                 /* Good case */
                 else {
                     Symbol attr_typeID = curr_feature->get_typeID();
@@ -306,7 +311,7 @@ public:
                 if (semant_debug) {
                     printf("checking method: %s\n", curr_feature->get_methodID()->get_string());
                 }
-                /* ERROR 3.5 AND 3.6: Redefinitions of Methods */
+                /* ERROR 4.5 AND 4.6: Redefinitions of Methods */
                 if (check_method(c, c->get_typeID(), curr_feature->get_methodID()) != nullptr) {
                     Class_ located_class = check_method(c, c->get_typeID(), curr_feature->get_methodID());
                     Feature overridden_method = find_method(located_class->get_typeID(), curr_feature->get_methodID());
@@ -342,7 +347,7 @@ public:
                         }
                     }
                 }
-                /* ERROR 4: Duplicate Definitions of Methods in a Class */
+                /* ERROR 5: Duplicate Definitions of Methods in a Class */
                 // if the method table of this class contains the methodID
                 else if (curr_method_map.count(curr_feature->get_methodID())) {
                     semant_error(c) << "Method " << curr_feature->get_methodID() << " is multiply defined.\n";
@@ -376,20 +381,28 @@ public:
                 // Check Formals
                 for (int j = formals->first(); formals->more(j); j = formals->next(j)) {
                     Formal curr_formal = formals->nth(j);
-                    // ERROR 5: Duplicate Definitions of Formals in a Method 
+                    // ERROR 6: Duplicate Definitions of Formals in a Method 
                     if (curr_scope_vars->probe(curr_formal->get_objectID()) != NULL) {
                         semant_error(c) << "Formal Parameter " << \
                         curr_formal->get_objectID() << " is multiply defined.\n";
                         ++semant_errors;
+                        curr_scope_vars->addid(curr_formal->get_objectID(), new Symbol(curr_formal->get_typeID()));
                     }
 
-                    // ERROR 6: formal cannot have SELF_TYPE
+                    // ERROR 7: formal cannot have SELF_TYPE
                     if (is_SELF_TYPE(curr_formal->get_typeID())) {
                         semant_error(c) << "Formal Parameter " << \
                         curr_formal->get_objectID() << " cannot have type SELF_TYPE.\n";
                         ++semant_errors;
+                        curr_scope_vars->addid(curr_formal->get_objectID(), new Symbol(curr_formal->get_typeID()));
                     }
-                    curr_scope_vars->addid(curr_formal->get_objectID(), new Symbol(curr_formal->get_typeID()));
+
+                    // ERROR 8: 'self' cannot be the name of a formal parameter.
+                    if (is_self(curr_formal->get_objectID())) {
+                        // Do not add the formal to environment in this case
+                        semant_error(c) << "'self' cannot be the name of a formal parameter.\n";
+                        ++semant_errors;
+                    }
                 }
                 // Handles Correctly Defined Methods
                 Symbol expected_typeID = curr_feature->get_typeID();
@@ -420,6 +433,11 @@ public:
                 if (semant_debug) {
                     printf("class %s : begin check expression for attribute %s\n", \
                         c->get_typeID()->get_string(), curr_feature->get_objectID()->get_string());
+                }
+
+                // if this is self objectID then skip
+                if (is_self(curr_feature->get_objectID())) {
+                    continue;
                 }
 
                 // Need to add the attribute to the scope to evaluate its own expression, but replaced later for the correct type
@@ -470,8 +488,13 @@ public:
             // Step 2: evaluate body expression inside let variable scope
             curr_scope_vars->enterscope();
 
-            // add [x/T_declared] to environment
-            curr_scope_vars->addid(expr->get_objectID(), new Symbol(expr->get_typeID()));
+            // add [x/T_declared] to environment if x is not 'self'
+            if (is_self(expr->get_objectID())) {
+                semant_error(c) << "'self' cannot be bound in a 'let' expression.\n";
+                ++semant_errors;
+            } else {
+                curr_scope_vars->addid(expr->get_objectID(), new Symbol(expr->get_typeID()));
+            }
 
             // check init_expr conforms to T_declared let with init
             // both can be SELF_TYPE
@@ -525,7 +548,12 @@ public:
 
                     curr_scope_vars->enterscope();
                     // Inside case variable scope
-                    curr_scope_vars->addid(curr_case->get_objectID(), new Symbol(curr_case->get_typeID()));
+                    if (is_self(curr_case->get_objectID())) {
+                        semant_error(c) << "'self' bound in 'case'.\n";
+                        ++semant_errors;
+                    } else {
+                        curr_scope_vars->addid(curr_case->get_objectID(), new Symbol(curr_case->get_typeID()));
+                    }
                     Ti = check_expression(c, curr_case->get_expression());
                     if (!has_typeID(Ti)) {
                         // This should not happen, just add for debugging
@@ -562,7 +590,8 @@ public:
             // dispatch: e0.f(e1, e2, ...., en) or self.f(e1, e2, ...., en)
             Symbol T0, Ti, Ti_declare;
             // Step 1: evaluate e0 and T0
-            if (is_self(expr->get_expression())) {
+            Expression e0 = expr->get_expression();
+            if (e0->instanceof("object_class") && is_self(e0->get_objectID())) {
                 // T0 is current class typeID
                 T0 = c->get_typeID();
                 if (semant_debug) {
@@ -623,12 +652,15 @@ public:
             }
 
             // Step 4: return the declared return type
-            Symbol type = feature->get_typeID();
-            if (semant_debug) {
-                printf("dispatch_class : %s\n", type->get_string());
+            Symbol typeID = feature->get_typeID();
+            if (is_SELF_TYPE(typeID)) {
+                typeID = T0;
             }
-            expr->set_type(idtable.add_string(type->get_string()));
-            return type;
+            if (semant_debug) {
+                printf("dispatch_class : %s\n", typeID->get_string());
+            }
+            expr->set_type(idtable.add_string(typeID->get_string()));
+            return typeID;
         }
         else if (expr->instanceof("static_dispatch_class")) {
             if (semant_debug) {
@@ -637,7 +669,8 @@ public:
             // static dispatch: e0@T.f(e1, e2, ...., en)
             Symbol T0, Ti, Ti_declare;
             // Step 1: evaluate e0 and T0
-            if (is_self(expr->get_expression())) {
+            Expression e0 = expr->get_expression();
+            if (e0->instanceof("object_class") && is_self(e0->get_objectID())) {
                 // it is legal to use self as e0
                 T0 = c->get_typeID();
             } else {
@@ -702,12 +735,15 @@ public:
             }
 
             // Step 4: return the declared return type
-            Symbol type = feature->get_typeID();
-            if (semant_debug) {
-                printf("static_dispatch_class : %s\n", type->get_string());
+            Symbol typeID = feature->get_typeID();
+            if (is_SELF_TYPE(typeID)) {
+                typeID = T0;
             }
-            expr->set_type(idtable.add_string(type->get_string()));
-            return type;
+            if (semant_debug) {
+                printf("static_dispatch_class : %s\n", typeID->get_string());
+            }
+            expr->set_type(idtable.add_string(typeID->get_string()));
+            return typeID;
         }
         else if (expr->instanceof("assign_class")) {
             if (semant_debug) {
@@ -718,6 +754,13 @@ public:
 
             // attr_objectID is the objectID of the attribute to be assigned
             Symbol attr_objectID = expr->get_objectID();
+
+            if (is_self(attr_objectID)) {
+                semant_error(c) << "Cannot assign to 'self'.\n";
+                ++semant_errors;
+                return type_expr;
+            }
+
             // if (attribute_table[c->get_typeID()].count(attr_objectID) == 0) {
             // if (!curr_scope_vars->lookup(attr_objectID)) { // tentatively replaced
             if (attribute_table[c->get_typeID()].count(attr_objectID) == 0 && !curr_scope_vars->lookup(attr_objectID)) {
@@ -989,6 +1032,9 @@ public:
         else if (expr->instanceof("object_class")) {
             if (semant_debug) {
                 printf("check_expression for object_class\n");
+            }
+            if (is_self(expr->get_objectID())) {
+                return idtable.lookup_string("SELF_TYPE");
             }
             // if (attribute_table[c->get_typeID()].count(expr->get_objectID()) == 0) {
             // if (!curr_scope_vars->lookup(expr->get_objectID())) { // tentatively replaced
@@ -1292,9 +1338,12 @@ public:
     }
 
     // return true current expression is "self"
-    bool is_self(Expression expr) {
-        return expr->instanceof("object_class") &&
-        expr->get_objectID()->equal_string("self", 4);
+    // bool is_self(Expression expr) {
+    //     return expr->instanceof("object_class") &&
+    //     expr->get_objectID()->equal_string("self", 4);
+    // }
+    bool is_self(Symbol objectID) {
+        return strcmp(objectID->get_string(), "self") == 0;
     }
 
     // Print the inheritance graph for debug
