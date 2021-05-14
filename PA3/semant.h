@@ -989,9 +989,29 @@ public:
             }
             Symbol type_e1 = check_expression(c, expr->get_expression1());
             Symbol type_e2 = check_expression(c, expr->get_expression2());
-            if (!equal(type_e1, type_e2)) {
-                semant_error(c->get_filename(), expr) << "non_Int arguments: " << type_e1 << \
-                " = " << type_e2 << "\n";
+
+            bool has_error = false;
+            if (isInt(type_e1) && !isInt(type_e2)) {
+                has_error = true;
+            }
+            if (!isInt(type_e1) && isInt(type_e2)) {
+                has_error = true;
+            }
+            if (isBool(type_e1) && !isBool(type_e2)) {
+                has_error = true;
+            }
+            if (!isBool(type_e1) && isBool(type_e2)) {
+                has_error = true;
+            }
+            if (isString(type_e1) && !isString(type_e2)) {
+                has_error = true;
+            }
+            if (!isString(type_e1) && isString(type_e2)) {
+                has_error = true;
+            }
+
+            if (has_error) {
+                semant_error(c->get_filename(), expr) << "Illegal comparison with a basic type.\n";
                 ++semant_errors;
             }
             if (semant_debug) {
