@@ -338,8 +338,9 @@ public:
                             for (int j = curr_feature->get_formals()->first(); curr_feature->get_formals()->more(j); j = curr_feature->get_formals()->next(j)) {
                                 Formal curr_formal = curr_feature->get_formals()->nth(j);
                                 Formal prev_formal = overridden_method->get_formals()->nth(j);
-                                printf("CURRENT TYPE: %s, PREVIOUS TYPE: %s\n", curr_formal->get_typeID()->get_string(), prev_formal->get_typeID()->get_string());
-                                if (equal(curr_formal->get_typeID(), prev_formal->get_typeID())) {
+                                //printf("CURRENT TYPE: '%s', PREVIOUS TYPE: '%s'\n", curr_formal->get_typeID()->get_string(), prev_formal->get_typeID()->get_string());
+                                if (!equal(curr_formal->get_typeID(), prev_formal->get_typeID())) {
+                                    //if (strcmp(curr_formal->get_typeID()->get_string(), prev_formal->get_typeID()->get_string()) == 0) {
                                     semant_error(c->get_filename(), curr_formal) << "In redefined " << curr_feature->get_methodID() << ", parameter type " << curr_formal->get_typeID() <<
                                         " is different from original type " << prev_formal->get_typeID() << ".\n";
                                     ++semant_errors;
