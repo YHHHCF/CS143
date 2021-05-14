@@ -1305,8 +1305,7 @@ public:
     }
 
     bool isInt(Symbol typeID) {
-        bool ret = strcmp(typeID->get_string(), "Int") == 0;
-        return ret;
+        return strcmp(typeID->get_string(), "Int") == 0;
     }
 
     bool isString(Symbol typeID) {
