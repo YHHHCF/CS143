@@ -391,20 +391,28 @@ public:
                 // Check Formals
                 for (int j = formals->first(); formals->more(j); j = formals->next(j)) {
                     Formal curr_formal = formals->nth(j);
+                    bool add_to_table = true;
                     // ERROR 6: Duplicate Definitions of Formals in a Method 
                     if (curr_scope_vars->probe(curr_formal->get_objectID()) != NULL) {
                         semant_error(c->get_filename(), curr_formal) << "Formal Parameter " << \
                         curr_formal->get_objectID() << " is multiply defined.\n";
                         ++semant_errors;
-                        curr_scope_vars->addid(curr_formal->get_objectID(), new Symbol(curr_formal->get_typeID()));
+                        add_to_table = false;
                     }
 
+                    // ERROR 6.5: Class of Formal is undefined
+                    if (!has_typeID(curr_feature->get_typeID())) {
+                        semant_error(c->get_filename(), curr_formal) << "Class " << curr_formal->get_typeID() << \
+                            " of formal parameter " << curr_formal->get_objectID() << " is undefined.\n";
+                        ++semant_errors;
+                        add_to_table = false;
+                    }
+                    
                     // ERROR 7: formal cannot have SELF_TYPE
                     if (is_SELF_TYPE(curr_formal->get_typeID())) {
                         semant_error(c->get_filename(), curr_formal) << "Formal Parameter " << \
                         curr_formal->get_objectID() << " cannot have type SELF_TYPE.\n";
                         ++semant_errors;
-                        curr_scope_vars->addid(curr_formal->get_objectID(), new Symbol(curr_formal->get_typeID()));
                     }
 
                     // ERROR 8: 'self' cannot be the name of a formal parameter.
@@ -412,8 +420,11 @@ public:
                         // Do not add the formal to environment in this case
                         semant_error(c->get_filename(), curr_formal) << "'self' cannot be the name of a formal parameter.\n";
                         ++semant_errors;
+                        add_to_table = false;
                     }
-                    curr_scope_vars->addid(curr_formal->get_objectID(), new Symbol(curr_formal->get_typeID()));
+                    if (add_to_table) {
+                        curr_scope_vars->addid(curr_formal->get_objectID(), new Symbol(curr_formal->get_typeID()));
+                    }
                 }
                 // Handles Correctly Defined Formals jumper
                 Symbol expected_typeID = curr_feature->get_typeID();
