@@ -91,6 +91,12 @@ ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) 
     for(int i = classes->first(); classes->more(i); i = classes->next(i)) {
         this->add_class(classes->nth(i));
     }
+
+    if (!this->class_map.count(Main)) {
+        semant_error() << "Class Main is not defined.\n";
+        ++semant_errors;
+    }
+
     this->check_inheritance_map();
     if (semant_debug) {
         this->print_class_map();

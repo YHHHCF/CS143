@@ -598,19 +598,7 @@ public:
             Symbol T0, Ti, Ti_declare;
             // Step 1: evaluate e0 and T0
             Expression e0 = expr->get_expression();
-            if (e0->instanceof("object_class") && is_self(e0->get_objectID())) {
-                // T0 is current class typeID
-                T0 = c->get_typeID();
-                if (semant_debug) {
-                    printf("Dispatch on self : %s\n", T0->get_string());
-                }
-            } else {
-                // evaluate e0 and find its typeID T0
-                T0 = check_expression(c, expr->get_expression());
-                if (semant_debug) {
-                    printf("Dispatch on an object : %s\n", T0->get_string());
-                }
-            }
+            T0 = check_expression(c, expr->get_expression());
 
             // check T0 defined
             if (!has_typeID(T0)) {
@@ -677,13 +665,7 @@ public:
             Symbol T0, Ti, Ti_declare;
             // Step 1: evaluate e0 and T0
             Expression e0 = expr->get_expression();
-            if (e0->instanceof("object_class") && is_self(e0->get_objectID())) {
-                // it is legal to use self as e0
-                T0 = c->get_typeID();
-            } else {
-                // evaluate e0 and find its typeID T0
-                T0 = check_expression(c, expr->get_expression());
-            }
+            T0 = check_expression(c, expr->get_expression());
 
             // check T defined
             if (!has_typeID(expr->get_typeID())) {
@@ -1041,6 +1023,7 @@ public:
                 printf("check_expression for object_class\n");
             }
             if (is_self(expr->get_objectID())) {
+                expr->set_type(idtable.add_string("SELF_TYPE"));
                 return idtable.lookup_string("SELF_TYPE");
             }
             // if (attribute_table[c->get_typeID()].count(expr->get_objectID()) == 0) {
