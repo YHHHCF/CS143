@@ -338,7 +338,11 @@ public:
                             for (int j = curr_feature->get_formals()->first(); curr_feature->get_formals()->more(j); j = curr_feature->get_formals()->next(j)) {
                                 Formal curr_formal = curr_feature->get_formals()->nth(j);
                                 Formal prev_formal = overridden_method->get_formals()->nth(j);
-                                printf("CURRENT TYPE: %s, PREVIOUS TYPE: %s\n", curr_formal->get_typeID()->get_string(), prev_formal->get_typeID()->get_string());
+                                if (semant_debug) {
+                                    printf("CURRENT TYPE: %s, PREVIOUS TYPE: %s\n", curr_formal->get_typeID()->get_string(), \
+                                    prev_formal->get_typeID()->get_string());
+                                }
+                                
                                 if (equal(curr_formal->get_typeID(), prev_formal->get_typeID())) {
                                     semant_error(c->get_filename(), curr_formal) << "In redefined " << curr_feature->get_methodID() << ", parameter type " << curr_formal->get_typeID() <<
                                         " is different from original type " << prev_formal->get_typeID() << ".\n";
@@ -1175,6 +1179,10 @@ public:
 
     // Consider SELF_TYPE
     Symbol least_common_ancestor_full(Class_ c, Symbol typeID1, Symbol typeID2) {
+        if (semant_debug) {
+            printf("least_common_ancestor: %s, %s\n", typeID1->get_string(), typeID2->get_string());
+        }
+
         if (!typeID1 || !typeID2) {
             if (semant_debug) {
                 printf("Null pointer in least_common_ancestor_full.\n");
@@ -1195,7 +1203,7 @@ public:
                 return least_common_ancestor(c->get_typeID(), typeID2);
             }
         } else {
-            if (is_SELF_TYPE(typeID1)) {
+            if (is_SELF_TYPE(typeID2)) {
                 return least_common_ancestor(typeID1, c->get_typeID());
             } else {
                 return least_common_ancestor(typeID1, typeID2);
