@@ -205,7 +205,7 @@ public:
    Features get_features() {
       return this->features;
    }
-
+    
    void dump(ostream& stream, int n);
 
 #ifdef Class__SHARED_EXTRAS
@@ -376,7 +376,7 @@ public:
 class assign_class : public Expression_class {
 protected:
    char* type = "assign_class";
-   Symbol name; // typeID
+   Symbol name; // objectID
    Expression expr; // expression
 public:
    assign_class(Symbol a1, Expression a2) {
@@ -386,7 +386,7 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
-   Symbol get_typeID() {
+   Symbol get_objectID() {
       return name;
    }
 

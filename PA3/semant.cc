@@ -91,6 +91,7 @@ ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) 
     for(int i = classes->first(); classes->more(i); i = classes->next(i)) {
         this->add_class(classes->nth(i));
     }
+
     this->check_inheritance_map();
     if (semant_debug) {
         this->print_class_map();
@@ -267,6 +268,9 @@ void program_class::semant()
     if (semant_debug) {
         printf("=======Debugging information end==========\n");
     }
+
+    // check main is defined
+    classtable->check_main();
 
     /* some semantic analysis code may go here */
 
