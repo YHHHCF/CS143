@@ -629,6 +629,11 @@ CgenClassTable::CgenClassTable(Classes classes, ostream& s) : nds(NULL) , str(s)
     install_classes(classes);
     build_inheritance_tree();
 
+    if (cgen_debug) {
+        printCgenClassTable();
+        printInheritanceGraph();
+    }
+
     code();
     exitscope();
 }
@@ -733,7 +738,7 @@ void CgenClassTable::install_basic_classes()
     install_class(
         new CgenNode(
         class_(Str, 
-            Object,
+                Object,
                 append_Features(
                 append_Features(
                 append_Features(
@@ -745,9 +750,9 @@ void CgenClassTable::install_basic_classes()
                     single_Formals(formal(arg, Str)),
                     Str, 
                     no_expr()))),
-            single_Features(method(substr, 
-                    append_Formals(single_Formals(formal(arg, Int)), 
-                            single_Formals(formal(arg2, Int))),
+                single_Features(method(substr, 
+                        append_Formals(single_Formals(formal(arg, Int)), 
+                                single_Formals(formal(arg2, Int))),
                     Str, 
                     no_expr()))),
             filename),
@@ -762,12 +767,11 @@ void CgenClassTable::install_basic_classes()
 //
 void CgenClassTable::install_class(CgenNodeP nd)
 {
-    Symbol name = nd->get_name();
+    Symbol name = nd->get_typeID();
 
-    if (probe(name))
-        {
+    if (probe(name)) {
         return;
-        }
+    }
 
     // The class name is legal, so add it to the list of classes
     // and the symbol table.
@@ -798,7 +802,7 @@ void CgenClassTable::build_inheritance_tree()
 //
 void CgenClassTable::set_relations(CgenNodeP nd)
 {
-    CgenNode *parent_node = probe(nd->get_parent());
+    CgenNode *parent_node = probe(nd->get_parent_typeID());
     nd->set_parentnd(parent_node);
     parent_node->add_child(nd);
 }
@@ -844,10 +848,30 @@ void CgenClassTable::code()
 
 }
 
-
 CgenNodeP CgenClassTable::root()
 {
     return probe(Object);
+}
+
+void CgenClassTable::printCgenClassTable() {
+    printf("========Print CgenClassTable Start=========\n");
+    this->dump();
+    printf("=========Print CgenClassTable End==========\n");
+}
+
+void CgenClassTable::printInheritanceGraph() {
+    printf("========Print InheritanceGraph Start=========\n");
+    for(List<CgenNode> *l = nds; l; l = l->tl()) {
+        Symbol curr_class = l->hd()->get_typeID();
+        printf("%s : ", curr_class->get_string());
+
+        List<CgenNode> *children = l->hd()->get_children();
+        for (List<CgenNode> *child = children; child; child = child->tl()) {
+            printf("%s ", child->hd()->get_typeID()->get_string());
+        }
+        printf("\n");
+    }
+    printf("=========Print InheritanceGraph End==========\n");
 }
 
 

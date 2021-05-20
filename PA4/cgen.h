@@ -43,6 +43,8 @@ public:
     CgenClassTable(Classes, ostream& str);
     void code();
     CgenNodeP root();
+    void printCgenClassTable();
+    void printInheritanceGraph();
 };
 
 
