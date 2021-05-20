@@ -1,0 +1,1 @@
+./lexer example.cl | ./parser | ./semant | /usr/class/cs143/bin/cgen
