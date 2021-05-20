@@ -14,7 +14,7 @@ extern int yylineno;
 inline Boolean copy_Boolean(Boolean b) {return b; }
 inline void assert_Boolean(Boolean) {}
 inline void dump_Boolean(ostream& stream, int padding, Boolean b)
-	{ stream << pad(padding) << (int) b << "\n"; }
+    { stream << pad(padding) << (int) b << "\n"; }
 
 void dump_Symbol(ostream& stream, int padding, Symbol b);
 void assert_Symbol(Symbol b);
@@ -102,7 +102,7 @@ void dump_type(ostream&, int);               \
 Expression_class() { type = (Symbol) NULL; }
 
 #define Expression_SHARED_EXTRAS           \
-void code(ostream&); 			   \
+void code(ostream&);               \
 void dump_with_types(ostream&,int); 
 
 
