@@ -1,1 +1,1 @@
-./lexer example.cl | ./parser | ./semant | ./cgen -c
+./lexer $1 | ./parser | ./semant | ./cgen $2
