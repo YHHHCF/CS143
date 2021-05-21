@@ -29,34 +29,34 @@ void emit_string_constant(ostream& str, char* s)
 
     while (*s) {
         switch (*s) {
-        case '\n':
-            ascii_mode(str);
-            str << "\\n";
-            break;
-        case '\t':
-            ascii_mode(str);
-            str << "\\t";
-            break;
-        case '\\':
-            byte_mode(str);
-            str << "\t.byte\t" << (int) ((unsigned char) '\\') << endl;
-            break;
-        case '"' :
-            ascii_mode(str);
-            str << "\\\"";
-            break;
-        default:
-            if (*s >= ' ' && ((unsigned char) *s) < 128) 
-            {
+            case '\n':
                 ascii_mode(str);
-                str << *s;
-            }
-            else 
-            {
+                str << "\\n";
+                break;
+            case '\t':
+                ascii_mode(str);
+                str << "\\t";
+                break;
+            case '\\':
                 byte_mode(str);
-                str << "\t.byte\t" << (int) ((unsigned char) *s) << endl;
-            }
-            break;
+                str << "\t.byte\t" << (int) ((unsigned char) '\\') << endl;
+                break;
+            case '"' :
+                ascii_mode(str);
+                str << "\\\"";
+                break;
+            default:
+                if (*s >= ' ' && ((unsigned char) *s) < 128) 
+                {
+                    ascii_mode(str);
+                    str << *s;
+                }
+                else 
+                {
+                    byte_mode(str);
+                    str << "\t.byte\t" << (int) ((unsigned char) *s) << endl;
+                }
+                break;
         }
         s++;
     }
