@@ -441,18 +441,18 @@ heap_start:
     .globl  Bool_init
     .globl  Main.main
 Object_init:
-    addiu   $sp $sp -12
-    sw  $fp 12($sp)
-    sw  $s0 8($sp)
-    sw  $ra 4($sp)
-    addiu   $fp $sp 16
-    move    $s0 $a0
-    move    $a0 $s0
-    lw  $fp 12($sp)
-    lw  $s0 8($sp)
-    lw  $ra 4($sp)
-    addiu   $sp $sp 12
-    jr  $ra 
+    addiu   $sp $sp -12  // old -> new $sp : down by 3 words
+    sw  $fp 12($sp)      // $fp is stored in stack 3 words up $sp
+    sw  $s0 8($sp)       // store $s0 (saved temporary) in stack 2 words up $sp
+    sw  $ra 4($sp)       // store $ra (return address) in stack 1 word up $sp
+    addiu   $fp $sp 16   // update $fp to 1 word up old $sp
+    move    $s0 $a0      // save $a0 to $s0
+    move    $a0 $s0      // restore $a0 (MPIS manual P23 says $a0 is used for argument 1)
+    lw  $fp 12($sp)      // restore $fp
+    lw  $s0 8($sp)       // restore $s0
+    lw  $ra 4($sp)       // restore $ra
+    addiu   $sp $sp 12   // restore old $sp
+    jr  $ra              // return
 C_init:
     addiu   $sp $sp -12
     sw  $fp 12($sp)
@@ -460,13 +460,13 @@ C_init:
     sw  $ra 4($sp)
     addiu   $fp $sp 16
     move    $s0 $a0
-    jal Object_init
-    la  $a0 A_protObj
-    jal Object.copy
-    jal A_init
-    sw  $a0 12($s0)
-    la  $a0 str_const1
-    sw  $a0 16($s0)
+    jal Object_init      // call Object_init
+    la  $a0 A_protObj    // load address of A_protObj to $a0
+    jal Object.copy      // call Object.copy (Question: where is it defined?)
+    jal A_init           // call A_init (for attr a)
+    sw  $a0 12($s0)      // store $a0
+    la  $a0 str_const1   // load address of str_const1 to $a0 (for attr c)
+    sw  $a0 16($s0)      // store the address of str_const1 to memory
     move    $a0 $s0
     lw  $fp 12($sp)
     lw  $s0 8($sp)
@@ -480,12 +480,12 @@ D_init:
     sw  $ra 4($sp)
     addiu   $fp $sp 16
     move    $s0 $a0
-    jal C_init
-    la  $a0 B_protObj
+    jal C_init           // init parent instead of calling Object_init
+    la  $a0 B_protObj    // for attr b (guess: $a0 is passed as argument 1)
     jal Object.copy
     jal B_init
-    sw  $a0 20($s0)
-    move    $a0 $s0
+    sw  $a0 20($s0)      // (guess: $a0 is now the return value, which is a prt to b)
+    move    $a0 $s0      // (guess: now $a0 is the return value of D_init, which is a ptr to this object)
     lw  $fp 12($sp)
     lw  $s0 8($sp)
     lw  $ra 4($sp)
