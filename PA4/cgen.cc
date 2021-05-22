@@ -237,10 +237,13 @@ static void emit_gc_assign(ostream& s)
 { s << JAL << "_GenGC_Assign" << endl; }
 
 static void emit_disptable_ref(Symbol sym, ostream& s)
-{  s << sym << DISPTAB_SUFFIX; }
+{ s << sym << DISPTAB_SUFFIX; }
 
 static void emit_init_ref(Symbol sym, ostream& s)
 { s << sym << CLASSINIT_SUFFIX; }
+
+static void emit_attrtable_ref(Symbol sym, ostream& s)
+{ s << sym << ATTRTAB_SUFFIX; }
 
 static void emit_label_ref(int l, ostream &s)
 { s << "label" << l; }
@@ -528,6 +531,22 @@ void CgenClassTable::code_global_data()
     str << GLOBAL << BOOLTAG << endl;
     str << GLOBAL << STRINGTAG << endl;
 
+    // Keep track of _max_tag, or the number of classes, starting from 0
+    str << GLOBAL << MAXTAG << endl;
+
+    // Make the class_objTab, parentTab, and attrTabTab
+    str << GLOBAL << CLASSOBJTAB << endl;
+    str << GLOBAL << CLASSPARENTTAB << endl;
+    str << GLOBAL << CLASSATTRTABTAB << endl;
+
+    // Create a prototype object, init function, and attrTab for each class
+    for (List<CgenNode> *l = nds; l; l=l->tl()) {
+        Symbol curr_class = l->hd()->get_typeID();
+        str << GLOBAL; emit_protobj_ref(curr_class, str); str << endl;
+        str << GLOBAL; emit_init_ref(curr_class, str); str << endl;
+        str << GLOBAL; emit_attrtable_ref(curr_class, str); str << endl;
+    }
+    
     //
     // We also need to know the tag of the Int, String, and Bool classes
     // during code generation.

@@ -21,13 +21,17 @@
 // Global names
 #define CLASSNAMETAB         "class_nameTab"
 #define CLASSOBJTAB          "class_objTab"
+#define CLASSPARENTTAB       "class_parentTab"
+#define CLASSATTRTABTAB      "class_attrTabTab"
 #define INTTAG               "_int_tag"
 #define BOOLTAG              "_bool_tag"
 #define STRINGTAG            "_string_tag"
+#define MAXTAG               "_max_tag"
 #define HEAP_START           "heap_start"
 
 // Naming conventions
 #define DISPTAB_SUFFIX       "_dispTab"
+#define ATTRTAB_SUFFIX       "_attrTab"
 #define METHOD_SEP           "."
 #define CLASSINIT_SUFFIX     "_init"
 #define PROTOBJ_SUFFIX       "_protObj"
