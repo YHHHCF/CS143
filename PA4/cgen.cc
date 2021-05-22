@@ -406,11 +406,24 @@ void StringEntry::code_def(ostream& s, int stringclasstag)
 
 
     /***** Add dispatch information for class String ******/
-
-        s << endl;                                              // dispatch table
+        s << STRINGNAME << DISPTAB_SUFFIX << endl;              // dispatch table
         s << WORD;  lensym->code_ref(s);  s << endl;            // string length
     emit_string_constant(s,str);                                // ascii string
     s << ALIGN;                                                 // align to word
+}
+
+// return true for "_prim_slot", "SELF_TYPE", "_no_class"
+bool string_special(StringEntry *str) {
+    if (strcmp(str->get_string(), "_prim_slot") == 0) {
+        return true;
+    }
+    if (strcmp(str->get_string(), "SELF_TYPE") == 0) {
+        return true;
+    }
+    if (strcmp(str->get_string(), "_no_class") == 0) {
+        return true;
+    }
+    return false;
 }
 
 //
@@ -420,8 +433,12 @@ void StringEntry::code_def(ostream& s, int stringclasstag)
 //
 void StrTable::code_string_table(ostream& s, int stringclasstag)
 {
-    for (List<StringEntry> *l = tbl; l; l = l->tl())
-        l->hd()->code_def(s,stringclasstag);
+    for (List<StringEntry> *l = tbl; l; l = l->tl()) {
+        // Do not care about special strings for codegen
+        if (!string_special(l->hd())) {
+            l->hd()->code_def(s,stringclasstag);
+        }
+    }
 }
 
 //
@@ -448,8 +465,7 @@ void IntEntry::code_def(ostream &s, int intclasstag)
         << WORD; 
 
     /***** Add dispatch information for class Int ******/
-
-        s << endl;                                          // dispatch table
+        s << INTNAME << DISPTAB_SUFFIX << endl;             // dispatch table
         s << WORD << str << endl;                           // integer value
 }
 
@@ -492,8 +508,7 @@ void BoolConst::code_def(ostream& s, int boolclasstag)
         << WORD;
 
     /***** Add dispatch information for class Bool ******/
-
-        s << endl;                                            // dispatch table
+        s << BOOLNAME << DISPTAB_SUFFIX << endl;;                                            // dispatch table
         s << WORD << val << endl;                             // value (0 or 1)
 }
 
@@ -630,17 +645,41 @@ void CgenClassTable::code_constants()
     stringtable.add_string("");
     inttable.add_string("0");
 
+    if (cgen_debug) {
+        printf("===========print String Table Start===========\n");
+        stringtable.print();
+        printf("============print String Table End============\n");
+        printf("===========print Int Table Start===========\n");
+        inttable.print();
+        printf("============print Int Table End============\n");
+        // printf("===========print ID Table Start===========\n");
+        // idtable.print();
+        // printf("============print ID Table End============\n");
+    }
+
     stringtable.code_string_table(str,stringclasstag);
     inttable.code_string_table(str,intclasstag);
     code_bools(boolclasstag);
+
+    if (cgen_debug) {
+        printf("===========print String Table Start===========\n");
+        stringtable.print();
+        printf("============print String Table End============\n");
+        printf("===========print Int Table Start===========\n");
+        inttable.print();
+        printf("============print Int Table End============\n");
+        // printf("===========print ID Table Start===========\n");
+        // idtable.print();
+        // printf("============print ID Table End============\n");
+    }
 }
 
 
 CgenClassTable::CgenClassTable(Classes classes, ostream& s) : nds(NULL) , str(s)
 {
-    stringclasstag = 0 /* Change to your String class tag here */;
-    intclasstag =    0 /* Change to your Int class tag here */;
-    boolclasstag =   0 /* Change to your Bool class tag here */;
+    intclasstag =    2;
+    boolclasstag =   3;
+    stringclasstag = 4;
 
     enterscope();
     if (cgen_debug) cout << "Building CgenClassTable" << endl;
