@@ -583,15 +583,13 @@ void CgenClassTable::code_global_data()
 
 void CgenClassTable::code_name_and_obj_table()
 {
-    int numClasses = -1;  // Used to find number of classes in nds
     
     // Class Name Table
     str << CLASSNAMETAB << LABEL;
     for (List<CgenNode> *l = nds; l; l=l->tl()) {
         Symbol curr_class = l->hd()->get_typeID();
-        StringEntryP classNameSym = stringtable.add_string(curr_class->get_string());
+        StringEntryP classNameSym = stringtable.lookup_string(curr_class->get_string());
         str << WORD; classNameSym->code_ref(str); str << endl;
-        numClasses++;
     }
     
     // Class Object Table
@@ -604,7 +602,7 @@ void CgenClassTable::code_name_and_obj_table()
 
     // Keep track of _max_tag, or the number of classes, starting from 0
     str << MAXTAG << LABEL;
-    str << WORD << numClasses << endl;
+    str << WORD << this->_max_tag << endl;
 }
 
 
@@ -614,7 +612,6 @@ void CgenClassTable::code_name_and_obj_table()
 //
 //***************************************************
 
-// jump
 void CgenClassTable::code_attr_and_dispatch_table()
 {
     for (List<CgenNode> *l = nds; l; l=l->tl()) {
@@ -636,8 +633,8 @@ void CgenClassTable::code_attr_and_dispatch_table()
     }
 
     for (auto class_entry : this->attribute_table) {
-        Class_ typeID = probe(class_entry.first);
-        str << typeID->get_typeID()->get_string() << ATTRTAB_SUFFIX << LABEL;
+        Class_ curr_class_node = probe(class_entry.first);
+        str << curr_class_node->get_typeID()->get_string() << ATTRTAB_SUFFIX << LABEL;
         for (auto attr_entry : class_entry.second) {
             Symbol attrID = attr_entry.first;
             str << WORD << probe(class_entry.first)->get_tag() << endl;
@@ -645,11 +642,11 @@ void CgenClassTable::code_attr_and_dispatch_table()
     }
 
     for (auto class_entry : this->method_table) {
-        Class_ typeID = probe(class_entry.first);
-        str << typeID->get_typeID()->get_string() << DISPTAB_SUFFIX << LABEL;
+        Class_ curr_class_node = probe(class_entry.first);
+        str << curr_class_node->get_typeID()->get_string() << DISPTAB_SUFFIX << LABEL;
         for (auto method_entry : class_entry.second) {
             Symbol methodID = method_entry.first;
-            str << WORD << typeID->get_typeID()->get_string() << '.' << methodID->get_string() << endl;
+            str << WORD << curr_class_node->get_typeID()->get_string() << '.' << methodID->get_string() << endl;
         }
     }
 

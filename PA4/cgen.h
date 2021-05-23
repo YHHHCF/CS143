@@ -21,9 +21,6 @@ private:
     List<CgenNode> *nds;
     ostream& str;
 
-    int stringclasstag;
-    int intclasstag;
-    int boolclasstag;
     std::map<Symbol, std::map<Symbol, Feature> > attribute_table;
     std::map<Symbol, std::map<Symbol, Feature> > method_table;
     int _max_tag; // current max tag
