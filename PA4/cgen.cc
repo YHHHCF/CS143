@@ -561,7 +561,7 @@ void CgenClassTable::code_global_data()
         str << GLOBAL; emit_init_ref(curr_class, str); str << endl;
         str << GLOBAL; emit_attrtable_ref(curr_class, str); str << endl;
     }
-    
+
     //
     // We also need to know the tag of the Int, String, and Bool classes
     // during code generation.
@@ -614,8 +614,15 @@ void CgenClassTable::code_name_and_obj_table()
 
 void CgenClassTable::code_attr_and_dispatch_table()
 {
+    // Print class_attrTabTab
+    str << CLASSATTRTABTAB << LABEL;
+    for (List<CgenNode> *l = nds; l; l = l->tl()) {
+        str << WORD << l->hd()->get_typeID() << ATTRTAB_SUFFIX << endl;
+    }
+
+    // Update attribute_table and method_table
     for (List<CgenNode> *l = nds; l; l=l->tl()) {
-        Class_ curr_class = l->hd();
+        CgenNodeP curr_class = l->hd();
         Features features = curr_class->get_features();
         std::map<Symbol, Feature> curr_attr_map;
         std::map<Symbol, Feature> curr_method_map;
@@ -633,7 +640,7 @@ void CgenClassTable::code_attr_and_dispatch_table()
     }
 
     for (auto class_entry : this->attribute_table) {
-        Class_ curr_class_node = probe(class_entry.first);
+        CgenNodeP curr_class_node = probe(class_entry.first);
         str << curr_class_node->get_typeID()->get_string() << ATTRTAB_SUFFIX << LABEL;
         for (auto attr_entry : class_entry.second) {
             Symbol attrID = attr_entry.first;
@@ -642,7 +649,7 @@ void CgenClassTable::code_attr_and_dispatch_table()
     }
 
     for (auto class_entry : this->method_table) {
-        Class_ curr_class_node = probe(class_entry.first);
+        CgenNodeP curr_class_node = probe(class_entry.first);
         str << curr_class_node->get_typeID()->get_string() << DISPTAB_SUFFIX << LABEL;
         for (auto method_entry : class_entry.second) {
             Symbol methodID = method_entry.first;
@@ -971,58 +978,36 @@ void CgenClassTable::code_parentTab() {
     }
 }
 
-//
-// CgenClassTable::code_parentTab
-// generate code for class_attrTabTab
-//
-void CgenClassTable::code_attrTabTab() {
-    str << CLASSATTRTABTAB << LABEL;
-    for (List<CgenNode> *l = nds; l; l = l->tl()) {
-        str << WORD << l->hd()->get_typeID() << ATTRTAB_SUFFIX << endl;
-    }
-
-    // TODO: use the attribute table
-}
-
 void CgenClassTable::code()
 {
     if (cgen_debug) cout << "coding global data" << endl;
-    code_global_data();
+        code_global_data();
 
     if (cgen_debug) cout << "choosing gc" << endl;
-    code_select_gc();
+        code_select_gc();
 
     if (cgen_debug) cout << "coding constants" << endl;
-    code_constants();
-
-//                 Add your code to emit
-//                   - class_nameTab
-//
-    if (cgen_debug) cout << "coding parent table" << endl;
-    code_parentTab();
-
-    if (cgen_debug) cout << "coding attribute table" << endl;
-    code_attrTabTab();
-
-    if (cgen_debug) cout << "coding dispatch table" << endl;
-    // code_dispTab();
-
-    if (cgen_debug) cout << "coding prototype objects" << endl;
-    // code_protObj();
+        code_constants();
 
     if (cgen_debug) cout << "coding class name and object tables" << endl;
-    code_name_and_obj_table();
-    
+        code_name_and_obj_table();
+
+    if (cgen_debug) cout << "coding parent table" << endl;
+        code_parentTab();
+
+    if (cgen_debug) cout << "coding attirbute and dispatch tables" << endl;
+        code_attr_and_dispatch_table();
+
+    if (cgen_debug) cout << "coding prototype objects" << endl;
+        // code_protObj();
+
     if (cgen_debug) cout << "coding global text" << endl;
-    code_global_text();
+        code_global_text();
 
 //                 Add your code to emit
 //                   - object initializer
 //                   - the class methods
 //                   - etc...
-
-    if (cgen_debug) cout << "coding attirbute and method tables" << endl;
-    code_attr_and_dispatch_table();
     
 }
 

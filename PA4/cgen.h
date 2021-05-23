@@ -28,18 +28,16 @@ private:
 // The following methods emit code for
 // constants and global declarations.
     void code_global_data();
-    void code_name_and_obj_table();
     void code_global_text();
-    void code_attr_and_dispatch_table();
     void code_bools(int);
     void code_select_gc();
     void code_constants();
 
 // The following methods emit code for
 // _parentTab, _attrTabTab, _dispTab, _protObj
+    void code_name_and_obj_table();
+    void code_attr_and_dispatch_table();
     void code_parentTab();
-    void code_attrTabTab();
-    void code_dispTab();
     void code_protObj();
 
 // The following creates an inheritance graph from
