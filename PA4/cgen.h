@@ -4,6 +4,8 @@
 #include "cool-tree.h"
 #include "symtab.h"
 
+#include <map>
+
 enum Basicness {Basic, NotBasic};
 #define TRUE 1
 #define FALSE 0
@@ -21,11 +23,15 @@ private:
     int stringclasstag;
     int intclasstag;
     int boolclasstag;
+    std::map<Symbol, std::map<Symbol, Feature> > attribute_table;
+    std::map<Symbol, std::map<Symbol, Feature> > method_table;
 
 // The following methods emit code for
 // constants and global declarations.
     void code_global_data();
+    void code_name_and_obj_table();
     void code_global_text();
+    void code_attr_and_dispatch_table();
     void code_bools(int);
     void code_select_gc();
     void code_constants();

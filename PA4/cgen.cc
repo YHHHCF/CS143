@@ -574,15 +574,14 @@ void CgenClassTable::code_global_data()
         << WORD << stringclasstag << endl;    
 }
 
-
 //***************************************************
 //
-//  Emit code to start the .text segment and to
-//  declare the global names.
+//  Emit code for the Class Name Table, the Class
+//  Object Table, and the Max Tag
 //
 //***************************************************
 
-void CgenClassTable::code_global_text()
+void CgenClassTable::code_name_and_obj_table()
 {
     int numClasses = -1;  // Used to find number of classes in nds
     
@@ -594,7 +593,6 @@ void CgenClassTable::code_global_text()
         str << WORD; classNameSym->code_ref(str); str << endl;
         numClasses++;
     }
-    // jump for my coding preference
     
     // Class Object Table
     str << CLASSOBJTAB << LABEL;
@@ -604,11 +602,68 @@ void CgenClassTable::code_global_text()
         str << WORD << curr_class->get_string() << CLASSINIT_SUFFIX << endl;
     }
 
-    
     // Keep track of _max_tag, or the number of classes, starting from 0
     str << MAXTAG << LABEL;
     str << WORD << numClasses << endl;
-    
+}
+
+
+//***************************************************
+//
+//  Emit code for the Dispatch Tables
+//
+//***************************************************
+
+// jump
+void CgenClassTable::code_attr_and_dispatch_table()
+{
+    for (List<CgenNode> *l = nds; l; l=l->tl()) {
+        Class_ curr_class = l->hd();
+        Features features = curr_class->get_features();
+        std::map<Symbol, Feature> curr_attr_map;
+        std::map<Symbol, Feature> curr_method_map;
+        for (int i = features->first(); features->more(i); i = features->next(i)) {
+            Feature curr_feature = features->nth(i);
+            if (curr_feature->instanceof("attr_class")) {
+                curr_attr_map[curr_feature->get_objectID()] = curr_feature;
+            }
+            else if (curr_feature->instanceof("method_class")) {
+                curr_method_map[curr_feature->get_methodID()] = curr_feature;
+            }
+        }
+        attribute_table[curr_class->get_typeID()] = curr_attr_map;
+        method_table[curr_class->get_typeID()] = curr_method_map;
+    }
+
+    for (auto class_entry : this->attribute_table) {
+        Class_ typeID = probe(class_entry.first);
+        str << typeID->get_typeID()->get_string() << ATTRTAB_SUFFIX << LABEL;
+        for (auto attr_entry : class_entry.second) {
+            Symbol attrID = attr_entry.first;
+            str << WORD << typeID->get_typeID()->get_string() << endl;// can probably sub out with some emit function
+        }
+    }
+
+    for (auto class_entry : this->method_table) {
+        Class_ typeID = probe(class_entry.first);
+        str << typeID->get_typeID()->get_string() << DISPTAB_SUFFIX << LABEL;
+        for (auto method_entry : class_entry.second) {
+            Symbol methodID = method_entry.first;
+            str << WORD << typeID->get_typeID()->get_string() << '.' << methodID->get_string() << endl;// can probably sub out with some emit function
+        }
+    }
+
+}
+
+//***************************************************
+//
+//  Emit code to start the .text segment and to
+//  declare the global names.
+//
+//***************************************************
+
+void CgenClassTable::code_global_text()
+{
     // Heap
     str << GLOBAL << HEAP_START << endl
         << HEAP_START << LABEL 
@@ -922,6 +977,9 @@ void CgenClassTable::code()
 //                   - dispatch tables
 //
 
+    if (cgen_debug) cout << "coding class name and object tables" << endl;
+    code_name_and_obj_table();
+    
     if (cgen_debug) cout << "coding global text" << endl;
     code_global_text();
 
@@ -930,6 +988,9 @@ void CgenClassTable::code()
 //                   - the class methods
 //                   - etc...
 
+    if (cgen_debug) cout << "coding attirbute and method tables" << endl;
+    code_attr_and_dispatch_table();
+    
 }
 
 CgenNodeP CgenClassTable::root()
