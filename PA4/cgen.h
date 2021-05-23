@@ -18,9 +18,7 @@ class CgenClassTable : public SymbolTable<Symbol,CgenNode> {
 private:
     List<CgenNode> *nds;
     ostream& str;
-    int stringclasstag;
-    int intclasstag;
-    int boolclasstag;
+    int _max_tag; // current max tag
 
 // The following methods emit code for
 // constants and global declarations.
@@ -29,6 +27,13 @@ private:
     void code_bools(int);
     void code_select_gc();
     void code_constants();
+
+// The following methods emit code for
+// _parentTab, _attrTabTab, _dispTab, _protObj
+    void code_parentTab();
+    void code_attrTabTab();
+    void code_dispTab();
+    void code_protObj();
 
 // The following creates an inheritance graph from
 // a list of classes.  The graph is implemented as
@@ -53,6 +58,7 @@ private:
     CgenNodeP parentnd;         // Parent of class
     List<CgenNode> *children;   // Children of class
     Basicness basic_status;     // `Basic' if class is basic, `NotBasic' otherwise
+    int tag;                    // Tag of class
 
 public:
     CgenNode(Class_ c,
@@ -64,6 +70,8 @@ public:
     void set_parentnd(CgenNodeP p);
     CgenNodeP get_parentnd() { return parentnd; }
     int basic() { return (basic_status == Basic); }
+    void set_tag(int tag) { this->tag = tag; }
+    int get_tag() { return this->tag; }
 };
 
 class BoolConst 
