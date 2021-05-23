@@ -640,7 +640,7 @@ void CgenClassTable::code_attr_and_dispatch_table()
         str << typeID->get_typeID()->get_string() << ATTRTAB_SUFFIX << LABEL;
         for (auto attr_entry : class_entry.second) {
             Symbol attrID = attr_entry.first;
-            str << WORD << typeID->get_typeID()->get_string() << endl;// can probably sub out with some emit function
+            str << WORD << probe(class_entry.first)->get_tag() << endl;
         }
     }
 
@@ -649,7 +649,7 @@ void CgenClassTable::code_attr_and_dispatch_table()
         str << typeID->get_typeID()->get_string() << DISPTAB_SUFFIX << LABEL;
         for (auto method_entry : class_entry.second) {
             Symbol methodID = method_entry.first;
-            str << WORD << typeID->get_typeID()->get_string() << '.' << methodID->get_string() << endl;// can probably sub out with some emit function
+            str << WORD << typeID->get_typeID()->get_string() << '.' << methodID->get_string() << endl;
         }
     }
 
