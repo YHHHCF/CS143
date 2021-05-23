@@ -42,6 +42,7 @@
 
 
 #define EMPTYSLOT            0
+#define DEFAULT_BOOL         0
 #define LABEL                ":\n"
 
 #define STRINGNAME (char *) "String"
@@ -56,6 +57,7 @@
 #define TAG_OFFSET 0
 #define SIZE_OFFSET 1
 #define DISPTABLE_OFFSET 2
+#define GARBAGE_COLLECTOR_TAG -1
 
 #define STRING_SLOTS      1
 #define INT_SLOTS         1

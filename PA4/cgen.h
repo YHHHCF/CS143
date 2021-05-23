@@ -59,6 +59,9 @@ public:
     void print_CgenClassTable();
     void print_inheritance_graph();
     void print_attribute_table();
+    bool isInt(Symbol typeID);
+    bool isString(Symbol typeID);
+    bool isBool(Symbol typeID);
 };
 
 
