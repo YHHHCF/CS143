@@ -407,13 +407,13 @@ Main_protObj:
     .word   5
     .word   3
     .word   Main_dispTab
-    .word   -1
+    .word   -1                  // Garbage Collector Tag
 String_protObj:
-    .word   4
-    .word   5
-    .word   String_dispTab
-    .word   int_const0
-    .word   0
+    .word   4                   // Class Tag
+    .word   5                   // Object Size
+    .word   String_dispTab      // Dispatch Pointer
+    .word   int_const0          // Atribute 1
+    .word   0                   // Attribute 2
     .word   -1
 Bool_protObj:
     .word   3

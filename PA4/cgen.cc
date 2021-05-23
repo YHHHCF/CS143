@@ -608,7 +608,7 @@ void CgenClassTable::code_name_and_obj_table()
 
 //***************************************************
 //
-//  Emit code for the Dispatch Tables
+//  Emit code for the Attribute and Dispatch Tables
 //
 //***************************************************
 
@@ -635,6 +635,7 @@ void CgenClassTable::code_attr_and_dispatch_table()
             std::map<Symbol, Feature> curr_method_map;
 
             // Process features from Object to curr_node
+            // TODO: optimize this to process only one parent node
             std::stack<CgenNodeP> node_stack; // a stack to store nodes
             CgenNodeP curr_parent = curr_node;
 
@@ -699,7 +700,40 @@ void CgenClassTable::code_attr_and_dispatch_table()
     if (cgen_debug) {
         print_attribute_table();
     }
+}
 
+//***************************************************
+//
+//  Emit code for the Prototype Objects
+//
+//***************************************************
+
+void CgenClassTable::code_protObj()
+{
+    for (List<CgenNode> *l = nds; l; l=l->tl()) {
+        str << WORD << GARBAGE_COLLECTOR_TAG << endl;                                        // Garbage Collector Tag
+        CgenNodeP curr_node = l->hd();
+        str << curr_node->get_typeID()->get_string() << PROTOBJ_SUFFIX << LABEL;             // Prototype Object Label
+        str << WORD << probe(curr_node->get_typeID())->get_tag() << endl;                    // Class Tag
+        int object_size = attribute_table[curr_node->get_typeID()].size() + DEFAULT_OBJFIELDS;
+        str << WORD << object_size << endl;                                                  // Object Size
+        str << WORD << curr_node->get_typeID()->get_string() << DISPTAB_SUFFIX << endl;      // Dispatch Table
+        for (auto attribute_tab : attribute_table[curr_node->get_typeID()]) {                // Attributes
+            Feature curr_feature = attribute_tab.second;
+            if (isInt(curr_feature->get_typeID())) {
+                str << WORD; inttable.lookup_string("0")->code_ref(str); str << endl;
+            }
+            else if (isString(curr_feature->get_typeID())) {
+                str << WORD; stringtable.lookup_string("")->code_ref(str); str << endl;
+            }
+            else if (isBool(curr_feature->get_typeID())) {
+                str << WORD << DEFAULT_BOOL << endl;
+            }
+            else {
+                str << WORD << EMPTYSLOT << endl;
+            }
+        }
+    }
 }
 
 //***************************************************
@@ -1042,7 +1076,7 @@ void CgenClassTable::code()
         code_attr_and_dispatch_table();
 
     if (cgen_debug) cout << "coding prototype objects" << endl;
-        // code_protObj();
+        code_protObj();
 
     if (cgen_debug) cout << "coding global text" << endl;
         code_global_text();
@@ -1111,6 +1145,22 @@ CgenNode::CgenNode(Class_ nd, Basicness bstatus, CgenClassTableP ct) :
     stringtable.add_string(name->get_string()); // Add class name to string table
 }
 
+///////////////////////////////////////////////////////////////////////
+//
+// Helper Functions
+//
+///////////////////////////////////////////////////////////////////////
+bool CgenClassTable::isInt(Symbol typeID) {
+    return strcmp(typeID->get_string(), "Int") == 0;
+}
+
+bool CgenClassTable::isString(Symbol typeID) {
+    return strcmp(typeID->get_string(), "String") == 0;
+}
+
+bool CgenClassTable::isBool(Symbol typeID) {
+    return strcmp(typeID->get_string(), "Bool") == 0;
+}
 
 //******************************************************************
 //
