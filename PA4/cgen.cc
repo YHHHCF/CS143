@@ -696,16 +696,6 @@ void CgenClassTable::code_attr_and_dispatch_table()
         }
     }
 
-    // for (auto class_entry : this->method_table) {
-    //     CgenNodeP curr_node = probe(class_entry.first);
-    //     str << curr_node->get_typeID()->get_string() << DISPTAB_SUFFIX << LABEL;
-    //     for (auto method_entry : class_entry.second) {
-    //         Symbol methodID = method_entry.first;
-    //         Symbol implement_typeID = method_table[curr_node->get_typeID()][methodID]->get_implement_typeID();
-    //         str << WORD << implement_typeID->get_string() << '.' << methodID->get_string() << endl;
-    //     }
-    // }
-
     if (cgen_debug) {
         print_attribute_table();
     }
