@@ -545,7 +545,7 @@ void CgenClassTable::code_global_data()
     str << GLOBAL << INTTAG << endl;
     str << GLOBAL << BOOLTAG << endl;
     str << GLOBAL << STRINGTAG << endl;
-
+    
     // Keep track of _max_tag, or the number of classes, starting from 0
     str << GLOBAL << MAXTAG << endl;
 
@@ -584,6 +584,32 @@ void CgenClassTable::code_global_data()
 
 void CgenClassTable::code_global_text()
 {
+    int numClasses = -1;  // Used to find number of classes in nds
+    
+    // Class Name Table
+    str << CLASSNAMETAB << LABEL;
+    for (List<CgenNode> *l = nds; l; l=l->tl()) {
+        Symbol curr_class = l->hd()->get_typeID();
+        StringEntryP classNameSym = stringtable.add_string(curr_class->get_string());
+        str << WORD; classNameSym->code_ref(str); str << endl;
+        numClasses++;
+    }
+    // jump for my coding preference
+    
+    // Class Object Table
+    str << CLASSOBJTAB << LABEL;
+    for (List<CgenNode> *l = nds; l; l=l->tl()) {
+        Symbol curr_class = l->hd()->get_typeID();
+        str << WORD << curr_class->get_string() << PROTOBJ_SUFFIX << endl;
+        str << WORD << curr_class->get_string() << CLASSINIT_SUFFIX << endl;
+    }
+
+    
+    // Keep track of _max_tag, or the number of classes, starting from 0
+    str << MAXTAG << LABEL;
+    str << WORD << numClasses << endl;
+    
+    // Heap
     str << GLOBAL << HEAP_START << endl
         << HEAP_START << LABEL 
         << WORD << 0 << endl
