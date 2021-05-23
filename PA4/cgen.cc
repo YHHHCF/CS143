@@ -567,11 +567,11 @@ void CgenClassTable::code_global_data()
     // during code generation.
     //
     str << INTTAG << LABEL
-        << WORD << intclasstag << endl;
+        << WORD << probe(Int)->get_tag() << endl;
     str << BOOLTAG << LABEL 
-        << WORD << boolclasstag << endl;
+        << WORD << probe(Bool)->get_tag() << endl;
     str << STRINGTAG << LABEL 
-        << WORD << stringclasstag << endl;    
+        << WORD << probe(Str)->get_tag() << endl;    
 }
 
 //***************************************************
@@ -738,9 +738,9 @@ void CgenClassTable::code_constants()
         // printf("============print ID Table End============\n");
     }
 
-    stringtable.code_string_table(str,stringclasstag);
-    inttable.code_string_table(str,intclasstag);
-    code_bools(boolclasstag);
+    stringtable.code_string_table(str, probe(Str)->get_tag());
+    inttable.code_string_table(str, probe(Int)->get_tag());
+    code_bools(probe(Bool)->get_tag());
 
     if (cgen_debug) {
         printf("===========print String Table Start===========\n");
@@ -758,10 +758,6 @@ void CgenClassTable::code_constants()
 
 CgenClassTable::CgenClassTable(Classes classes, ostream& s) : nds(NULL) , str(s)
 {
-    intclasstag =    2;
-    boolclasstag =   3;
-    stringclasstag = 4;
-
     enterscope();
     if (cgen_debug) cout << "Building CgenClassTable" << endl;
     install_basic_classes();
@@ -801,6 +797,11 @@ void CgenClassTable::install_basic_classes()
     addid(prim_slot,
         new CgenNode(class_(prim_slot,No_class,nil_Features(),filename),
             Basic,this));
+    
+    probe(No_class)->set_tag(-3);
+    probe(SELF_TYPE)->set_tag(-2);
+    probe(prim_slot)->set_tag(-1);
+    this->_max_tag = -1;
 
 // 
 // The Object class has no parent class. Its methods are
@@ -912,6 +913,10 @@ void CgenClassTable::install_class(CgenNodeP nd)
         return;
     }
 
+    // Set the tag for this node (class)
+    this->_max_tag += 1;
+    nd->set_tag(this->_max_tag);
+
     // The class name is legal, so add it to the list of classes
     // and the symbol table.
     nds = new List<CgenNode>(nd,nds);
@@ -958,7 +963,29 @@ void CgenNode::set_parentnd(CgenNodeP p)
     parentnd = p;
 }
 
+//
+// CgenClassTable::code_parentTab
+// generate code for class_parentTab
+//
+void CgenClassTable::code_parentTab() {
+    str << CLASSPARENTTAB << LABEL;
+    for (List<CgenNode> *l = nds; l; l = l->tl()) {
+        str << WORD << l->hd()->get_parentnd()->get_tag() << endl;
+    }
+}
 
+//
+// CgenClassTable::code_parentTab
+// generate code for class_attrTabTab
+//
+void CgenClassTable::code_attrTabTab() {
+    str << CLASSATTRTABTAB << LABEL;
+    for (List<CgenNode> *l = nds; l; l = l->tl()) {
+        str << WORD << l->hd()->get_typeID() << ATTRTAB_SUFFIX << endl;
+    }
+
+    // TODO: use the attribute table
+}
 
 void CgenClassTable::code()
 {
@@ -972,10 +999,19 @@ void CgenClassTable::code()
     code_constants();
 
 //                 Add your code to emit
-//                   - prototype objects
 //                   - class_nameTab
-//                   - dispatch tables
 //
+    if (cgen_debug) cout << "coding parent table" << endl;
+    code_parentTab();
+
+    if (cgen_debug) cout << "coding attribute table" << endl;
+    code_attrTabTab();
+
+    if (cgen_debug) cout << "coding dispatch table" << endl;
+    // code_dispTab();
+
+    if (cgen_debug) cout << "coding prototype objects" << endl;
+    // code_protObj();
 
     if (cgen_debug) cout << "coding class name and object tables" << endl;
     code_name_and_obj_table();
@@ -1008,7 +1044,7 @@ void CgenClassTable::printInheritanceGraph() {
     printf("========Print InheritanceGraph Start=========\n");
     for(List<CgenNode> *l = nds; l; l = l->tl()) {
         Symbol curr_class = l->hd()->get_typeID();
-        printf("%s : ", curr_class->get_string());
+        printf("%s (%d) : ", curr_class->get_string(), l->hd()->get_tag());
 
         List<CgenNode> *children = l->hd()->get_children();
         for (List<CgenNode> *child = children; child; child = child->tl()) {
@@ -1031,7 +1067,7 @@ CgenNode::CgenNode(Class_ nd, Basicness bstatus, CgenClassTableP ct) :
     parentnd(NULL),
     children(NULL),
     basic_status(bstatus)
-{ 
+{
     stringtable.add_string(name->get_string()); // Add class name to string table
 }
 
