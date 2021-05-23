@@ -4,7 +4,10 @@
 #include "cool-tree.h"
 #include "symtab.h"
 
+#include <set>
+#include <list>
 #include <map>
+#include <stack>
 
 enum Basicness {Basic, NotBasic};
 #define TRUE 1
@@ -53,8 +56,9 @@ public:
     CgenClassTable(Classes, ostream& str);
     void code();
     CgenNodeP root();
-    void printCgenClassTable();
-    void printInheritanceGraph();
+    void print_CgenClassTable();
+    void print_inheritance_graph();
+    void print_attribute_table();
 };
 
 

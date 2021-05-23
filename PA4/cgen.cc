@@ -614,47 +614,100 @@ void CgenClassTable::code_name_and_obj_table()
 
 void CgenClassTable::code_attr_and_dispatch_table()
 {
-    // Print class_attrTabTab
+    // code for class_attrTabTab
     str << CLASSATTRTABTAB << LABEL;
     for (List<CgenNode> *l = nds; l; l = l->tl()) {
         str << WORD << l->hd()->get_typeID() << ATTRTAB_SUFFIX << endl;
     }
 
-    // Update attribute_table and method_table
+    // Update attribute_table and method_table using BFS
+    std::list<CgenNodeP> node_pool; // a pool for BFS
+    node_pool.push_back(probe(Object)); // start from Object
+
+    while (node_pool.size()) {
+        int size = node_pool.size();
+        for (int i = 0; i < size; ++i) {
+            CgenNodeP curr_node = node_pool.front();
+            node_pool.pop_front();
+            
+            // maps for curr_node
+            std::map<Symbol, Feature> curr_attr_map;
+            std::map<Symbol, Feature> curr_method_map;
+
+            // Process features from Object to curr_node
+            std::stack<CgenNodeP> node_stack; // a stack to store nodes
+            CgenNodeP curr_parent = curr_node;
+
+            // push all nodes to parent_stack
+            while (curr_parent->get_tag() != probe(No_class)->get_tag()) {
+                node_stack.push(curr_parent);
+                curr_parent = curr_parent->get_parentnd();
+            }
+
+            // pop all parents from parent_stack
+            while (!node_stack.empty()) {
+                curr_parent = node_stack.top();
+                node_stack.pop();
+                Features pfeatures = curr_parent->get_features();
+                for (int i = pfeatures->first(); pfeatures->more(i); i = pfeatures->next(i)) {
+                    Feature curr_pfeature = pfeatures->nth(i);
+                    if (curr_pfeature->instanceof("attr_class")) {
+                        // attr cannot redefine, so add it directly
+                        curr_attr_map[curr_pfeature->get_objectID()] = curr_pfeature;
+                    } else if (curr_pfeature->instanceof("method_class")) {
+                        // update method's implement-typeID to the least node which implements the method
+                        curr_pfeature->set_implement_typeID(curr_parent->get_typeID());
+                        curr_method_map[curr_pfeature->get_methodID()] = curr_pfeature;
+                    }
+                }
+            }
+
+            attribute_table[curr_node->get_typeID()] = curr_attr_map;
+            method_table[curr_node->get_typeID()] = curr_method_map;
+            
+            // add childrens to node_pool
+            List<CgenNode> *children_nodes = curr_node->get_children();
+            for (List<CgenNode> *l = children_nodes; l; l = l->tl()) {
+                node_pool.push_back(l->hd());
+            }
+        }
+    }
+
+    // code for _attrTab
     for (List<CgenNode> *l = nds; l; l=l->tl()) {
-        CgenNodeP curr_class = l->hd();
-        Features features = curr_class->get_features();
-        std::map<Symbol, Feature> curr_attr_map;
-        std::map<Symbol, Feature> curr_method_map;
-        for (int i = features->first(); features->more(i); i = features->next(i)) {
-            Feature curr_feature = features->nth(i);
-            if (curr_feature->instanceof("attr_class")) {
-                curr_attr_map[curr_feature->get_objectID()] = curr_feature;
-            }
-            else if (curr_feature->instanceof("method_class")) {
-                curr_method_map[curr_feature->get_methodID()] = curr_feature;
-            }
-        }
-        attribute_table[curr_class->get_typeID()] = curr_attr_map;
-        method_table[curr_class->get_typeID()] = curr_method_map;
-    }
-
-    for (auto class_entry : this->attribute_table) {
-        CgenNodeP curr_class_node = probe(class_entry.first);
-        str << curr_class_node->get_typeID()->get_string() << ATTRTAB_SUFFIX << LABEL;
-        for (auto attr_entry : class_entry.second) {
-            Symbol attrID = attr_entry.first;
-            str << WORD << probe(class_entry.first)->get_tag() << endl;
+        CgenNodeP curr_node = l->hd();
+        str << curr_node->get_typeID()->get_string() << ATTRTAB_SUFFIX << LABEL;
+        auto curr_attr_map = this->attribute_table[curr_node->get_typeID()];
+        for (auto attr : curr_attr_map) {
+            Symbol typeID = attr.second->get_typeID();
+            str << WORD << probe(typeID)->get_tag() << endl;
         }
     }
 
-    for (auto class_entry : this->method_table) {
-        CgenNodeP curr_class_node = probe(class_entry.first);
-        str << curr_class_node->get_typeID()->get_string() << DISPTAB_SUFFIX << LABEL;
-        for (auto method_entry : class_entry.second) {
+    // code for _dispTab
+    for (List<CgenNode> *l = nds; l; l=l->tl()) {
+        CgenNodeP curr_node = l->hd();
+        str << curr_node->get_typeID()->get_string() << DISPTAB_SUFFIX << LABEL;
+        auto curr_method_map = this->method_table[curr_node->get_typeID()];
+        for (auto method_entry : curr_method_map) {
             Symbol methodID = method_entry.first;
-            str << WORD << curr_class_node->get_typeID()->get_string() << '.' << methodID->get_string() << endl;
+            Symbol implement_typeID = method_entry.second->get_implement_typeID();
+            str << WORD << implement_typeID->get_string() << '.' << methodID->get_string() << endl;
         }
+    }
+
+    // for (auto class_entry : this->method_table) {
+    //     CgenNodeP curr_node = probe(class_entry.first);
+    //     str << curr_node->get_typeID()->get_string() << DISPTAB_SUFFIX << LABEL;
+    //     for (auto method_entry : class_entry.second) {
+    //         Symbol methodID = method_entry.first;
+    //         Symbol implement_typeID = method_table[curr_node->get_typeID()][methodID]->get_implement_typeID();
+    //         str << WORD << implement_typeID->get_string() << '.' << methodID->get_string() << endl;
+    //     }
+    // }
+
+    if (cgen_debug) {
+        print_attribute_table();
     }
 
 }
@@ -769,8 +822,8 @@ CgenClassTable::CgenClassTable(Classes classes, ostream& s) : nds(NULL) , str(s)
     build_inheritance_tree();
 
     if (cgen_debug) {
-        printCgenClassTable();
-        printInheritanceGraph();
+        print_CgenClassTable();
+        print_inheritance_graph();
     }
 
     code();
@@ -1016,13 +1069,15 @@ CgenNodeP CgenClassTable::root()
     return probe(Object);
 }
 
-void CgenClassTable::printCgenClassTable() {
+// print methods for debugging
+
+void CgenClassTable::print_CgenClassTable() {
     printf("========Print CgenClassTable Start=========\n");
     this->dump();
     printf("=========Print CgenClassTable End==========\n");
 }
 
-void CgenClassTable::printInheritanceGraph() {
+void CgenClassTable::print_inheritance_graph() {
     printf("========Print InheritanceGraph Start=========\n");
     for(List<CgenNode> *l = nds; l; l = l->tl()) {
         Symbol curr_class = l->hd()->get_typeID();
@@ -1035,6 +1090,19 @@ void CgenClassTable::printInheritanceGraph() {
         printf("\n");
     }
     printf("=========Print InheritanceGraph End==========\n");
+}
+
+void CgenClassTable::print_attribute_table() {
+    printf("========Print AttributeTable Start=========\n");
+    for (auto item : this->attribute_table) {
+        printf("%s : ", item.first->get_string());
+        auto curr_attr_map = item.second;
+        for (auto iter = curr_attr_map.begin(); iter != curr_attr_map.end(); ++iter) {
+            printf("[%s : %s] ", (*iter).first->get_string(), (*iter).second->get_typeID()->get_string());
+        }
+        printf("\n");
+    }
+    printf("=========Print AttributeTable End==========\n");
 }
 
 

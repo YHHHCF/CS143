@@ -49,6 +49,8 @@ public:
     tree_node *copy()		 { return copy_Feature(); }
     virtual Feature copy_Feature() = 0;
     virtual bool instanceof(char* type) = 0; // Implemented in method_class and attr_class
+    virtual void set_implement_typeID(Symbol typeID) {  } // Overriden in method_class
+    virtual Symbol get_implement_typeID() { return nullptr; } // Overriden in method_class
     virtual Symbol get_methodID() { return nullptr; } // Overriden in method_class
     virtual Formals get_formals() { return nullptr; } // Overriden in method_class
     virtual Symbol get_typeID() { return nullptr; } // Overriden in method_class and attr_class
@@ -197,6 +199,7 @@ public:
 class method_class : public Feature_class {
 protected:
     char* type = "method_class"; // the type of this class
+    Symbol implement_typeID;  // the typeID of the class that overrides/init this method
     Symbol name; // methodID
     Formals formals;
     Symbol return_type; // typeID
@@ -210,6 +213,12 @@ public:
     }
     Feature copy_Feature();
     void dump(ostream& stream, int n);
+    void set_implement_typeID(Symbol typeID) {
+        implement_typeID = typeID;
+    }
+    Symbol get_implement_typeID() {
+        return implement_typeID;
+    }
     Symbol get_methodID() {
         return name;
     }
