@@ -4,6 +4,11 @@
 #include "cool-tree.h"
 #include "symtab.h"
 
+#include <set>
+#include <list>
+#include <map>
+#include <stack>
+
 enum Basicness {Basic, NotBasic};
 #define TRUE 1
 #define FALSE 0
@@ -18,6 +23,9 @@ class CgenClassTable : public SymbolTable<Symbol,CgenNode> {
 private:
     List<CgenNode> *nds;
     ostream& str;
+
+    std::map<Symbol, std::map<Symbol, Feature> > attribute_table;
+    std::map<Symbol, std::map<Symbol, Feature> > method_table;
     int _max_tag; // current max tag
 
 // The following methods emit code for
@@ -30,9 +38,9 @@ private:
 
 // The following methods emit code for
 // _parentTab, _attrTabTab, _dispTab, _protObj
+    void code_name_and_obj_table();
+    void code_attr_and_dispatch_table();
     void code_parentTab();
-    void code_attrTabTab();
-    void code_dispTab();
     void code_protObj();
 
 // The following creates an inheritance graph from
@@ -48,8 +56,9 @@ public:
     CgenClassTable(Classes, ostream& str);
     void code();
     CgenNodeP root();
-    void printCgenClassTable();
-    void printInheritanceGraph();
+    void print_CgenClassTable();
+    void print_inheritance_graph();
+    void print_attribute_table();
 };
 
 

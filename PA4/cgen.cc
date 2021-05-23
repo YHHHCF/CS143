@@ -561,7 +561,7 @@ void CgenClassTable::code_global_data()
         str << GLOBAL; emit_init_ref(curr_class, str); str << endl;
         str << GLOBAL; emit_attrtable_ref(curr_class, str); str << endl;
     }
-    
+
     //
     // We also need to know the tag of the Int, String, and Bool classes
     // during code generation.
@@ -574,6 +574,133 @@ void CgenClassTable::code_global_data()
         << WORD << probe(Str)->get_tag() << endl;    
 }
 
+//***************************************************
+//
+//  Emit code for the Class Name Table, the Class
+//  Object Table, and the Max Tag
+//
+//***************************************************
+
+void CgenClassTable::code_name_and_obj_table()
+{
+    
+    // Class Name Table
+    str << CLASSNAMETAB << LABEL;
+    for (List<CgenNode> *l = nds; l; l=l->tl()) {
+        Symbol curr_class = l->hd()->get_typeID();
+        StringEntryP classNameSym = stringtable.lookup_string(curr_class->get_string());
+        str << WORD; classNameSym->code_ref(str); str << endl;
+    }
+    
+    // Class Object Table
+    str << CLASSOBJTAB << LABEL;
+    for (List<CgenNode> *l = nds; l; l=l->tl()) {
+        Symbol curr_class = l->hd()->get_typeID();
+        str << WORD << curr_class->get_string() << PROTOBJ_SUFFIX << endl;
+        str << WORD << curr_class->get_string() << CLASSINIT_SUFFIX << endl;
+    }
+
+    // Keep track of _max_tag, or the number of classes, starting from 0
+    str << MAXTAG << LABEL;
+    str << WORD << this->_max_tag << endl;
+}
+
+
+//***************************************************
+//
+//  Emit code for the Dispatch Tables
+//
+//***************************************************
+
+void CgenClassTable::code_attr_and_dispatch_table()
+{
+    // code for class_attrTabTab
+    str << CLASSATTRTABTAB << LABEL;
+    for (List<CgenNode> *l = nds; l; l = l->tl()) {
+        str << WORD << l->hd()->get_typeID() << ATTRTAB_SUFFIX << endl;
+    }
+
+    // Update attribute_table and method_table using BFS
+    std::list<CgenNodeP> node_pool; // a pool for BFS
+    node_pool.push_back(probe(Object)); // start from Object
+
+    while (node_pool.size()) {
+        int size = node_pool.size();
+        for (int i = 0; i < size; ++i) {
+            CgenNodeP curr_node = node_pool.front();
+            node_pool.pop_front();
+            
+            // maps for curr_node
+            std::map<Symbol, Feature> curr_attr_map;
+            std::map<Symbol, Feature> curr_method_map;
+
+            // Process features from Object to curr_node
+            std::stack<CgenNodeP> node_stack; // a stack to store nodes
+            CgenNodeP curr_parent = curr_node;
+
+            // push all nodes to parent_stack
+            while (curr_parent->get_tag() != probe(No_class)->get_tag()) {
+                node_stack.push(curr_parent);
+                curr_parent = curr_parent->get_parentnd();
+            }
+
+            // pop all parents from parent_stack
+            while (!node_stack.empty()) {
+                curr_parent = node_stack.top();
+                node_stack.pop();
+                Features pfeatures = curr_parent->get_features();
+                for (int i = pfeatures->first(); pfeatures->more(i); i = pfeatures->next(i)) {
+                    Feature curr_pfeature = pfeatures->nth(i);
+                    if (curr_pfeature->instanceof("attr_class")) {
+                        // attr cannot redefine, so add it directly
+                        curr_attr_map[curr_pfeature->get_objectID()] = curr_pfeature;
+                    } else if (curr_pfeature->instanceof("method_class")) {
+                        // update method's implement-typeID to the least node which implements the method
+                        curr_pfeature->set_implement_typeID(curr_parent->get_typeID());
+                        curr_method_map[curr_pfeature->get_methodID()] = curr_pfeature;
+                    }
+                }
+            }
+
+            attribute_table[curr_node->get_typeID()] = curr_attr_map;
+            method_table[curr_node->get_typeID()] = curr_method_map;
+            
+            // add childrens to node_pool
+            List<CgenNode> *children_nodes = curr_node->get_children();
+            for (List<CgenNode> *l = children_nodes; l; l = l->tl()) {
+                node_pool.push_back(l->hd());
+            }
+        }
+    }
+
+    // code for _attrTab
+    for (List<CgenNode> *l = nds; l; l=l->tl()) {
+        CgenNodeP curr_node = l->hd();
+        str << curr_node->get_typeID()->get_string() << ATTRTAB_SUFFIX << LABEL;
+        auto curr_attr_map = this->attribute_table[curr_node->get_typeID()];
+        for (auto attr : curr_attr_map) {
+            Symbol typeID = attr.second->get_typeID();
+            str << WORD << probe(typeID)->get_tag() << endl;
+        }
+    }
+
+    // code for _dispTab
+    for (List<CgenNode> *l = nds; l; l=l->tl()) {
+        CgenNodeP curr_node = l->hd();
+        str << curr_node->get_typeID()->get_string() << DISPTAB_SUFFIX << LABEL;
+        auto curr_method_map = this->method_table[curr_node->get_typeID()];
+        for (auto method_entry : curr_method_map) {
+            Symbol methodID = method_entry.first;
+            Symbol implement_typeID = method_entry.second->get_implement_typeID();
+            str << WORD << implement_typeID->get_string() << '.' << methodID->get_string() << endl;
+        }
+    }
+
+    if (cgen_debug) {
+        print_attribute_table();
+    }
+
+}
 
 //***************************************************
 //
@@ -584,31 +711,6 @@ void CgenClassTable::code_global_data()
 
 void CgenClassTable::code_global_text()
 {
-    int numClasses = -1;  // Used to find number of classes in nds
-    
-    // Class Name Table
-    str << CLASSNAMETAB << LABEL;
-    for (List<CgenNode> *l = nds; l; l=l->tl()) {
-        Symbol curr_class = l->hd()->get_typeID();
-        StringEntryP classNameSym = stringtable.add_string(curr_class->get_string());
-        str << WORD; classNameSym->code_ref(str); str << endl;
-        numClasses++;
-    }
-    // jump for my coding preference
-    
-    // Class Object Table
-    str << CLASSOBJTAB << LABEL;
-    for (List<CgenNode> *l = nds; l; l=l->tl()) {
-        Symbol curr_class = l->hd()->get_typeID();
-        str << WORD << curr_class->get_string() << PROTOBJ_SUFFIX << endl;
-        str << WORD << curr_class->get_string() << CLASSINIT_SUFFIX << endl;
-    }
-
-    
-    // Keep track of _max_tag, or the number of classes, starting from 0
-    str << MAXTAG << LABEL;
-    str << WORD << numClasses << endl;
-    
     // Heap
     str << GLOBAL << HEAP_START << endl
         << HEAP_START << LABEL 
@@ -710,8 +812,8 @@ CgenClassTable::CgenClassTable(Classes classes, ostream& s) : nds(NULL) , str(s)
     build_inheritance_tree();
 
     if (cgen_debug) {
-        printCgenClassTable();
-        printInheritanceGraph();
+        print_CgenClassTable();
+        print_inheritance_graph();
     }
 
     code();
@@ -919,53 +1021,37 @@ void CgenClassTable::code_parentTab() {
     }
 }
 
-//
-// CgenClassTable::code_parentTab
-// generate code for class_attrTabTab
-//
-void CgenClassTable::code_attrTabTab() {
-    str << CLASSATTRTABTAB << LABEL;
-    for (List<CgenNode> *l = nds; l; l = l->tl()) {
-        str << WORD << l->hd()->get_typeID() << ATTRTAB_SUFFIX << endl;
-    }
-
-    // TODO: use the attribute table
-}
-
 void CgenClassTable::code()
 {
     if (cgen_debug) cout << "coding global data" << endl;
-    code_global_data();
+        code_global_data();
 
     if (cgen_debug) cout << "choosing gc" << endl;
-    code_select_gc();
+        code_select_gc();
 
     if (cgen_debug) cout << "coding constants" << endl;
-    code_constants();
+        code_constants();
 
-//                 Add your code to emit
-//                   - class_nameTab
-//
+    if (cgen_debug) cout << "coding class name and object tables" << endl;
+        code_name_and_obj_table();
+
     if (cgen_debug) cout << "coding parent table" << endl;
-    code_parentTab();
+        code_parentTab();
 
-    if (cgen_debug) cout << "coding attribute table" << endl;
-    code_attrTabTab();
-
-    if (cgen_debug) cout << "coding dispatch table" << endl;
-    // code_dispTab();
+    if (cgen_debug) cout << "coding attirbute and dispatch tables" << endl;
+        code_attr_and_dispatch_table();
 
     if (cgen_debug) cout << "coding prototype objects" << endl;
-    // code_protObj();
+        // code_protObj();
 
     if (cgen_debug) cout << "coding global text" << endl;
-    code_global_text();
+        code_global_text();
 
 //                 Add your code to emit
 //                   - object initializer
 //                   - the class methods
 //                   - etc...
-
+    
 }
 
 CgenNodeP CgenClassTable::root()
@@ -973,13 +1059,15 @@ CgenNodeP CgenClassTable::root()
     return probe(Object);
 }
 
-void CgenClassTable::printCgenClassTable() {
+// print methods for debugging
+
+void CgenClassTable::print_CgenClassTable() {
     printf("========Print CgenClassTable Start=========\n");
     this->dump();
     printf("=========Print CgenClassTable End==========\n");
 }
 
-void CgenClassTable::printInheritanceGraph() {
+void CgenClassTable::print_inheritance_graph() {
     printf("========Print InheritanceGraph Start=========\n");
     for(List<CgenNode> *l = nds; l; l = l->tl()) {
         Symbol curr_class = l->hd()->get_typeID();
@@ -992,6 +1080,19 @@ void CgenClassTable::printInheritanceGraph() {
         printf("\n");
     }
     printf("=========Print InheritanceGraph End==========\n");
+}
+
+void CgenClassTable::print_attribute_table() {
+    printf("========Print AttributeTable Start=========\n");
+    for (auto item : this->attribute_table) {
+        printf("%s : ", item.first->get_string());
+        auto curr_attr_map = item.second;
+        for (auto iter = curr_attr_map.begin(); iter != curr_attr_map.end(); ++iter) {
+            printf("[%s : %s] ", (*iter).first->get_string(), (*iter).second->get_typeID()->get_string());
+        }
+        printf("\n");
+    }
+    printf("=========Print AttributeTable End==========\n");
 }
 
 
