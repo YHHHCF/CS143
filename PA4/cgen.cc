@@ -635,6 +635,7 @@ void CgenClassTable::code_attr_and_dispatch_table()
             std::map<Symbol, Feature> curr_method_map;
 
             // Process features from Object to curr_node
+            // TODO: optimize this to process only one parent node
             std::stack<CgenNodeP> node_stack; // a stack to store nodes
             CgenNodeP curr_parent = curr_node;
 
