@@ -508,7 +508,7 @@ void BoolConst::code_def(ostream& s, int boolclasstag)
         << WORD;
 
     /***** Add dispatch information for class Bool ******/
-        s << BOOLNAME << DISPTAB_SUFFIX << endl;;                                            // dispatch table
+        s << BOOLNAME << DISPTAB_SUFFIX << endl;;             // dispatch table
         s << WORD << val << endl;                             // value (0 or 1)
 }
 
@@ -630,8 +630,10 @@ void CgenClassTable::code_attr_and_dispatch_table()
             CgenNodeP curr_node = node_pool.front();
             node_pool.pop_front();
             
-            // maps for curr_node
+            // maps and orders for curr_node
+            std::vector<Symbol> curr_attr_order;
             std::map<Symbol, Feature> curr_attr_map;
+            std::vector<Symbol> curr_method_order;
             std::map<Symbol, Feature> curr_method_map;
 
             // Process features from Object to curr_node
@@ -654,8 +656,13 @@ void CgenClassTable::code_attr_and_dispatch_table()
                     Feature curr_pfeature = pfeatures->nth(i);
                     if (curr_pfeature->instanceof("attr_class")) {
                         // attr cannot redefine, so add it directly
+                        curr_attr_order.push_back(curr_pfeature->get_objectID());
                         curr_attr_map[curr_pfeature->get_objectID()] = curr_pfeature;
                     } else if (curr_pfeature->instanceof("method_class")) {
+                        // record only when the methodID is first added
+                        if (!curr_method_map.count(curr_pfeature->get_methodID())) {
+                            curr_method_order.push_back(curr_pfeature->get_methodID());
+                        }
                         // update method's implement-typeID to the least node which implements the method
                         curr_pfeature->set_implement_typeID(curr_parent->get_typeID());
                         curr_method_map[curr_pfeature->get_methodID()] = curr_pfeature;
@@ -663,7 +670,9 @@ void CgenClassTable::code_attr_and_dispatch_table()
                 }
             }
 
+            attribute_order[curr_node->get_typeID()] = curr_attr_order;
             attribute_table[curr_node->get_typeID()] = curr_attr_map;
+            method_order[curr_node->get_typeID()] = curr_method_order;
             method_table[curr_node->get_typeID()] = curr_method_map;
             
             // add childrens to node_pool
@@ -679,8 +688,9 @@ void CgenClassTable::code_attr_and_dispatch_table()
         CgenNodeP curr_node = l->hd();
         str << curr_node->get_typeID()->get_string() << ATTRTAB_SUFFIX << LABEL;
         auto curr_attr_map = this->attribute_table[curr_node->get_typeID()];
-        for (auto attr : curr_attr_map) {
-            Symbol typeID = attr.second->get_typeID();
+        auto curr_attr_order = this->attribute_order[curr_node->get_typeID()];
+        for (auto attr_objID = curr_attr_order.begin(); attr_objID != curr_attr_order.end(); ++attr_objID) {
+            Symbol typeID = curr_attr_map[*attr_objID]->get_typeID();
             str << WORD << probe(typeID)->get_tag() << endl;
         }
     }
@@ -690,10 +700,10 @@ void CgenClassTable::code_attr_and_dispatch_table()
         CgenNodeP curr_node = l->hd();
         str << curr_node->get_typeID()->get_string() << DISPTAB_SUFFIX << LABEL;
         auto curr_method_map = this->method_table[curr_node->get_typeID()];
-        for (auto method_entry : curr_method_map) {
-            Symbol methodID = method_entry.first;
-            Symbol implement_typeID = method_entry.second->get_implement_typeID();
-            str << WORD << implement_typeID->get_string() << '.' << methodID->get_string() << endl;
+        auto curr_method_order = this->method_order[curr_node->get_typeID()];
+        for (auto methodID = curr_method_order.begin(); methodID != curr_method_order.end(); ++methodID) {
+            Symbol implement_typeID = curr_method_map[*methodID]->get_implement_typeID();
+            str << WORD << implement_typeID->get_string() << '.' << (*methodID)->get_string() << endl;
         }
     }
 
@@ -718,18 +728,18 @@ void CgenClassTable::code_protObj()
         int object_size = attribute_table[curr_node->get_typeID()].size() + DEFAULT_OBJFIELDS;
         str << WORD << object_size << endl;                                                  // Object Size
         str << WORD << curr_node->get_typeID()->get_string() << DISPTAB_SUFFIX << endl;      // Dispatch Table
-        for (auto attribute_tab : attribute_table[curr_node->get_typeID()]) {                // Attributes
-            Feature curr_feature = attribute_tab.second;
-            if (isInt(curr_feature->get_typeID())) {
+
+        auto curr_attr_order = attribute_order[curr_node->get_typeID()];                     // Attributes
+        auto curr_attr_map = attribute_table[curr_node->get_typeID()];
+        for (auto attr_objID = curr_attr_order.begin(); attr_objID != curr_attr_order.end(); ++attr_objID) {
+            Symbol typeID = curr_attr_map[*attr_objID]->get_typeID();
+            if (isInt(typeID)) {
                 str << WORD; inttable.lookup_string("0")->code_ref(str); str << endl;
-            }
-            else if (isString(curr_feature->get_typeID())) {
+            } else if (isString(typeID)) {
                 str << WORD; stringtable.lookup_string("")->code_ref(str); str << endl;
-            }
-            else if (isBool(curr_feature->get_typeID())) {
+            } else if (isBool(typeID)) {
                 str << WORD << DEFAULT_BOOL << endl;
-            }
-            else {
+            } else {
                 str << WORD << EMPTYSLOT << endl;
             }
         }
@@ -1120,9 +1130,12 @@ void CgenClassTable::print_attribute_table() {
     printf("========Print AttributeTable Start=========\n");
     for (auto item : this->attribute_table) {
         printf("%s : ", item.first->get_string());
-        auto curr_attr_map = item.second;
-        for (auto iter = curr_attr_map.begin(); iter != curr_attr_map.end(); ++iter) {
-            printf("[%s : %s] ", (*iter).first->get_string(), (*iter).second->get_typeID()->get_string());
+        auto curr_attr_map = this->attribute_table[item.first];
+        auto curr_attr_order = this->attribute_order[item.first];
+
+        for (auto attr_objID = curr_attr_order.begin(); attr_objID != curr_attr_order.end(); ++attr_objID) {
+            Symbol typeID = curr_attr_map[*attr_objID]->get_typeID();
+            printf("[%s : %s] ", (*attr_objID)->get_string(), typeID->get_string());
         }
         printf("\n");
     }
