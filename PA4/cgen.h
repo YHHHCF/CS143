@@ -8,6 +8,7 @@
 #include <list>
 #include <map>
 #include <stack>
+#include <vector>
 
 enum Basicness {Basic, NotBasic};
 #define TRUE 1
@@ -24,8 +25,11 @@ private:
     List<CgenNode> *nds;
     ostream& str;
 
+    std::map<Symbol, std::vector<Symbol> > attribute_order; // attribute insertion order
     std::map<Symbol, std::map<Symbol, Feature> > attribute_table;
+    std::map<Symbol, std::vector<Symbol> > method_order; // method insertion order
     std::map<Symbol, std::map<Symbol, Feature> > method_table;
+
     int _max_tag; // current max tag
 
 // The following methods emit code for
