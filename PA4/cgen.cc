@@ -586,18 +586,24 @@ void CgenClassTable::code_name_and_obj_table()
     
     // Class Name Table
     str << CLASSNAMETAB << LABEL;
-    for (List<CgenNode> *l = nds; l; l=l->tl()) {
-        Symbol curr_class = l->hd()->get_typeID();
-        StringEntryP classNameSym = stringtable.lookup_string(curr_class->get_string());
+
+    for (int tag = 0; tag <= this->_max_tag; ++tag) {
+        CgenNodeP curr_class_node = this->tag_table[tag];
+        StringEntryP classNameSym = stringtable.lookup_string( \
+            curr_class_node->get_typeID()->get_string());
         str << WORD; classNameSym->code_ref(str); str << endl;
     }
     
     // Class Object Table
     str << CLASSOBJTAB << LABEL;
-    for (List<CgenNode> *l = nds; l; l=l->tl()) {
-        Symbol curr_class = l->hd()->get_typeID();
-        str << WORD << curr_class->get_string() << PROTOBJ_SUFFIX << endl;
-        str << WORD << curr_class->get_string() << CLASSINIT_SUFFIX << endl;
+    for (int tag = 0; tag <= this->_max_tag; ++tag) {
+        Symbol curr_class = this->tag_table[tag]->get_typeID();
+        str << WORD;
+        emit_protobj_ref(curr_class, str);
+        str << endl;
+        str << WORD;
+        emit_init_ref(curr_class, str);
+        str << endl;
     }
 
     // Keep track of _max_tag, or the number of classes, starting from 0
@@ -616,8 +622,12 @@ void CgenClassTable::code_attr_and_dispatch_table()
 {
     // code for class_attrTabTab
     str << CLASSATTRTABTAB << LABEL;
-    for (List<CgenNode> *l = nds; l; l = l->tl()) {
-        str << WORD << l->hd()->get_typeID() << ATTRTAB_SUFFIX << endl;
+
+    for (int tag = 0; tag <= this->_max_tag; ++tag) {
+        Symbol curr_class = this->tag_table[tag]->get_typeID();
+        str << WORD;
+        emit_attrtable_ref(curr_class, str);
+        str << endl;
     }
 
     // Update attribute_table and method_table using BFS
@@ -684,26 +694,34 @@ void CgenClassTable::code_attr_and_dispatch_table()
     }
 
     // code for _attrTab
-    for (List<CgenNode> *l = nds; l; l=l->tl()) {
-        CgenNodeP curr_node = l->hd();
-        str << curr_node->get_typeID()->get_string() << ATTRTAB_SUFFIX << LABEL;
-        auto curr_attr_map = this->attribute_table[curr_node->get_typeID()];
-        auto curr_attr_order = this->attribute_order[curr_node->get_typeID()];
+    for (int tag = 0; tag <= this->_max_tag; ++tag) {
+        Symbol curr_class_typeID = this->tag_table[tag]->get_typeID();
+        emit_attrtable_ref(curr_class_typeID, str);
+        str << LABEL;
+
+        auto curr_attr_map = this->attribute_table[curr_class_typeID];
+        auto curr_attr_order = this->attribute_order[curr_class_typeID];
+
         for (auto attr_objID = curr_attr_order.begin(); attr_objID != curr_attr_order.end(); ++attr_objID) {
-            Symbol typeID = curr_attr_map[*attr_objID]->get_typeID();
-            str << WORD << probe(typeID)->get_tag() << endl;
+            Symbol attr_typeID = curr_attr_map[*attr_objID]->get_typeID(); // attr declared typeID
+            str << WORD << probe(attr_typeID)->get_tag() << endl;
         }
     }
 
     // code for _dispTab
-    for (List<CgenNode> *l = nds; l; l=l->tl()) {
-        CgenNodeP curr_node = l->hd();
-        str << curr_node->get_typeID()->get_string() << DISPTAB_SUFFIX << LABEL;
-        auto curr_method_map = this->method_table[curr_node->get_typeID()];
-        auto curr_method_order = this->method_order[curr_node->get_typeID()];
+    for (int tag = 0; tag <= this->_max_tag; ++tag) {
+        Symbol curr_class_typeID = this->tag_table[tag]->get_typeID();
+        emit_disptable_ref(curr_class_typeID, str);
+        str << LABEL;
+
+        auto curr_method_map = this->method_table[curr_class_typeID];
+        auto curr_method_order = this->method_order[curr_class_typeID];
+
         for (auto methodID = curr_method_order.begin(); methodID != curr_method_order.end(); ++methodID) {
             Symbol implement_typeID = curr_method_map[*methodID]->get_implement_typeID();
-            str << WORD << implement_typeID->get_string() << '.' << (*methodID)->get_string() << endl;
+            str << WORD;
+            emit_method_ref(implement_typeID, *methodID, str);
+            str << endl;
         }
     }
 
@@ -720,24 +738,27 @@ void CgenClassTable::code_attr_and_dispatch_table()
 
 void CgenClassTable::code_protObj()
 {
-    for (List<CgenNode> *l = nds; l; l=l->tl()) {
-        str << WORD << GARBAGE_COLLECTOR_TAG << endl;                                        // Garbage Collector Tag
-        CgenNodeP curr_node = l->hd();
-        str << curr_node->get_typeID()->get_string() << PROTOBJ_SUFFIX << LABEL;             // Prototype Object Label
-        str << WORD << probe(curr_node->get_typeID())->get_tag() << endl;                    // Class Tag
-        int object_size = attribute_table[curr_node->get_typeID()].size() + DEFAULT_OBJFIELDS;
-        str << WORD << object_size << endl;                                                  // Object Size
-        str << WORD << curr_node->get_typeID()->get_string() << DISPTAB_SUFFIX << endl;      // Dispatch Table
+    for (int tag = 0; tag <= this->_max_tag; ++tag) {
+        str << WORD << GARBAGE_COLLECTOR_TAG << endl;                                    // Garbage Collector Tag
+        Symbol curr_class_typeID = this->tag_table[tag]->get_typeID();
+        emit_protobj_ref(curr_class_typeID, str);                                        // Prototype Object
+        str << LABEL;
+        str << WORD << probe(curr_class_typeID)->get_tag() << endl;                      // Class Tag
+        int object_size = attribute_table[curr_class_typeID].size() + DEFAULT_OBJFIELDS;
+        str << WORD << object_size << endl;                                              // Object Size
+        str << WORD;
+        emit_disptable_ref(curr_class_typeID, str);                                      // Dispatch Table
+        str << endl;
 
-        auto curr_attr_order = attribute_order[curr_node->get_typeID()];                     // Attributes
-        auto curr_attr_map = attribute_table[curr_node->get_typeID()];
+        auto curr_attr_order = attribute_order[curr_class_typeID];                       // Attributes
+        auto curr_attr_map = attribute_table[curr_class_typeID];
         for (auto attr_objID = curr_attr_order.begin(); attr_objID != curr_attr_order.end(); ++attr_objID) {
-            Symbol typeID = curr_attr_map[*attr_objID]->get_typeID();
-            if (isInt(typeID)) {
+            Symbol attr_typeID = curr_attr_map[*attr_objID]->get_typeID();
+            if (isInt(attr_typeID)) {
                 str << WORD; inttable.lookup_string("0")->code_ref(str); str << endl;
-            } else if (isString(typeID)) {
+            } else if (isString(attr_typeID)) {
                 str << WORD; stringtable.lookup_string("")->code_ref(str); str << endl;
-            } else if (isBool(typeID)) {
+            } else if (isBool(attr_typeID)) {
                 str << WORD << DEFAULT_BOOL << endl;
             } else {
                 str << WORD << EMPTYSLOT << endl;
@@ -1007,6 +1028,7 @@ void CgenClassTable::install_class(CgenNodeP nd)
     // Set the tag for this node (class)
     this->_max_tag += 1;
     nd->set_tag(this->_max_tag);
+    this->tag_table[this->_max_tag] = nd;
 
     // The class name is legal, so add it to the list of classes
     // and the symbol table.
@@ -1060,8 +1082,10 @@ void CgenNode::set_parentnd(CgenNodeP p)
 //
 void CgenClassTable::code_parentTab() {
     str << CLASSPARENTTAB << LABEL;
-    for (List<CgenNode> *l = nds; l; l = l->tl()) {
-        str << WORD << l->hd()->get_parentnd()->get_tag() << endl;
+
+    for (int tag = 0; tag <= this->_max_tag; ++tag) {
+        CgenNodeP curr_class_node = this->tag_table[tag];
+        str << WORD << curr_class_node->get_parentnd()->get_tag() << endl;
     }
 }
 
@@ -1113,13 +1137,13 @@ void CgenClassTable::print_CgenClassTable() {
 
 void CgenClassTable::print_inheritance_graph() {
     printf("========Print InheritanceGraph Start=========\n");
-    for(List<CgenNode> *l = nds; l; l = l->tl()) {
-        Symbol curr_class = l->hd()->get_typeID();
-        printf("%s (%d) : ", curr_class->get_string(), l->hd()->get_tag());
+    for (int tag = 0; tag <= this->_max_tag; ++tag) {
+        CgenNodeP curr_class_node = this->tag_table[tag];
+        printf("%s (%d) : ", curr_class_node->get_typeID()->get_string(), curr_class_node->get_tag());
 
-        List<CgenNode> *children = l->hd()->get_children();
+        List<CgenNode> *children = curr_class_node->get_children();
         for (List<CgenNode> *child = children; child; child = child->tl()) {
-            printf("%s ", child->hd()->get_typeID()->get_string());
+            printf("%s (%d); ", child->hd()->get_typeID()->get_string(), child->hd()->get_tag());
         }
         printf("\n");
     }
@@ -1128,10 +1152,12 @@ void CgenClassTable::print_inheritance_graph() {
 
 void CgenClassTable::print_attribute_table() {
     printf("========Print AttributeTable Start=========\n");
-    for (auto item : this->attribute_table) {
-        printf("%s : ", item.first->get_string());
-        auto curr_attr_map = this->attribute_table[item.first];
-        auto curr_attr_order = this->attribute_order[item.first];
+    for (int tag = 0; tag <= this->_max_tag; ++tag) {
+        CgenNodeP curr_class_node = this->tag_table[tag];
+        Symbol curr_class_typeID = curr_class_node->get_typeID();
+        printf("%s : ", curr_class_typeID->get_string());
+        auto curr_attr_map = this->attribute_table[curr_class_typeID];
+        auto curr_attr_order = this->attribute_order[curr_class_typeID];
 
         for (auto attr_objID = curr_attr_order.begin(); attr_objID != curr_attr_order.end(); ++attr_objID) {
             Symbol typeID = curr_attr_map[*attr_objID]->get_typeID();

@@ -8,12 +8,22 @@ class Main {
 };
 
 class A {
-	x : Int <- 3;
+	x : Int <- 1;
+	y : Int <- 2;
+	a() : Int {
+		0
+	};
 };
 
-class B inherits A {};
+class B inherits A {
+	z : Int <- 3;
+};
 
-class C {
+class C inherits B {
+	w : Int <- 4;
+};
+
+class D {
 	a : A <- new A;
 	c : String <- "test";
 	mC() : Int {
@@ -21,7 +31,7 @@ class C {
 	};
 };
 
-class D inherits C {
+class E inherits D {
 	b : B <- new B;
 	mC() : Int {
 		1
