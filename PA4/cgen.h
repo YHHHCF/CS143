@@ -30,6 +30,8 @@ private:
     std::map<Symbol, std::vector<Symbol> > method_order; // method insertion order
     std::map<Symbol, std::map<Symbol, Feature> > method_table;
 
+    std::map<int, CgenNodeP> tag_table; // find class_node from tag
+
     int _max_tag; // current max tag
 
 // The following methods emit code for
