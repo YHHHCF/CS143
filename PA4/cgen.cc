@@ -322,7 +322,13 @@ static void emit_branch(int l, ostream& s)
 static void emit_push(char *reg, ostream& str)
 {
     emit_store(reg,0,SP,str);
-    emit_addiu(SP,SP,-4,str);
+    emit_addiu(SP,SP,-WORD_SIZE,str);
+}
+
+static void emit_pop(char *reg, ostream& str)
+{
+    emit_addiu(SP,SP,WORD_SIZE,str);
+    emit_load(reg,0,SP,str);
 }
 
 //
@@ -702,8 +708,9 @@ void CgenClassTable::code_attr_and_dispatch_table()
         auto curr_attr_map = this->attribute_table[curr_class_typeID];
         auto curr_attr_order = this->attribute_order[curr_class_typeID];
 
-        for (auto attr_objID = curr_attr_order.begin(); attr_objID != curr_attr_order.end(); ++attr_objID) {
-            Symbol attr_typeID = curr_attr_map[*attr_objID]->get_typeID(); // attr declared typeID
+        for (long unsigned i = 0; i < curr_attr_order.size(); ++i) {
+            Symbol attr_objectID = curr_attr_order[i];
+            Symbol attr_typeID = curr_attr_map[attr_objectID]->get_typeID(); // attr declared typeID
             str << WORD << probe(attr_typeID)->get_tag() << endl;
         }
     }
@@ -717,10 +724,11 @@ void CgenClassTable::code_attr_and_dispatch_table()
         auto curr_method_map = this->method_table[curr_class_typeID];
         auto curr_method_order = this->method_order[curr_class_typeID];
 
-        for (auto methodID = curr_method_order.begin(); methodID != curr_method_order.end(); ++methodID) {
-            Symbol implement_typeID = curr_method_map[*methodID]->get_implement_typeID();
+        for (long unsigned i = 0; i < curr_method_order.size(); ++i) {
+            Symbol methodID = curr_method_order[i];
+            Symbol implement_typeID = curr_method_map[methodID]->get_implement_typeID();
             str << WORD;
-            emit_method_ref(implement_typeID, *methodID, str);
+            emit_method_ref(implement_typeID, methodID, str);
             str << endl;
         }
     }
@@ -752,8 +760,9 @@ void CgenClassTable::code_protObj()
 
         auto curr_attr_order = attribute_order[curr_class_typeID];                       // Attributes
         auto curr_attr_map = attribute_table[curr_class_typeID];
-        for (auto attr_objID = curr_attr_order.begin(); attr_objID != curr_attr_order.end(); ++attr_objID) {
-            Symbol attr_typeID = curr_attr_map[*attr_objID]->get_typeID();
+        for (long unsigned i = 0; i < curr_attr_order.size(); ++i) {
+            Symbol attr_objID = curr_attr_order[i];
+            Symbol attr_typeID = curr_attr_map[attr_objID]->get_typeID();
             if (isInt(attr_typeID)) {
                 str << WORD; inttable.lookup_string("0")->code_ref(str); str << endl;
             } else if (isString(attr_typeID)) {
@@ -1089,34 +1098,70 @@ void CgenClassTable::code_parentTab() {
     }
 }
 
+//
+// CgenClassTable::code_object_initializer
+// generate code for object intializers (first pass)
+//
+void CgenClassTable::code_object_initializer() {
+    for (int tag = 0; tag <= this->_max_tag; ++tag) {
+        Symbol curr_class_typeID = this->tag_table[tag]->get_typeID();
+        emit_init_ref(curr_class_typeID, str);
+        str << LABEL;
+
+        emit_push(FP, str); // store old ffp
+        emit_push(ACC, str); // store ACC (will be used when evaluate init_expr)
+        emit_move(FP, SP, str); // fp points to one word below arguments
+        emit_push(RA, str); // store ra
+
+        // init all attrs in order
+        std::map<Symbol, Feature> attr_map = this->attribute_table[curr_class_typeID];
+        std::vector<Symbol> attr_order = this->attribute_order[curr_class_typeID];
+        for (long unsigned i = 0; i < attr_order.size(); ++i) {
+            Symbol attr_objID = attr_order[i];
+            Feature attr_typeID = attr_map[attr_objID];
+            Expression init_expr = attr_typeID->get_expression();
+            init_expr->code(str); // code the init expression
+            emit_store(ACC, DEFAULT_OBJFIELDS + i, SELF, str); // store 
+        }
+
+        emit_pop(RA, str); // restore ra
+        emit_pop(ACC, str); // restore ACC register
+        emit_pop(FP, str); // restore fp
+        
+        emit_return(str);
+    }
+}
+
 void CgenClassTable::code()
 {
     if (cgen_debug) cout << "coding global data" << endl;
-        code_global_data();
+    code_global_data();
 
     if (cgen_debug) cout << "choosing gc" << endl;
-        code_select_gc();
+    code_select_gc();
 
     if (cgen_debug) cout << "coding constants" << endl;
-        code_constants();
+    code_constants();
 
     if (cgen_debug) cout << "coding class name and object tables" << endl;
-        code_name_and_obj_table();
+    code_name_and_obj_table();
 
     if (cgen_debug) cout << "coding parent table" << endl;
-        code_parentTab();
+    code_parentTab();
 
     if (cgen_debug) cout << "coding attirbute and dispatch tables" << endl;
-        code_attr_and_dispatch_table();
+    code_attr_and_dispatch_table();
 
     if (cgen_debug) cout << "coding prototype objects" << endl;
-        code_protObj();
+    code_protObj();
 
     if (cgen_debug) cout << "coding global text" << endl;
-        code_global_text();
+    code_global_text();
+
+    if (cgen_debug) cout << "coding object initializer" << endl;
+    code_object_initializer();
 
 //                 Add your code to emit
-//                   - object initializer
 //                   - the class methods
 //                   - etc...
     
@@ -1159,9 +1204,10 @@ void CgenClassTable::print_attribute_table() {
         auto curr_attr_map = this->attribute_table[curr_class_typeID];
         auto curr_attr_order = this->attribute_order[curr_class_typeID];
 
-        for (auto attr_objID = curr_attr_order.begin(); attr_objID != curr_attr_order.end(); ++attr_objID) {
-            Symbol typeID = curr_attr_map[*attr_objID]->get_typeID();
-            printf("[%s : %s] ", (*attr_objID)->get_string(), typeID->get_string());
+        for (long unsigned i = 0; i < curr_attr_order.size(); ++i) {
+            Symbol attr_objID = curr_attr_order[i];
+            Symbol typeID = curr_attr_map[attr_objID]->get_typeID();
+            printf("[%s : %s] ", (attr_objID)->get_string(), typeID->get_string());
         }
         printf("\n");
     }
