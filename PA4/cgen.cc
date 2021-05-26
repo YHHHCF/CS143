@@ -1132,6 +1132,14 @@ void CgenClassTable::code_object_initializer() {
     }
 }
 
+//
+// CgenClassTable::code_class_methods
+// generate code for class methods (second pass)
+//
+void CgenClassTable::code_class_methods() {
+    
+}
+
 void CgenClassTable::code()
 {
     if (cgen_debug) cout << "coding global data" << endl;
@@ -1160,6 +1168,9 @@ void CgenClassTable::code()
 
     if (cgen_debug) cout << "coding object initializer" << endl;
     code_object_initializer();
+
+    if (cgen_debug) cout << "coding class methods" << endl;
+    code_class_methods();
 
 //                 Add your code to emit
 //                   - the class methods

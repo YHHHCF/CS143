@@ -60,6 +60,9 @@ private:
 // The following method emit code for object initializer
     void code_object_initializer();
 
+// The following method emid code for class methods
+    void code_class_methods();
+
 // The following creates an inheritance graph from
 // a list of classes.  The graph is implemented as
 // a tree of `CgenNode', and class names are placed
