@@ -25,9 +25,17 @@ private:
     List<CgenNode> *nds;
     ostream& str;
 
-    std::map<Symbol, std::vector<Symbol> > attribute_order; // attribute insertion order
+    // key is class typeID
+    // value is a vector of attr objectIDs for attribute insertion order
+    std::map<Symbol, std::vector<Symbol> > attribute_order;
+    // key is class typeID
+    // value is a map of objectIDs to attribute Features
     std::map<Symbol, std::map<Symbol, Feature> > attribute_table;
-    std::map<Symbol, std::vector<Symbol> > method_order; // method insertion order
+    // key is class typeID
+    // value is a vector of methodIDs for method insertion order
+    std::map<Symbol, std::vector<Symbol> > method_order;
+    // key is class typeID
+    // value is a map of methodIDs to method Features
     std::map<Symbol, std::map<Symbol, Feature> > method_table;
 
     std::map<int, CgenNodeP> tag_table; // find class_node from tag
@@ -48,6 +56,12 @@ private:
     void code_attr_and_dispatch_table();
     void code_parentTab();
     void code_protObj();
+
+// The following method emit code for object initializer
+    void code_object_initializer();
+
+// The following method emid code for class methods
+    void code_class_methods();
 
 // The following creates an inheritance graph from
 // a list of classes.  The graph is implemented as
