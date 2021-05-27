@@ -82,6 +82,7 @@ public:
     bool isInt(Symbol typeID);
     bool isString(Symbol typeID);
     bool isBool(Symbol typeID);
+    bool equal(Symbol typeID1, Symbol typeID2);
 };
 
 
