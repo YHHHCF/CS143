@@ -1138,7 +1138,6 @@ void CgenClassTable::code_object_initializer() {
 //
 void CgenClassTable::code_class_methods() {
 
-    // jump
     for (int tag = 0; tag <= this->_max_tag; ++tag) {
         Symbol curr_class_typeID = this->tag_table[tag]->get_typeID();
 
@@ -1182,29 +1181,6 @@ void CgenClassTable::code_class_methods() {
             }
         }
     }
-}
-
-//
-// CgenClassTable::code_prepare_formals
-// prepares the stack for method call, including storing current fp and formals onto stack
-//
-void CgenClassTable::code_prepare_formals(Feature curr_method) {
-    emit_push(FP, str); // Save current frame pointer on stack
-
-    // push all the formals in reverse order onto the stack
-    Formals formals = curr_method->get_formals();
-    int num_formals = formals->len();
-    for (int i = formals->first(); formals->more(i); i = formals->next(i)) {
-        Formal curr_formal = formals->nth(num_formals - i - 1);
-
-        // Evaluate the expression
-        // Expression formal_expr = curr_formal->get_expression();
-        // formal_expr->code(str);
-
-        // Push the evaluated expression return value
-        emit_push(RA, str);
-    }
-    return;
 }
 
 void CgenClassTable::code()
