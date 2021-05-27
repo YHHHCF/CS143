@@ -83,7 +83,6 @@ public:
     bool isString(Symbol typeID);
     bool isBool(Symbol typeID);
     bool equal(Symbol typeID1, Symbol typeID2);
-    bool isExcludedMethodClass(Symbol typeID);
 };
 
 

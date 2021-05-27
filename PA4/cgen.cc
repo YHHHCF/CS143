@@ -1138,11 +1138,12 @@ void CgenClassTable::code_object_initializer() {
 //
 void CgenClassTable::code_class_methods() {
 
+    // jump
     for (int tag = 0; tag <= this->_max_tag; ++tag) {
         Symbol curr_class_typeID = this->tag_table[tag]->get_typeID();
 
         // Make sure we do not override provided method code for class Object, IO, or String
-        if (!isExcludedMethodClass(curr_class_typeID)) {
+        if (!tag_table[tag]->basic()) {
             std::map<Symbol, Feature> class_methods = this->method_table[curr_class_typeID];
 
             for (auto method : class_methods) {
@@ -1165,11 +1166,11 @@ void CgenClassTable::code_class_methods() {
                     method_expr->code(str);
                 
                     // Restore return address
-                    emit_load(RA, 1, SP, str);
+                    emit_pop(RA, str);
 
-                    // Restore stack to previous state -- 4 bytes per formal, 4 for sp, 4 for old fp
+                    // Restore stack to previous state -- 4 bytes per formal, 4 for old fp
                     int num_formals = curr_method->get_formals()->len();
-                    int activation_record_offset = WORD_SIZE * (num_formals + 2);
+                    int activation_record_offset = WORD_SIZE * (num_formals + 1);
                     emit_addiu(SP, SP, activation_record_offset, str);
 
                     // Restore old fp
@@ -1303,13 +1304,6 @@ bool CgenClassTable::isBool(Symbol typeID) {
 
 bool CgenClassTable::equal(Symbol typeID1, Symbol typeID2) {
     return strcmp(typeID1->get_string(), typeID2->get_string()) == 0;
-}
-
-// Used to ensure that we do not overwrite provided methods of classes Object, IO, and String
-bool CgenClassTable::isExcludedMethodClass(Symbol typeID) {
-    return strcmp(typeID->get_string(), "Object") == 0 ||
-           strcmp(typeID->get_string(), "IO") == 0 ||
-           strcmp(typeID->get_string(), "String") == 0;
 }
 
 //******************************************************************
