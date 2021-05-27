@@ -1137,7 +1137,74 @@ void CgenClassTable::code_object_initializer() {
 // generate code for class methods (second pass)
 //
 void CgenClassTable::code_class_methods() {
-    
+
+    // jump
+    for (int tag = 0; tag <= this->_max_tag; ++tag) {
+        Symbol curr_class_typeID = this->tag_table[tag]->get_typeID();
+
+        // Make sure we do not override provided method code for class Object, IO, or String
+        if (!isExcludedMethodClass(curr_class_typeID)) {
+            std::map<Symbol, Feature> class_methods = this->method_table[curr_class_typeID];
+
+            for (auto method : class_methods) {
+                Feature curr_method = method.second;
+                // We only process methods defined in this class to prevent double counting
+                if (equal(curr_method->get_implement_typeID(), curr_class_typeID)) {
+
+                    // Emit label for the Method
+                    emit_method_ref(curr_class_typeID, curr_method->get_methodID(), str);
+                    str << LABEL;
+
+                    // Move the frame pointer to the stack pointer
+                    emit_move(FP, SP, str);
+
+                    // Store return address for later use
+                    emit_push(RA, str);
+                    
+                    // Execute Code of Method
+                    Expression method_expr = curr_method->get_expression();
+                    method_expr->code(str);
+                
+                    // Restore return address
+                    emit_load(RA, 1, SP, str);
+
+                    // Restore stack to previous state -- 4 bytes per formal, 4 for sp, 4 for old fp
+                    int num_formals = curr_method->get_formals()->len();
+                    int activation_record_offset = WORD_SIZE * (num_formals + 2);
+                    emit_addiu(SP, SP, activation_record_offset, str);
+
+                    // Restore old fp
+                    emit_load(FP, 0, SP, str);
+                    
+                    // Go back to return address
+                    emit_return(str);
+                }
+            }
+        }
+    }
+}
+
+//
+// CgenClassTable::code_prepare_formals
+// prepares the stack for method call, including storing current fp and formals onto stack
+//
+void CgenClassTable::code_prepare_formals(Feature curr_method) {
+    emit_push(FP, str); // Save current frame pointer on stack
+
+    // push all the formals in reverse order onto the stack
+    Formals formals = curr_method->get_formals();
+    int num_formals = formals->len();
+    for (int i = formals->first(); formals->more(i); i = formals->next(i)) {
+        Formal curr_formal = formals->nth(num_formals - i - 1);
+
+        // Evaluate the expression
+        // Expression formal_expr = curr_formal->get_expression();
+        // formal_expr->code(str);
+
+        // Push the evaluated expression return value
+        emit_push(RA, str);
+    }
+    return;
 }
 
 void CgenClassTable::code()
@@ -1256,6 +1323,17 @@ bool CgenClassTable::isString(Symbol typeID) {
 
 bool CgenClassTable::isBool(Symbol typeID) {
     return strcmp(typeID->get_string(), "Bool") == 0;
+}
+
+bool CgenClassTable::equal(Symbol typeID1, Symbol typeID2) {
+    return strcmp(typeID1->get_string(), typeID2->get_string()) == 0;
+}
+
+// Used to ensure that we do not overwrite provided methods of classes Object, IO, and String
+bool CgenClassTable::isExcludedMethodClass(Symbol typeID) {
+    return strcmp(typeID->get_string(), "Object") == 0 ||
+           strcmp(typeID->get_string(), "IO") == 0 ||
+           strcmp(typeID->get_string(), "String") == 0;
 }
 
 //******************************************************************

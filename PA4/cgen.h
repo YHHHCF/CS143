@@ -62,6 +62,7 @@ private:
 
 // The following method emid code for class methods
     void code_class_methods();
+    void code_prepare_formals(Feature curr_method);
 
 // The following creates an inheritance graph from
 // a list of classes.  The graph is implemented as
@@ -82,6 +83,8 @@ public:
     bool isInt(Symbol typeID);
     bool isString(Symbol typeID);
     bool isBool(Symbol typeID);
+    bool equal(Symbol typeID1, Symbol typeID2);
+    bool isExcludedMethodClass(Symbol typeID);
 };
 
 
