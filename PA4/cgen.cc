@@ -331,6 +331,11 @@ static void emit_pop(char *reg, ostream& str)
     emit_load(reg,0,SP,str);
 }
 
+static void emit_popn(int n, ostream& str)
+{
+    emit_addiu(SP,SP,WORD_SIZE*n,str);
+}
+
 //
 // Fetch the integer value in an Int object.
 // Emits code to fetch the integer value of the Integer object pointed
@@ -1109,9 +1114,22 @@ void CgenClassTable::code_object_initializer() {
         str << LABEL;
 
         emit_push(FP, str); // store old ffp
+        // emit_push(SELF, str); // store self ptr
         emit_push(ACC, str); // store ACC (will be used when evaluate init_expr)
         emit_move(FP, SP, str); // fp points to one word below arguments
         emit_push(RA, str); // store ra
+
+        // load _protObj address to ACC
+        emit_partial_load_address(ACC, str);
+        emit_protobj_ref(curr_class_typeID, str);
+        str << endl;
+
+        // Call Object.copy to allocate memory on heap
+        str << JAL;
+        str << Object << METHOD_SEP << copy << endl;
+
+        // move returned ptr from ACC to self ptr
+        emit_move(SELF, ACC, str);
 
         // init all attrs in order
         std::map<Symbol, Feature> attr_map = this->attribute_table[curr_class_typeID];
@@ -1120,12 +1138,15 @@ void CgenClassTable::code_object_initializer() {
             Symbol attr_objID = attr_order[i];
             Feature attr_typeID = attr_map[attr_objID];
             Expression init_expr = attr_typeID->get_expression();
-            init_expr->code(str); // code the init expression
-            emit_store(ACC, DEFAULT_OBJFIELDS + i, SELF, str); // store 
+            if (!init_expr->instanceof("no_expr_class")) {
+                init_expr->code(str); // code the init expression
+                emit_store(ACC, DEFAULT_OBJFIELDS + i, SELF, str); // store
+            }
         }
 
         emit_pop(RA, str); // restore ra
         emit_pop(ACC, str); // restore ACC register
+        // emit_pop(SELF, str); // restore self ptr
         emit_pop(FP, str); // restore fp
         
         emit_return(str);
@@ -1138,11 +1159,10 @@ void CgenClassTable::code_object_initializer() {
 //
 void CgenClassTable::code_class_methods() {
 
-    // jump
     for (int tag = 0; tag <= this->_max_tag; ++tag) {
         Symbol curr_class_typeID = this->tag_table[tag]->get_typeID();
 
-        // Make sure we do not override provided method code for class Object, IO, or String
+        // Do not override provided method code for basic classes
         if (!tag_table[tag]->basic()) {
             std::map<Symbol, Feature> class_methods = this->method_table[curr_class_typeID];
 
@@ -1168,13 +1188,12 @@ void CgenClassTable::code_class_methods() {
                     // Restore return address
                     emit_pop(RA, str);
 
-                    // Restore stack to previous state -- 4 bytes per formal, 4 for old fp
+                    // Pop n formals
                     int num_formals = curr_method->get_formals()->len();
-                    int activation_record_offset = WORD_SIZE * (num_formals + 1);
-                    emit_addiu(SP, SP, activation_record_offset, str);
+                    emit_popn(num_formals, str);
 
                     // Restore old fp
-                    emit_load(FP, 0, SP, str);
+                    emit_pop(FP, str);
                     
                     // Go back to return address
                     emit_return(str);
