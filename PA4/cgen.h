@@ -58,10 +58,10 @@ private:
     void code_protObj();
 
 // The following method emit code for object initializer
-    void code_object_initializer();
+    void code_object_initializer(Environment env);
 
 // The following method emid code for class methods
-    void code_class_methods();
+    void code_class_methods(Environment env);
 
 // The following creates an inheritance graph from
 // a list of classes.  The graph is implemented as
@@ -79,10 +79,6 @@ public:
     void print_CgenClassTable();
     void print_inheritance_graph();
     void print_attribute_table();
-    bool isInt(Symbol typeID);
-    bool isString(Symbol typeID);
-    bool isBool(Symbol typeID);
-    bool equal(Symbol typeID1, Symbol typeID2);
 };
 
 
@@ -115,4 +111,66 @@ public:
     BoolConst(int);
     void code_def(ostream&, int boolclasstag);
     void code_ref(ostream&) const;
+};
+
+///////////////////////////////////////////////////////////////////////
+//
+// Helper Functions
+//
+///////////////////////////////////////////////////////////////////////
+bool isInt(Symbol typeID) {
+    return strcmp(typeID->get_string(), "Int") == 0;
+}
+
+bool isString(Symbol typeID) {
+    return strcmp(typeID->get_string(), "String") == 0;
+}
+
+bool isBool(Symbol typeID) {
+    return strcmp(typeID->get_string(), "Bool") == 0;
+}
+
+bool equal(Symbol typeID1, Symbol typeID2) {
+    return strcmp(typeID1->get_string(), typeID2->get_string()) == 0;
+}
+
+class Environment
+{
+private:
+    // self object tag
+    int so = -1;
+
+    // an array of class typeID, ordered in tag
+    std::vector<Symbol> class_typeIDs;
+
+    // key is class tag, val is an array of attrs' objectIDs
+    std::map<int, std::vector<Symbol> > tag_attrs;
+
+public:
+    int get_so() { return so; }
+    void set_so(int tag) { so = tag; }
+
+    int get_tag(Symbol typeID) {
+        for (long unsigned i = 0; i < class_typeIDs.size(); ++i) {
+            if (equal(typeID, class_typeIDs[i])) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    void update_class_typeIDs(std::vector<Symbol> typeIDs) {
+        class_typeIDs = typeIDs;
+    }
+
+    // get a string of Class.methodID from tag and methodID
+    char *get_method_label(int tag, Symbol methodID) {
+        Symbol typeID = class_typeIDs[tag];
+        char *typeID_tmp = nullptr;
+        strcpy(typeID_tmp, typeID->get_string());
+        char *ret = strcat(typeID_tmp, METHOD_SEP);
+        ret = strcat(ret, methodID->get_string());
+
+        return ret;
+    }
 };
