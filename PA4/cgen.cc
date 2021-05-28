@@ -1113,23 +1113,10 @@ void CgenClassTable::code_object_initializer() {
         emit_init_ref(curr_class_typeID, str);
         str << LABEL;
 
-        emit_push(FP, str); // store old ffp
-        // emit_push(SELF, str); // store self ptr
+        emit_push(FP, str); // store old fp
         emit_push(ACC, str); // store ACC (will be used when evaluate init_expr)
         emit_move(FP, SP, str); // fp points to one word below arguments
         emit_push(RA, str); // store ra
-
-        // load _protObj address to ACC
-        emit_partial_load_address(ACC, str);
-        emit_protobj_ref(curr_class_typeID, str);
-        str << endl;
-
-        // Call Object.copy to allocate memory on heap
-        str << JAL;
-        str << Object << METHOD_SEP << copy << endl;
-
-        // move returned ptr from ACC to self ptr
-        emit_move(SELF, ACC, str);
 
         // init all attrs in order
         std::map<Symbol, Feature> attr_map = this->attribute_table[curr_class_typeID];
@@ -1138,15 +1125,20 @@ void CgenClassTable::code_object_initializer() {
             Symbol attr_objID = attr_order[i];
             Feature attr_typeID = attr_map[attr_objID];
             Expression init_expr = attr_typeID->get_expression();
-            if (!init_expr->instanceof("no_expr_class")) {
+            if (!init_expr->instanceof("no_expr_class")) { // with init
                 init_expr->code(str); // code the init expression
                 emit_store(ACC, DEFAULT_OBJFIELDS + i, SELF, str); // store
+            } else { // default init
+                emit_partial_load_address(ACC, str);
+                emit_protobj_ref(curr_class_typeID, str); // get protObj ptr
+                str << endl;
+                emit_load(ACC, DEFAULT_OBJFIELDS + i, ACC, str); // load default init value from protObj
+                emit_store(ACC, DEFAULT_OBJFIELDS + i, SELF, str); // store default value
             }
         }
 
         emit_pop(RA, str); // restore ra
         emit_pop(ACC, str); // restore ACC register
-        // emit_pop(SELF, str); // restore self ptr
         emit_pop(FP, str); // restore fp
         
         emit_return(str);
