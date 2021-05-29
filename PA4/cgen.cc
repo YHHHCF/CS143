@@ -638,7 +638,7 @@ void CgenClassTable::code_name_and_obj_table()
 //
 //***************************************************
 
-void CgenClassTable::code_attr_and_dispatch_table(Environment env)
+void CgenClassTable::code_attr_and_dispatch_table(Environmentp envp)
 {
     // code for class_attrTabTab
     str << CLASSATTRTABTAB << LABEL;
@@ -654,8 +654,7 @@ void CgenClassTable::code_attr_and_dispatch_table(Environment env)
     std::list<CgenNodeP> node_pool; // a pool for BFS
     node_pool.push_back(probe(Object)); // start from Object
 
-    // a map for environments
-    std::map<int, std::map<Symbol, Feature> > tag_methods;
+    std::map<int, std::map<Symbol, Feature> > env_tag_methods;
 
     while (node_pool.size()) {
         int size = node_pool.size();
@@ -707,8 +706,7 @@ void CgenClassTable::code_attr_and_dispatch_table(Environment env)
             attribute_table[curr_node->get_typeID()] = curr_attr_map;
             method_order[curr_node->get_typeID()] = curr_method_order;
             method_table[curr_node->get_typeID()] = curr_method_map;
-
-            tag_methods[curr_node->get_tag()] = curr_method_map; // update for environment
+            env_tag_methods[curr_node->get_tag()] = curr_method_map; // for env
             
             // add childrens to node_pool
             List<CgenNode> *children_nodes = curr_node->get_children();
@@ -717,8 +715,7 @@ void CgenClassTable::code_attr_and_dispatch_table(Environment env)
             }
         }
     }
-
-    env.update_tag_methods(tag_methods); // update for environment
+    envp->update_tag_methods(env_tag_methods); // update for environment
 
     // code for _attrTab
     for (int tag = 0; tag <= this->_max_tag; ++tag) {
@@ -1123,13 +1120,13 @@ void CgenClassTable::code_parentTab() {
 // CgenClassTable::code_object_initializer
 // generate code for object intializers (first pass)
 //
-void CgenClassTable::code_object_initializer(Environment env) {
+void CgenClassTable::code_object_initializer(Environmentp envp) {
     std::vector<Symbol> typeIDs; // for env
 
     for (int tag = 0; tag <= this->_max_tag; ++tag) {
         Symbol curr_class_typeID = this->tag_table[tag]->get_typeID();
         typeIDs.push_back(curr_class_typeID); // for env
-        env.set_so(tag); // set env's so
+        envp->set_so(tag); // set envp's so
         emit_init_ref(curr_class_typeID, str);
         str << LABEL;
 
@@ -1146,7 +1143,7 @@ void CgenClassTable::code_object_initializer(Environment env) {
             Feature attr_typeID = attr_map[attr_objID];
             Expression init_expr = attr_typeID->get_expression();
             if (!init_expr->instanceof("no_expr_class")) { // with init
-                init_expr->code(env, str); // code the init expression
+                init_expr->code(envp, str); // code the init expression
                 emit_store(ACC, DEFAULT_OBJFIELDS + i, SELF, str); // store
             } else { // default init
                 emit_partial_load_address(ACC, str);
@@ -1163,17 +1160,17 @@ void CgenClassTable::code_object_initializer(Environment env) {
         
         emit_return(str);
     }
-    env.update_class_typeIDs(typeIDs); // for env
+    envp->update_class_typeIDs(typeIDs); // for env
 }
 
 //
 // CgenClassTable::code_class_methods
 // generate code for class methods (second pass)
 //
-void CgenClassTable::code_class_methods(Environment env) {
+void CgenClassTable::code_class_methods(Environmentp envp) {
     for (int tag = 0; tag <= this->_max_tag; ++tag) {
         Symbol curr_class_typeID = this->tag_table[tag]->get_typeID();
-        env.set_so(tag); // set so for environment
+        envp->set_so(tag); // set so for environment
 
         // Do not override provided method code for basic classes
         if (!tag_table[tag]->basic()) {
@@ -1202,7 +1199,7 @@ void CgenClassTable::code_class_methods(Environment env) {
                     
                     // Execute Code of Method
                     Expression method_expr = curr_method->get_expression();
-                    method_expr->code(env, str);
+                    method_expr->code(envp, str);
                 
                     // Restore return address
                     emit_pop(RA, str);
@@ -1242,7 +1239,7 @@ void CgenClassTable::code()
     code_parentTab();
 
     if (cgen_debug) cout << "coding attirbute and dispatch tables" << endl;
-    code_attr_and_dispatch_table(env);
+    code_attr_and_dispatch_table(&env);
 
     if (cgen_debug) cout << "coding prototype objects" << endl;
     code_protObj();
@@ -1250,14 +1247,16 @@ void CgenClassTable::code()
     if (cgen_debug) cout << "coding global text" << endl;
     code_global_text();
 
-    env.print_class_typeIDs();
-    env.print_tag_methods();
-
     if (cgen_debug) cout << "coding object initializer" << endl;
-    code_object_initializer(env);
+    code_object_initializer(&env);
+
+    if (cgen_debug) {
+        env.print_tag_methods();
+        env.print_class_typeIDs();
+    }
 
     if (cgen_debug) cout << "coding class methods" << endl;
-    code_class_methods(env);
+    code_class_methods(&env);
 }
 
 CgenNodeP CgenClassTable::root()
@@ -1333,14 +1332,14 @@ CgenNode::CgenNode(Class_ nd, Basicness bstatus, CgenClassTableP ct) :
 //
 //*****************************************************************
 
-void assign_class::code(Environment env, ostream &s) {
+void assign_class::code(Environmentp envp, ostream &s) {
 
 }
 
-void static_dispatch_class::code(Environment env, ostream &s) {
+void static_dispatch_class::code(Environmentp envp, ostream &s) {
 }
 
-void dispatch_class::code(Environment env, ostream &s) {
+void dispatch_class::code(Environmentp envp, ostream &s) {
     if (cgen_debug) {
         printf("debug dispatch_class\n");
     }
@@ -1352,45 +1351,41 @@ void dispatch_class::code(Environment env, ostream &s) {
     // and push vn, vn-1, ..., v2, v1 to stack
     Expressions arguments = this->get_arg_expressions();
     for (int i = arguments->len() - 1; i >= 0; --i) {
-        arguments->nth(i)->code(env, s);
+        arguments->nth(i)->code(envp, s);
         emit_push(ACC, s);
     }
     
     // Step 2: find the method definition
     // evaluate e0 -> v0
-    printf("debug 1\n");
     int e0_tag;
     Expression e0 = this->get_expression();
     if (is_SELF_TYPE(e0->get_type())) {
         emit_move(ACC, SELF, s);
-        e0_tag = env.get_so();
+        e0_tag = envp->get_so();
     } else {
-        e0->code(env, s); // now v0 is in ACC
+        e0->code(envp, s); // now v0 is in ACC
         // find v0 = X(a1 = la1, ... am = lam)
-        e0_tag = env.get_tag(e0->get_type()); // get tag of e0
+        e0_tag = envp->get_tag(e0->get_type()); // get tag of e0
     }
-    printf("debug 2: %d, %s\n", e0_tag, this->get_methodID()->get_string());
 
     // Step 3: find method definition from the dispatch table of X and jal to it
-    char *method_label = env.get_method_label(e0_tag, this->get_methodID());
-    printf("debug 3\n");
+    char *method_label = envp->get_method_label(e0_tag, this->get_methodID());
     emit_jal(method_label, s);
-    printf("debug 4\n");
     if (cgen_debug) {
         printf("debug dispatch_class end\n");
     }
 }
 
-void cond_class::code(Environment env, ostream &s) {
+void cond_class::code(Environmentp envp, ostream &s) {
 }
 
-void loop_class::code(Environment env, ostream &s) {
+void loop_class::code(Environmentp envp, ostream &s) {
 }
 
-void typcase_class::code(Environment env, ostream &s) {
+void typcase_class::code(Environmentp envp, ostream &s) {
 }
 
-void block_class::code(Environment env, ostream &s) {
+void block_class::code(Environmentp envp, ostream &s) {
     if (cgen_debug) {
         printf("debug block_class\n");
     }
@@ -1398,41 +1393,41 @@ void block_class::code(Environment env, ostream &s) {
     Expressions exprs = this->get_body_expressions();
     for (int i = exprs->first(); exprs->more(i); i = exprs->next(i)) {
         Expression curr_expr = exprs->nth(i);
-        curr_expr->code(env, s);
+        curr_expr->code(envp, s);
     }
 }
 
-void let_class::code(Environment env, ostream &s) {
+void let_class::code(Environmentp envp, ostream &s) {
 }
 
-void plus_class::code(Environment env, ostream &s) {
+void plus_class::code(Environmentp envp, ostream &s) {
 }
 
-void sub_class::code(Environment env, ostream &s) {
+void sub_class::code(Environmentp envp, ostream &s) {
 }
 
-void mul_class::code(Environment env, ostream &s) {
+void mul_class::code(Environmentp envp, ostream &s) {
 }
 
-void divide_class::code(Environment env, ostream &s) {
+void divide_class::code(Environmentp envp, ostream &s) {
 }
 
-void neg_class::code(Environment env, ostream &s) {
+void neg_class::code(Environmentp envp, ostream &s) {
 }
 
-void lt_class::code(Environment env, ostream &s) {
+void lt_class::code(Environmentp envp, ostream &s) {
 }
 
-void eq_class::code(Environment env, ostream &s) {
+void eq_class::code(Environmentp envp, ostream &s) {
 }
 
-void leq_class::code(Environment env, ostream &s) {
+void leq_class::code(Environmentp envp, ostream &s) {
 }
 
-void comp_class::code(Environment env, ostream &s) {
+void comp_class::code(Environmentp envp, ostream &s) {
 }
 
-void int_const_class::code(Environment env, ostream& s)  
+void int_const_class::code(Environmentp envp, ostream& s)  
 {
     //
     // Need to be sure we have an IntEntry *, not an arbitrary Symbol
@@ -1440,24 +1435,24 @@ void int_const_class::code(Environment env, ostream& s)
     emit_load_int(ACC,inttable.lookup_string(token->get_string()),s);
 }
 
-void string_const_class::code(Environment env, ostream& s)
+void string_const_class::code(Environmentp envp, ostream& s)
 {
     emit_load_string(ACC,stringtable.lookup_string(token->get_string()),s);
 }
 
-void bool_const_class::code(Environment env, ostream& s)
+void bool_const_class::code(Environmentp envp, ostream& s)
 {
     emit_load_bool(ACC, BoolConst(val), s);
 }
 
-void new__class::code(Environment env, ostream &s) {
+void new__class::code(Environmentp envp, ostream &s) {
 }
 
-void isvoid_class::code(Environment env, ostream &s) {
+void isvoid_class::code(Environmentp envp, ostream &s) {
 }
 
-void no_expr_class::code(Environment env, ostream &s) {
+void no_expr_class::code(Environmentp envp, ostream &s) {
 }
 
-void object_class::code(Environment env, ostream &s) {
+void object_class::code(Environmentp envp, ostream &s) {
 }

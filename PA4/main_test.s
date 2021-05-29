@@ -501,12 +501,35 @@ Main.main:
 	la	$a0 str_const3
 	sw	$a0 0($sp)
 	addiu	$sp $sp -4
+	move	$a0 $s0
+	jal	IO.out_string
 	sw	$fp 0($sp)
 	addiu	$sp $sp -4
+	la	$a0 str_const3
 	sw	$a0 0($sp)
 	addiu	$sp $sp -4
+	move	$a0 $s0
+	jal	IO.out_string
 	sw	$fp 0($sp)
 	addiu	$sp $sp -4
-	la	$a0 str_const2
+	la	$a0 str_const3
 	sw	$a0 0($sp)
 	addiu	$sp $sp -4
+	move	$a0 $s0
+	jal	IO.out_string
+	sw	$fp 0($sp)
+	addiu	$sp $sp -4
+	la	$a0 str_const3
+	sw	$a0 0($sp)
+	addiu	$sp $sp -4
+	move	$a0 $s0
+	jal	IO.out_string
+	la	$a0 int_const1
+	addiu	$sp $sp 4
+	lw	$ra 0($sp)
+	addiu	$sp $sp 0
+	addiu	$sp $sp 4
+	lw	$fp 0($sp)
+	jr	$ra	
+
+# end of generated code

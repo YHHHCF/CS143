@@ -20,6 +20,9 @@ typedef CgenClassTable *CgenClassTableP;
 class CgenNode;
 typedef CgenNode *CgenNodeP;
 
+class Environment;
+typedef Environment *Environmentp;
+
 class CgenClassTable : public SymbolTable<Symbol,CgenNode> {
 private:
     List<CgenNode> *nds;
@@ -53,15 +56,15 @@ private:
 // The following methods emit code for
 // _parentTab, _attrTabTab, _dispTab, _protObj
     void code_name_and_obj_table();
-    void code_attr_and_dispatch_table(Environment env);
+    void code_attr_and_dispatch_table(Environmentp envp);
     void code_parentTab();
     void code_protObj();
 
 // The following method emit code for object initializer
-    void code_object_initializer(Environment env);
+    void code_object_initializer(Environmentp envp);
 
 // The following method emid code for class methods
-    void code_class_methods(Environment env);
+    void code_class_methods(Environmentp envp);
 
 // The following creates an inheritance graph from
 // a list of classes.  The graph is implemented as
@@ -177,20 +180,19 @@ public:
         this->class_typeIDs = typeIDs;
     }
 
-    void update_tag_methods(std::map<int, std::map<Symbol, Feature> > tag_methods) {
-        this->tag_methods = tag_methods;
+    void update_tag_methods(std::map<int, std::map<Symbol, Feature> > intput_tag_methods) {
+        this->tag_methods = intput_tag_methods;
     }
 
     // input 1: tag of the object
     // input 2: methodID to search
     // return: a label of typeID (of the methodID's implementation) dot methodID
     char *get_method_label(int tag, Symbol methodID) {
-        char *typeID_tmp = nullptr;
         Feature method = this->tag_methods[tag][methodID];
-        strcpy(typeID_tmp, method->get_implement_typeID()->get_string());
-        char *ret = strcat(typeID_tmp, METHOD_SEP);
+        char *implement_typeID = new char[strlen(method->get_implement_typeID()->get_string())];
+        strcpy(implement_typeID, method->get_implement_typeID()->get_string());
+        char *ret = strcat(implement_typeID, METHOD_SEP);
         ret = strcat(ret, methodID->get_string());
-
         return ret;
     }
 
@@ -207,12 +209,12 @@ public:
     // print tag_methods for debug
     void print_tag_methods() {
         printf("============print tag_mathods start============\n");
-        printf("There are %lu classes\n", class_typeIDs.size());
-        for (unsigned long i = 0; i < class_typeIDs.size(); ++i) {
+        printf("There are %lu classes\n", this->tag_methods.size());
+        for (unsigned long i = 0; i < this->tag_methods.size(); ++i) {
             printf("Class %lu: ", i);
             for (auto entry : this->tag_methods[i]) {
-                printf("%s.%s ", entry.first->get_string(), \
-                entry.second->get_methodID()->get_string());
+                printf("%s.%s ", entry.second->get_implement_typeID()->get_string(), \
+                    entry.first->get_string());
             }
             printf("\n");
         }
