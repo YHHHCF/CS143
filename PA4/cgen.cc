@@ -1337,7 +1337,7 @@ void dispatch_class::code(Environment env, ostream &s) {
     // evaluate arguments e1, e2, ..., en -> v1, v2, ..., vn
     // and push vn, vn-1, ..., v2, v1 to stack
     Expressions arguments = this->get_arg_expressions();
-    for (int i = arguments->len() - 1; i >= 0; ++i) {
+    for (int i = arguments->len() - 1; i >= 0; --i) {
         arguments->nth(i)->code(env, s);
         emit_push(ACC, s);
     }
@@ -1345,7 +1345,7 @@ void dispatch_class::code(Environment env, ostream &s) {
     // Step 2: find the method definition
     // evaluate e0 -> v0
     Expression e0 = this->get_expression();
-    e0->code(env, s);
+    e0->code(env, s); // now v0 is in ACC
 
     // find v0 = X(a1 = la1, ... am = lam)
     int e0_tag = env.get_tag(e0->get_type()); // get tag of e0
