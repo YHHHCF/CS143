@@ -368,6 +368,15 @@ static void emit_gc_check(char *source, ostream &s)
     s << JAL << "_gc_check" << endl;
 }
 
+// emit the code to print an int for debug
+static void emit_int_debug(int x, ostream &s) {
+    emit_push(ACC, s);
+    emit_load_imm(ACC, x, s);
+    emit_push(ACC, s);
+    emit_jalr("IO.out_int", s);
+    emit_popn(1, s);
+    emit_pop(ACC, s);
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -629,7 +638,7 @@ void CgenClassTable::code_name_and_obj_table()
 //
 //***************************************************
 
-void CgenClassTable::code_attr_and_dispatch_table()
+void CgenClassTable::code_attr_and_dispatch_table(Environment env)
 {
     // code for class_attrTabTab
     str << CLASSATTRTABTAB << LABEL;
@@ -644,6 +653,9 @@ void CgenClassTable::code_attr_and_dispatch_table()
     // Update attribute_table and method_table using BFS
     std::list<CgenNodeP> node_pool; // a pool for BFS
     node_pool.push_back(probe(Object)); // start from Object
+
+    // a map for environments
+    std::map<int, std::map<Symbol, Feature> > tag_methods;
 
     while (node_pool.size()) {
         int size = node_pool.size();
@@ -695,6 +707,8 @@ void CgenClassTable::code_attr_and_dispatch_table()
             attribute_table[curr_node->get_typeID()] = curr_attr_map;
             method_order[curr_node->get_typeID()] = curr_method_order;
             method_table[curr_node->get_typeID()] = curr_method_map;
+
+            tag_methods[curr_node->get_tag()] = curr_method_map; // update for environment
             
             // add childrens to node_pool
             List<CgenNode> *children_nodes = curr_node->get_children();
@@ -703,6 +717,8 @@ void CgenClassTable::code_attr_and_dispatch_table()
             }
         }
     }
+
+    env.update_tag_methods(tag_methods); // update for environment
 
     // code for _attrTab
     for (int tag = 0; tag <= this->_max_tag; ++tag) {
@@ -1218,7 +1234,7 @@ void CgenClassTable::code()
     code_parentTab();
 
     if (cgen_debug) cout << "coding attirbute and dispatch tables" << endl;
-    code_attr_and_dispatch_table();
+    code_attr_and_dispatch_table(env);
 
     if (cgen_debug) cout << "coding prototype objects" << endl;
     code_protObj();
@@ -1319,9 +1335,9 @@ void dispatch_class::code(Environment env, ostream &s) {
     emit_push(FP, s);
 
     // evaluate arguments e1, e2, ..., en -> v1, v2, ..., vn
-    // and push v1, v2, ..., vn to stack
+    // and push vn, vn-1, ..., v2, v1 to stack
     Expressions arguments = this->get_arg_expressions();
-    for (int i = arguments->first(); arguments->more(i); i = arguments->next(i)) {
+    for (int i = arguments->len() - 1; i >= 0; ++i) {
         arguments->nth(i)->code(env, s);
         emit_push(ACC, s);
     }
@@ -1332,10 +1348,10 @@ void dispatch_class::code(Environment env, ostream &s) {
     e0->code(env, s);
 
     // find v0 = X(a1 = la1, ... am = lam)
-    int tag = env.get_tag(e0->get_type()); // X's tag
+    int e0_tag = env.get_tag(e0->get_type()); // get tag of e0
 
     // Step 3: find method definition from the dispatch table of X and jal to it
-    char *method_label = env.get_method_label(tag, this->get_methodID());
+    char *method_label = env.get_method_label(e0_tag, this->get_methodID());
     emit_jal(method_label, s);
 }
 
@@ -1349,6 +1365,11 @@ void typcase_class::code(Environment env, ostream &s) {
 }
 
 void block_class::code(Environment env, ostream &s) {
+    Expressions exprs = this->get_body_expressions();
+    for (int i = exprs->first(); exprs->more(i); i = exprs->next(i)) {
+        Expression curr_expr = exprs->nth(i);
+        curr_expr->code(env, s);
+    }
 }
 
 void let_class::code(Environment env, ostream &s) {

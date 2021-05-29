@@ -53,7 +53,7 @@ private:
 // The following methods emit code for
 // _parentTab, _attrTabTab, _dispTab, _protObj
     void code_name_and_obj_table();
-    void code_attr_and_dispatch_table();
+    void code_attr_and_dispatch_table(Environment env);
     void code_parentTab();
     void code_protObj();
 
@@ -137,19 +137,18 @@ bool equal(Symbol typeID1, Symbol typeID2) {
 class Environment
 {
 private:
-    // self object tag
-    int so = -1;
-
     // an array of class typeID, ordered in tag
     std::vector<Symbol> class_typeIDs;
 
-    // key is class tag, val is an array of attrs' objectIDs
-    std::map<int, std::vector<Symbol> > tag_attrs;
+    // // key is class tag, val is an array of attrs' objectIDs
+    // std::map<int, std::vector<Symbol> > tag_attrs;
+
+    // key is class tag, val is a map of methodID to method label
+    // where a method label is the typeID.methodID in disptable
+    // typeID is the implement/override class's typeID
+    std::map<int, std::map<Symbol, Feature> > tag_methods;
 
 public:
-    int get_so() { return so; }
-    void set_so(int tag) { so = tag; }
-
     int get_tag(Symbol typeID) {
         for (long unsigned i = 0; i < class_typeIDs.size(); ++i) {
             if (equal(typeID, class_typeIDs[i])) {
@@ -160,14 +159,20 @@ public:
     }
 
     void update_class_typeIDs(std::vector<Symbol> typeIDs) {
-        class_typeIDs = typeIDs;
+        this->class_typeIDs = typeIDs;
     }
 
-    // get a string of Class.methodID from tag and methodID
+    void update_tag_methods(std::map<int, std::map<Symbol, Feature> > tag_methods) {
+        this->tag_methods = tag_methods;
+    }
+
+    // input 1: tag of the object
+    // input 2: methodID to search
+    // return: a label of typeID (of the methodID's implementation) dot methodID
     char *get_method_label(int tag, Symbol methodID) {
-        Symbol typeID = class_typeIDs[tag];
         char *typeID_tmp = nullptr;
-        strcpy(typeID_tmp, typeID->get_string());
+        Feature method = this->tag_methods[tag][methodID];
+        strcpy(typeID_tmp, method->get_implement_typeID()->get_string());
         char *ret = strcat(typeID_tmp, METHOD_SEP);
         ret = strcat(ret, methodID->get_string());
 
