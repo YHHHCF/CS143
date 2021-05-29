@@ -1129,6 +1129,7 @@ void CgenClassTable::code_object_initializer(Environment env) {
     for (int tag = 0; tag <= this->_max_tag; ++tag) {
         Symbol curr_class_typeID = this->tag_table[tag]->get_typeID();
         typeIDs.push_back(curr_class_typeID); // for env
+        env.set_so(tag); // set env's so
         emit_init_ref(curr_class_typeID, str);
         str << LABEL;
 
@@ -1172,6 +1173,7 @@ void CgenClassTable::code_object_initializer(Environment env) {
 void CgenClassTable::code_class_methods(Environment env) {
     for (int tag = 0; tag <= this->_max_tag; ++tag) {
         Symbol curr_class_typeID = this->tag_table[tag]->get_typeID();
+        env.set_so(tag); // set so for environment
 
         // Do not override provided method code for basic classes
         if (!tag_table[tag]->basic()) {
@@ -1179,6 +1181,12 @@ void CgenClassTable::code_class_methods(Environment env) {
 
             for (auto method : class_methods) {
                 Feature curr_method = method.second;
+
+                if (cgen_debug) {
+                    printf("code_class_methods: %s, %s\n", curr_class_typeID->get_string(), \
+                    curr_method->get_methodID()->get_string());
+                }
+
                 // We only process methods defined in this class to prevent double counting
                 if (equal(curr_method->get_implement_typeID(), curr_class_typeID)) {
 
@@ -1241,6 +1249,9 @@ void CgenClassTable::code()
 
     if (cgen_debug) cout << "coding global text" << endl;
     code_global_text();
+
+    env.print_class_typeIDs();
+    env.print_tag_methods();
 
     if (cgen_debug) cout << "coding object initializer" << endl;
     code_object_initializer(env);
@@ -1330,6 +1341,9 @@ void static_dispatch_class::code(Environment env, ostream &s) {
 }
 
 void dispatch_class::code(Environment env, ostream &s) {
+    if (cgen_debug) {
+        printf("debug dispatch_class\n");
+    }
     // Step 1: prepare the stack
     // push fp on stack
     emit_push(FP, s);
@@ -1344,15 +1358,27 @@ void dispatch_class::code(Environment env, ostream &s) {
     
     // Step 2: find the method definition
     // evaluate e0 -> v0
+    printf("debug 1\n");
+    int e0_tag;
     Expression e0 = this->get_expression();
-    e0->code(env, s); // now v0 is in ACC
-
-    // find v0 = X(a1 = la1, ... am = lam)
-    int e0_tag = env.get_tag(e0->get_type()); // get tag of e0
+    if (is_SELF_TYPE(e0->get_type())) {
+        emit_move(ACC, SELF, s);
+        e0_tag = env.get_so();
+    } else {
+        e0->code(env, s); // now v0 is in ACC
+        // find v0 = X(a1 = la1, ... am = lam)
+        e0_tag = env.get_tag(e0->get_type()); // get tag of e0
+    }
+    printf("debug 2: %d, %s\n", e0_tag, this->get_methodID()->get_string());
 
     // Step 3: find method definition from the dispatch table of X and jal to it
     char *method_label = env.get_method_label(e0_tag, this->get_methodID());
+    printf("debug 3\n");
     emit_jal(method_label, s);
+    printf("debug 4\n");
+    if (cgen_debug) {
+        printf("debug dispatch_class end\n");
+    }
 }
 
 void cond_class::code(Environment env, ostream &s) {
@@ -1365,6 +1391,10 @@ void typcase_class::code(Environment env, ostream &s) {
 }
 
 void block_class::code(Environment env, ostream &s) {
+    if (cgen_debug) {
+        printf("debug block_class\n");
+    }
+
     Expressions exprs = this->get_body_expressions();
     for (int i = exprs->first(); exprs->more(i); i = exprs->next(i)) {
         Expression curr_expr = exprs->nth(i);

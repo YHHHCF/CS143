@@ -130,6 +130,10 @@ bool isBool(Symbol typeID) {
     return strcmp(typeID->get_string(), "Bool") == 0;
 }
 
+bool is_SELF_TYPE(Symbol typeID) {
+    return strcmp(typeID->get_string(), "SELF_TYPE") == 0;
+}
+
 bool equal(Symbol typeID1, Symbol typeID2) {
     return strcmp(typeID1->get_string(), typeID2->get_string()) == 0;
 }
@@ -137,6 +141,9 @@ bool equal(Symbol typeID1, Symbol typeID2) {
 class Environment
 {
 private:
+    // self object
+    int so = -1;
+
     // an array of class typeID, ordered in tag
     std::vector<Symbol> class_typeIDs;
 
@@ -158,6 +165,14 @@ public:
         return -1;
     }
 
+    void set_so (int tag) {
+        this->so = tag;
+    }
+
+    int get_so() {
+        return this->so;
+    }
+
     void update_class_typeIDs(std::vector<Symbol> typeIDs) {
         this->class_typeIDs = typeIDs;
     }
@@ -177,5 +192,30 @@ public:
         ret = strcat(ret, methodID->get_string());
 
         return ret;
+    }
+
+    // print class_typeIDs for debug
+    void print_class_typeIDs() {
+        printf("============print class_typeIDs start============\n");
+        printf("There are %lu classes\n", class_typeIDs.size());
+        for (unsigned long i = 0; i < class_typeIDs.size(); ++i) {
+            printf("Class %lu: %s\n", i, class_typeIDs[i]->get_string());
+        }
+        printf("=============print class_typeIDs end=============\n");
+    }
+
+    // print tag_methods for debug
+    void print_tag_methods() {
+        printf("============print tag_mathods start============\n");
+        printf("There are %lu classes\n", class_typeIDs.size());
+        for (unsigned long i = 0; i < class_typeIDs.size(); ++i) {
+            printf("Class %lu: ", i);
+            for (auto entry : this->tag_methods[i]) {
+                printf("%s.%s ", entry.first->get_string(), \
+                entry.second->get_methodID()->get_string());
+            }
+            printf("\n");
+        }
+        printf("=============print tag_mathods end=============\n");
     }
 };
