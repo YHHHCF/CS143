@@ -133,6 +133,10 @@ bool isBool(Symbol typeID) {
     return strcmp(typeID->get_string(), "Bool") == 0;
 }
 
+bool isBasic(Symbol typeID) {
+    return isInt(typeID) || isBool(typeID) || isString(typeID);
+}
+
 bool is_SELF_TYPE(Symbol typeID) {
     return strcmp(typeID->get_string(), "SELF_TYPE") == 0;
 }

@@ -1400,19 +1400,11 @@ void dispatch_class::code(Environmentp envp, ostream &s) {
     emit_jal(method_label, s);
 
     // Step 4: restore old fp
-    // Restore old fp
     emit_pop(FP, s);
 
     if (cgen_debug) {
         printf("debug dispatch_class end\n");
     }
-
-    // Pop n formals
-    int num_formals = arguments->len();
-    // emit_popn(num_formals, s);
-
-    // Restore old fp
-    // emit_pop(FP, s);
 }
 
 void cond_class::code(Environmentp envp, ostream &s) {
@@ -1657,27 +1649,7 @@ void no_expr_class::code(Environmentp envp, ostream &s) {
 
 void object_class::code(Environmentp envp, ostream &s) {
 
-    if (cgen_debug) {
-        printf("debug object_class: %s\n", this->get_objectID()->get_string());
-    }
-
     Symbol curr_objectID = this->get_objectID();
-    if (envp->contains(curr_objectID)) {
-        if (envp->is_attr(curr_objectID)) {
-            // attributes
-            int offset = envp->get_attr_offset(curr_objectID) + DEFAULT_OBJFIELDS;
-            emit_load(ACC, offset, SELF, s);   // we want to get inside s0
-        }
-        else {
-            // temp var
-            int offset = envp->get_var_offset(curr_objectID);
-            emit_addiu(ACC, FP, offset, s);   // we want to go from fp   
-        }
-    } else {
-        if (cgen_debug) {
-            printf("Error: objectID not defined, should be handled by type checking.\n");
-        }
-    }
     if (cgen_debug) {
         printf("debug object_class: %s\n", this->get_objectID()->get_string());
     }
