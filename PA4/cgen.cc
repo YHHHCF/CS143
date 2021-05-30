@@ -654,7 +654,8 @@ void CgenClassTable::code_attr_and_dispatch_table(Environmentp envp)
     std::list<CgenNodeP> node_pool; // a pool for BFS
     node_pool.push_back(probe(Object)); // start from Object
 
-    std::map<int, std::map<Symbol, Feature> > env_tag_methods;
+    std::map<int, std::map<Symbol, Feature> > env_tag_methods; // for env
+    std::map<int, std::vector<Symbol> > env_tag_attrs; // for env
 
     while (node_pool.size()) {
         int size = node_pool.size();
@@ -706,6 +707,7 @@ void CgenClassTable::code_attr_and_dispatch_table(Environmentp envp)
             attribute_table[curr_node->get_typeID()] = curr_attr_map;
             method_order[curr_node->get_typeID()] = curr_method_order;
             method_table[curr_node->get_typeID()] = curr_method_map;
+            env_tag_attrs[curr_node->get_tag()] = curr_attr_order; // for env
             env_tag_methods[curr_node->get_tag()] = curr_method_map; // for env
             
             // add childrens to node_pool
@@ -715,6 +717,7 @@ void CgenClassTable::code_attr_and_dispatch_table(Environmentp envp)
             }
         }
     }
+    envp->update_tag_attrs(env_tag_attrs); // update for environment
     envp->update_tag_methods(env_tag_methods); // update for environment
 
     // code for _attrTab
@@ -1244,6 +1247,7 @@ void CgenClassTable::code()
     code_object_initializer(&env);
 
     if (cgen_debug) {
+        env.print_tag_attrs();
         env.print_tag_methods();
         env.print_class_typeIDs();
     }
@@ -1475,7 +1479,7 @@ void comp_class::code(Environmentp envp, ostream &s) {
 void int_const_class::code(Environmentp envp, ostream& s)  
 {
     if (cgen_debug) {
-        printf("debug int_const_class\n");
+        printf("debug int_const_class: %s\n", token->get_string());
     }
     //
     // Need to be sure we have an IntEntry *, not an arbitrary Symbol
@@ -1486,7 +1490,7 @@ void int_const_class::code(Environmentp envp, ostream& s)
 void string_const_class::code(Environmentp envp, ostream& s)
 {
     if (cgen_debug) {
-        printf("debug string_const_class\n");
+        printf("debug string_const_class: %s\n", token->get_string());
     }
     emit_load_string(ACC,stringtable.lookup_string(token->get_string()),s);
 }
@@ -1494,7 +1498,7 @@ void string_const_class::code(Environmentp envp, ostream& s)
 void bool_const_class::code(Environmentp envp, ostream& s)
 {
     if (cgen_debug) {
-        printf("debug bool_const_class\n");
+        printf("debug bool_const_class: %d\n", val);
     }
     emit_load_bool(ACC, BoolConst(val), s);
 }

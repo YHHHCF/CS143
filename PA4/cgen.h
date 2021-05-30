@@ -150,8 +150,11 @@ private:
     // an array of class typeID, ordered in tag
     std::vector<Symbol> class_typeIDs;
 
-    // // key is class tag, val is an array of attrs' objectIDs
-    // std::map<int, std::vector<Symbol> > tag_attrs;
+    // key is class tag, val is an array of attrs' objectIDs
+    std::map<int, std::vector<Symbol> > tag_attrs;
+
+    // a symbol table for all objectIDs in the current scope
+    SymbolTable<Symbol, int> *env_objectIDs = new SymbolTable<Symbol, int>();
 
     // key is class tag, val is a map of methodID to method label
     // where a method label is the typeID.methodID in disptable
@@ -180,8 +183,12 @@ public:
         this->class_typeIDs = typeIDs;
     }
 
-    void update_tag_methods(std::map<int, std::map<Symbol, Feature> > intput_tag_methods) {
-        this->tag_methods = intput_tag_methods;
+    void update_tag_attrs(std::map<int, std::vector<Symbol> > input_tag_attrs) {
+        this->tag_attrs = input_tag_attrs;
+    }
+
+    void update_tag_methods(std::map<int, std::map<Symbol, Feature> > input_tag_methods) {
+        this->tag_methods = input_tag_methods;
     }
 
     // input 1: tag of the object
@@ -198,17 +205,17 @@ public:
 
     // print class_typeIDs for debug
     void print_class_typeIDs() {
-        printf("============print class_typeIDs start============\n");
+        printf("============Environment class_typeIDs start============\n");
         printf("There are %lu classes\n", class_typeIDs.size());
         for (unsigned long i = 0; i < class_typeIDs.size(); ++i) {
             printf("Class %lu: %s\n", i, class_typeIDs[i]->get_string());
         }
-        printf("=============print class_typeIDs end=============\n");
+        printf("=============Environment class_typeIDs end=============\n");
     }
 
     // print tag_methods for debug
     void print_tag_methods() {
-        printf("============print tag_mathods start============\n");
+        printf("============Environment tag_mathods start============\n");
         printf("There are %lu classes\n", this->tag_methods.size());
         for (unsigned long i = 0; i < this->tag_methods.size(); ++i) {
             printf("Class %lu: ", i);
@@ -218,6 +225,20 @@ public:
             }
             printf("\n");
         }
-        printf("=============print tag_mathods end=============\n");
+        printf("=============Environment tag_mathods end=============\n");
+    }
+
+    // print tag_attrs for debug
+    void print_tag_attrs() {
+        printf("============Environment tag_attrs start============\n");
+        printf("There are %lu classes\n", this->tag_attrs.size());
+        for (unsigned long i = 0; i < this->tag_attrs.size(); ++i) {
+            printf("Class %lu: ", i);
+            for (unsigned long j = 0; j < this->tag_attrs[i].size(); ++j) {
+                printf("%s ", this->tag_attrs[i][j]->get_string());
+            }
+            printf("\n");
+        }
+        printf("=============Environment tag_attrs end=============\n");
     }
 };
