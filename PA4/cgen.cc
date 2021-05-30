@@ -1195,6 +1195,19 @@ void CgenClassTable::code_class_methods(Environmentp envp) {
                         curr_method->get_methodID()->get_string());
                     }
 
+                    // enter the environment with formals
+                    envp->enter_scope();
+                    std::vector<Symbol> formal_objIDs;
+
+                    for (int f = curr_method->get_formals()->first(); curr_method->get_formals()->more(f); \
+                        f = curr_method->get_formals()->next(f)) {
+                        Formal curr_formal = curr_method->get_formals()->nth(f);
+                        formal_objIDs.push_back(curr_formal->get_objectID());
+                    }
+                    envp->update_formal_objectIDs(formal_objIDs);
+
+                    envp->enter_method();
+
                     // Emit label for the Method
                     emit_method_ref(curr_class_typeID, curr_method->get_methodID(), str);
                     str << LABEL;
@@ -1211,9 +1224,14 @@ void CgenClassTable::code_class_methods(Environmentp envp) {
                 
                     // Restore return address
                     emit_pop(RA, str);
+
+                    // Pop n arguments
+                    emit_popn(curr_method->get_formals()->len(), str);
                     
                     // Go back to return address
                     emit_return(str);
+
+                    envp->exit_scope();
                 }
             }
         }
@@ -1256,7 +1274,7 @@ void CgenClassTable::code()
         env.print_tag_attrs();
         env.print_tag_methods();
         env.print_class_typeIDs();
-        env.test_env_objectIDs();
+        // env.test_env_objectIDs();
     }
 
     if (cgen_debug) cout << "coding class methods" << endl;
@@ -1381,10 +1399,7 @@ void dispatch_class::code(Environmentp envp, ostream &s) {
     char *method_label = envp->get_method_label(e0_tag, this->get_methodID());
     emit_jal(method_label, s);
 
-    // Step 4: restore stack
-    // Pop n arguments
-    emit_popn(arguments->len(), s);
-
+    // Step 4: restore old fp
     // Restore old fp
     emit_pop(FP, s);
 
@@ -1586,7 +1601,27 @@ void object_class::code(Environmentp envp, ostream &s) {
         }
     }
     if (cgen_debug) {
-        printf("debug object_class end\n");
+        printf("debug object_class: %s\n", this->get_objectID()->get_string());
+    }
+
+    if (!envp->contains(curr_objectID)) {
+        if (cgen_debug) {
+            printf("Error: objectID not defined, should be handled by type checker.\n");
+        }
+    }
+
+    if (envp->is_attr(curr_objectID)) {
+        // attribute
+        int offset = envp->get_attr_offset(curr_objectID) + DEFAULT_OBJFIELDS;
+        emit_load(ACC, offset, SELF, s);
+    } else if (envp->is_formal(curr_objectID)) {
+        // formal
+        int offset = envp->get_formal_offset(curr_objectID) + 1;
+        emit_load(ACC, offset + 1, FP, s); // formals / arguments are above fp
+    } else {
+        // variable
+        int offset = envp->get_var_offset(curr_objectID);
+        emit_load(ACC, -offset, FP, s); // variables are stored below fp
     }
 }
 // bottom

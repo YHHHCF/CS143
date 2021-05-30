@@ -156,6 +156,10 @@ private:
     // key is class tag, val is an array of attrs' objectIDs
     std::map<int, std::vector<Symbol> > tag_attrs;
 
+    // maintain an array of formal objectIDs for the current method call
+    // the sequence is in declared order
+    std::vector<Symbol> formal_objectIDs;
+
     // a symbol table for all objectIDs in the current scope
     SymbolTable<Symbol, int> *env_objectIDs = new SymbolTable<Symbol, int>();
 
@@ -199,6 +203,18 @@ public:
         this->tag_methods = input_tag_methods;
     }
 
+    void update_formal_objectIDs(std::vector<Symbol> objectIDs) {
+        this->formal_objectIDs = objectIDs;
+    }
+
+    // add all formal objectIDs with offset -3
+    void enter_method() {
+        static int formal_idx = -3; // static is needed to keep formal_idx
+        for (unsigned int i = 0; i < formal_objectIDs.size(); ++i) {
+            this->env_objectIDs->addid(formal_objectIDs[i], &formal_idx);
+        }
+    }
+
     // input 1: tag of the object
     // input 2: methodID to search
     // return: a label of typeID (of the methodID's implementation) dot methodID
@@ -238,6 +254,19 @@ public:
         }
     }
 
+    // true if it is formal
+    bool is_formal(Symbol objectID) {
+        if (this->so < 0) {
+            return false;
+        }
+        int *offset = this->env_objectIDs->lookup(objectID);
+        if ((*offset) == -3) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     // add a variable to environment (not attribute)
     void add_var(Symbol var_objectID, int *offset) {
         this->env_objectIDs->addid(var_objectID, offset);
@@ -246,7 +275,7 @@ public:
     // get the offset of a variable
     int get_var_offset(Symbol var_objectID) {
         if (is_attr(var_objectID)) {
-            return -1; // error to pass in attr objectID
+            return -1; // error to pass in not var objectID
         }
         int *offset = this->env_objectIDs->lookup(var_objectID);
         return *offset;
@@ -255,12 +284,26 @@ public:
     // get the offset of an attribute
     int get_attr_offset(Symbol attr_objectID) {
         if (!is_attr(attr_objectID)) {
-            return -1; // error to pass in var objectID
+            return -1; // error to pass in not attr objectID
         }
         std::vector<Symbol> attrs = tag_attrs[so];
         int offset = -1;
         for (unsigned long i = 0; i < attrs.size(); ++i) {
             if (equal(attr_objectID, attrs[i])) {
+                offset = static_cast<int>(i);
+            }
+        }
+        return offset;
+    }
+
+    // get the offset of a formal
+    int get_formal_offset(Symbol formal_objectID) {
+        if (!is_formal(formal_objectID)) {
+            return -1; // error to pass in not formal objectID
+        }
+        int offset = -1;
+        for (unsigned long i = 0; i < formal_objectIDs.size(); ++i) {
+            if (equal(formal_objectID, formal_objectIDs[i])) {
                 offset = static_cast<int>(i);
             }
         }
@@ -280,6 +323,7 @@ public:
     // print env_objectIDs for debug
     void print_env_objectIDs() {
         printf("============Environment env_objectIDs start============\n");
+        printf("Currently in class: %d\n", so);
         this->env_objectIDs->dump();
         printf("=============Environment env_objectIDs end=============\n");
     }
@@ -326,7 +370,7 @@ public:
     // print class_typeIDs for debug
     void print_class_typeIDs() {
         printf("============Environment class_typeIDs start============\n");
-        printf("There are %lu classes\n", class_typeIDs.size());
+        printf("There are %lu classes, currently in class %d\n", class_typeIDs.size(), so);
         for (unsigned long i = 0; i < class_typeIDs.size(); ++i) {
             printf("Class %lu: %s\n", i, class_typeIDs[i]->get_string());
         }
@@ -336,7 +380,7 @@ public:
     // print tag_methods for debug
     void print_tag_methods() {
         printf("============Environment tag_mathods start============\n");
-        printf("There are %lu classes\n", this->tag_methods.size());
+        printf("There are %lu classes, currently in class %d\n", this->tag_methods.size(), so);
         for (unsigned long i = 0; i < this->tag_methods.size(); ++i) {
             printf("Class %lu: ", i);
             for (auto entry : this->tag_methods[i]) {
@@ -351,7 +395,7 @@ public:
     // print tag_attrs for debug
     void print_tag_attrs() {
         printf("============Environment tag_attrs start============\n");
-        printf("There are %lu classes\n", this->tag_attrs.size());
+        printf("There are %lu classes, currently in class %d\n", this->tag_attrs.size(), so);
         for (unsigned long i = 0; i < this->tag_attrs.size(); ++i) {
             printf("Class %lu: ", i);
             for (unsigned long j = 0; j < this->tag_attrs[i].size(); ++j) {
