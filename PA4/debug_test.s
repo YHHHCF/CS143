@@ -559,7 +559,6 @@ Main.main:
 	sw	$fp 0($sp)
 	addiu	$sp $sp -4
 	lw	$a0 16($s0)
-	lw	$a0 16($s0)
 	sw	$a0 0($sp)
 	addiu	$sp $sp -4
 	la	$a0 int_const1
@@ -585,7 +584,6 @@ label1:
 	sw	$fp 0($sp)
 	addiu	$sp $sp -4
 	lw	$a0 12($s0)
-	lw	$a0 12($s0)
 	sw	$a0 0($sp)
 	addiu	$sp $sp -4
 	move	$a0 $s0
@@ -595,7 +593,6 @@ label1:
 	sw	$fp 0($sp)
 	addiu	$sp $sp -4
 	lw	$a0 16($s0)
-	lw	$a0 16($s0)
 	sw	$a0 0($sp)
 	addiu	$sp $sp -4
 	move	$a0 $s0
@@ -604,7 +601,6 @@ label1:
 	lw	$fp 0($sp)
 	sw	$fp 0($sp)
 	addiu	$sp $sp -4
-	lw	$a0 20($s0)
 	lw	$a0 20($s0)
 	sw	$a0 0($sp)
 	addiu	$sp $sp -4
@@ -614,7 +610,6 @@ label1:
 	lw	$fp 0($sp)
 	sw	$fp 0($sp)
 	addiu	$sp $sp -4
-	lw	$a0 24($s0)
 	lw	$a0 24($s0)
 	sw	$a0 0($sp)
 	addiu	$sp $sp -4
@@ -651,7 +646,6 @@ A.foo:
 	sw	$ra 0($sp)
 	addiu	$sp $sp -4
 	lw	$a0 12($s0)
-	lw	$a0 12($s0)
 	lw	$a0 12($a0)
 	beqz	$a0 label2
 	la	$a0 int_const0
@@ -667,7 +661,6 @@ B.fooB:
 	move	$fp $sp
 	sw	$ra 0($sp)
 	addiu	$sp $sp -4
-	lw	$a0 12($s0)
 	lw	$a0 12($s0)
 	addiu	$sp $sp 4
 	lw	$ra 0($sp)
