@@ -323,6 +323,7 @@ public:
     // print env_objectIDs for debug
     void print_env_objectIDs() {
         printf("============Environment env_objectIDs start============\n");
+        printf("Currently in class: %d\n", so);
         this->env_objectIDs->dump();
         printf("=============Environment env_objectIDs end=============\n");
     }
@@ -369,7 +370,7 @@ public:
     // print class_typeIDs for debug
     void print_class_typeIDs() {
         printf("============Environment class_typeIDs start============\n");
-        printf("There are %lu classes\n", class_typeIDs.size());
+        printf("There are %lu classes, currently in class %d\n", class_typeIDs.size(), so);
         for (unsigned long i = 0; i < class_typeIDs.size(); ++i) {
             printf("Class %lu: %s\n", i, class_typeIDs[i]->get_string());
         }
@@ -379,7 +380,7 @@ public:
     // print tag_methods for debug
     void print_tag_methods() {
         printf("============Environment tag_mathods start============\n");
-        printf("There are %lu classes\n", this->tag_methods.size());
+        printf("There are %lu classes, currently in class %d\n", this->tag_methods.size(), so);
         for (unsigned long i = 0; i < this->tag_methods.size(); ++i) {
             printf("Class %lu: ", i);
             for (auto entry : this->tag_methods[i]) {
@@ -394,7 +395,7 @@ public:
     // print tag_attrs for debug
     void print_tag_attrs() {
         printf("============Environment tag_attrs start============\n");
-        printf("There are %lu classes\n", this->tag_attrs.size());
+        printf("There are %lu classes, currently in class %d\n", this->tag_attrs.size(), so);
         for (unsigned long i = 0; i < this->tag_attrs.size(); ++i) {
             printf("Class %lu: ", i);
             for (unsigned long j = 0; j < this->tag_attrs[i].size(); ++j) {
