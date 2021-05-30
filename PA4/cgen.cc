@@ -1179,13 +1179,13 @@ void CgenClassTable::code_class_methods(Environmentp envp) {
             for (auto method : class_methods) {
                 Feature curr_method = method.second;
 
-                if (cgen_debug) {
-                    printf("code_class_methods: %s, %s\n", curr_class_typeID->get_string(), \
-                    curr_method->get_methodID()->get_string());
-                }
-
                 // We only process methods defined in this class to prevent double counting
                 if (equal(curr_method->get_implement_typeID(), curr_class_typeID)) {
+
+                    if (cgen_debug) {
+                        printf("code_class_methods: %s -> %s\n", curr_class_typeID->get_string(), \
+                        curr_method->get_methodID()->get_string());
+                    }
 
                     // Emit label for the Method
                     emit_method_ref(curr_class_typeID, curr_method->get_methodID(), str);
@@ -1326,10 +1326,15 @@ CgenNode::CgenNode(Class_ nd, Basicness bstatus, CgenClassTableP ct) :
 //*****************************************************************
 
 void assign_class::code(Environmentp envp, ostream &s) {
-
+    if (cgen_debug) {
+        printf("debug assign_class\n");
+    }
 }
 
 void static_dispatch_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug static_dispatch_class\n");
+    }
 }
 
 void dispatch_class::code(Environmentp envp, ostream &s) {
@@ -1378,12 +1383,21 @@ void dispatch_class::code(Environmentp envp, ostream &s) {
 }
 
 void cond_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug cond_class\n");
+    }
 }
 
 void loop_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug loop_class\n");
+    }
 }
 
 void typcase_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug typcase_class\n");
+    }
 }
 
 void block_class::code(Environmentp envp, ostream &s) {
@@ -1399,37 +1413,70 @@ void block_class::code(Environmentp envp, ostream &s) {
 }
 
 void let_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug let_class\n");
+    }
 }
 
 void plus_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug plus_class\n");
+    }
 }
 
 void sub_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug sub_class\n");
+    }
 }
 
 void mul_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug mul_class\n");
+    }
 }
 
 void divide_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug divide_class\n");
+    }
 }
 
 void neg_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug neg_class\n");
+    }
 }
 
 void lt_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug lt_class\n");
+    }
 }
 
 void eq_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug eq_class\n");
+    }
 }
 
 void leq_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug leq_class\n");
+    }
 }
 
 void comp_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug comp_class\n");
+    }
 }
 
 void int_const_class::code(Environmentp envp, ostream& s)  
 {
+    if (cgen_debug) {
+        printf("debug int_const_class\n");
+    }
     //
     // Need to be sure we have an IntEntry *, not an arbitrary Symbol
     //
@@ -1438,22 +1485,40 @@ void int_const_class::code(Environmentp envp, ostream& s)
 
 void string_const_class::code(Environmentp envp, ostream& s)
 {
+    if (cgen_debug) {
+        printf("debug string_const_class\n");
+    }
     emit_load_string(ACC,stringtable.lookup_string(token->get_string()),s);
 }
 
 void bool_const_class::code(Environmentp envp, ostream& s)
 {
+    if (cgen_debug) {
+        printf("debug bool_const_class\n");
+    }
     emit_load_bool(ACC, BoolConst(val), s);
 }
 
 void new__class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug new__class\n");
+    }
 }
 
 void isvoid_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug isvoid_class\n");
+    }
 }
 
 void no_expr_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug no_expr_class\n");
+    }
 }
 
 void object_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug object_class\n");
+    }
 }
