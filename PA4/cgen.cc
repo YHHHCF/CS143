@@ -1203,13 +1203,6 @@ void CgenClassTable::code_class_methods(Environmentp envp) {
                 
                     // Restore return address
                     emit_pop(RA, str);
-
-                    // Pop n formals
-                    int num_formals = curr_method->get_formals()->len();
-                    emit_popn(num_formals, str);
-
-                    // Restore old fp
-                    emit_pop(FP, str);
                     
                     // Go back to return address
                     emit_return(str);
@@ -1371,6 +1364,14 @@ void dispatch_class::code(Environmentp envp, ostream &s) {
     // Step 3: find method definition from the dispatch table of X and jal to it
     char *method_label = envp->get_method_label(e0_tag, this->get_methodID());
     emit_jal(method_label, s);
+
+    // Step 4: restore stack
+    // Pop n arguments
+    emit_popn(arguments->len(), s);
+
+    // Restore old fp
+    emit_pop(FP, s);
+
     if (cgen_debug) {
         printf("debug dispatch_class end\n");
     }
