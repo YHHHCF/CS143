@@ -1385,12 +1385,37 @@ void dispatch_class::code(Environmentp envp, ostream &s) {
     if (cgen_debug) {
         printf("debug dispatch_class end\n");
     }
+
+    // jump
+    // Pop n formals
+    int num_formals = arguments->len();
+    // emit_popn(num_formals, s);
+
+    // Restore old fp
+    // emit_pop(FP, s);
 }
 
 void cond_class::code(Environmentp envp, ostream &s) {
     if (cgen_debug) {
         printf("debug cond_class\n");
     }
+    
+    Expression cond_expr = this->get_pred_expression();
+    cond_expr->code(envp, s);
+
+    int label_1 = envp->get_label_idx();
+    int label_2 = envp->get_label_idx();
+    emit_beqz(ACC, label_1, s);
+    emit_branch(label_2, s);
+
+    Expression then_expr = this->get_then_expression();
+    Expression else_expr = this->get_else_expression();
+    
+    // Emit two branches
+    emit_label_def(label_1, s);
+    then_expr->code(envp, s);
+    emit_label_def(label_2, s);
+    else_expr->code(envp, s);
 }
 
 void loop_class::code(Environmentp envp, ostream &s) {
@@ -1427,6 +1452,15 @@ void plus_class::code(Environmentp envp, ostream &s) {
     if (cgen_debug) {
         printf("debug plus_class\n");
     }
+    
+    Expression expr1 = this->get_expression();
+    expr1->code(envp, s);
+    emit_push(ACC, s);
+    Expression expr2 = this->get_expression();
+    expr2->code(envp, s); // expr2 evaluated to ACC
+    
+    emit_pop(T1, s); // expr1 popped to T1
+    emit_add(ACC, ACC, T1, s); // final value in ACC                  // why not addu?
 }
 
 void sub_class::code(Environmentp envp, ostream &s) {
@@ -1523,7 +1557,27 @@ void no_expr_class::code(Environmentp envp, ostream &s) {
 }
 
 void object_class::code(Environmentp envp, ostream &s) {
+
     if (cgen_debug) {
         printf("debug object_class\n");
     }
+
+    Symbol curr_objectID = this->get_objectID();
+    if (envp->contains(curr_objectID)) {
+        if (envp->is_attr(curr_objectID)) {
+            // attributes
+            printf("Enter 2");
+            int offset = envp->get_attr_offset(curr_objectID) + 3;
+            emit_load(ACC, offset, SELF, s);   // we want to get inside s0
+        }
+        else {
+            // temp var
+            int offset = envp->get_var_offset(curr_objectID);
+            emit_addiu(ACC, FP, offset, s);   // we want to go from fp   
+        }
+    }
+    if (cgen_debug) {
+        printf("debug object_class end\n");
+    }
 }
+// bottom
