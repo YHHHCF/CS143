@@ -1130,6 +1130,8 @@ void CgenClassTable::code_object_initializer(Environmentp envp) {
         Symbol curr_class_typeID = this->tag_table[tag]->get_typeID();
         typeIDs.push_back(curr_class_typeID); // for env
         envp->set_so(tag); // set envp's so
+        envp->enter_scope();
+        envp->enter_class(); // set envp
         emit_init_ref(curr_class_typeID, str);
         str << LABEL;
 
@@ -1162,6 +1164,7 @@ void CgenClassTable::code_object_initializer(Environmentp envp) {
         emit_pop(FP, str); // restore fp
         
         emit_return(str);
+        envp->exit_scope();
     }
     envp->update_class_typeIDs(typeIDs); // for env
 }
@@ -1174,6 +1177,8 @@ void CgenClassTable::code_class_methods(Environmentp envp) {
     for (int tag = 0; tag <= this->_max_tag; ++tag) {
         Symbol curr_class_typeID = this->tag_table[tag]->get_typeID();
         envp->set_so(tag); // set so for environment
+        envp->enter_scope();
+        envp->enter_class(); // set envp variables
 
         // Do not override provided method code for basic classes
         if (!tag_table[tag]->basic()) {
@@ -1212,6 +1217,7 @@ void CgenClassTable::code_class_methods(Environmentp envp) {
                 }
             }
         }
+        envp->exit_scope();
     }
 }
 
@@ -1559,21 +1565,24 @@ void no_expr_class::code(Environmentp envp, ostream &s) {
 void object_class::code(Environmentp envp, ostream &s) {
 
     if (cgen_debug) {
-        printf("debug object_class\n");
+        printf("debug object_class: %s\n", this->get_objectID()->get_string());
     }
 
     Symbol curr_objectID = this->get_objectID();
     if (envp->contains(curr_objectID)) {
         if (envp->is_attr(curr_objectID)) {
             // attributes
-            printf("Enter 2");
-            int offset = envp->get_attr_offset(curr_objectID) + 3;
+            int offset = envp->get_attr_offset(curr_objectID) + DEFAULT_OBJFIELDS;
             emit_load(ACC, offset, SELF, s);   // we want to get inside s0
         }
         else {
             // temp var
             int offset = envp->get_var_offset(curr_objectID);
             emit_addiu(ACC, FP, offset, s);   // we want to go from fp   
+        }
+    } else {
+        if (cgen_debug) {
+            printf("Error: objectID not defined, should be handled by type checking.\n");
         }
     }
     if (cgen_debug) {
