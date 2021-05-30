@@ -6,10 +6,10 @@ Class Main inherits IO {
 
     main() : Int {
         {
-            out_string("i1: ").out_int(i1).out_string("\n");
-            out_string("i2: ").out_int(i2).out_string("\n");
-            out_string("str1: ").out_string(str1).out_string("\n");
-            out_string("str2: ").out_string(str2).out_string("\n");
+            out_int(i1);
+            out_int(i2);
+            out_string(str1);
+            out_string(str2);
             0;
         }
     };
