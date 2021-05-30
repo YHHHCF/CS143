@@ -203,6 +203,84 @@ public:
         return ret;
     }
 
+    // add all attributes with offset -1
+    void enter_class() {
+        std::vector<Symbol> attrs = tag_attrs[so];
+        int attr_idx = -1;
+        for (unsigned int i = 0; i < attrs.size(); ++i) {
+            this->env_objectIDs->addid(attrs[i], &attr_idx);
+        }
+    }
+
+    // true is symbol table contains this objectID, false if not contains
+    bool contains(Symbol objectID) {
+        return (this->env_objectIDs->lookup(objectID) == nullptr);
+    }
+
+    // true if it is attribute in current scope, false if it is variable
+    bool is_attr(Symbol objectID) {
+        if (this->so < 0) {
+            return false;
+        }
+        int *offset = this->env_objectIDs->lookup(objectID);
+        if ((*offset) == -1) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    // add a variable to environment (not attribute)
+    void add_var(Symbol var_objectID, int offset) {
+        this->env_objectIDs->addid(var_objectID, &offset);
+    }
+
+    // get the offset of a variable
+    int get_var_offset(Symbol var_objectID) {
+        if (is_attr(var_objectID)) {
+            return -1; // error to pass in attr objectID
+        }
+        int *offset = this->env_objectIDs->lookup(var_objectID);
+        return *offset;
+    }
+
+    // get the offset of an attribute
+    int get_attr_offset(Symbol attr_objectID) {
+        if (!is_attr(attr_objectID)) {
+            return -1; // error to pass in var objectID
+        }
+        std::vector<Symbol> attrs = tag_attrs[so];
+        int offset = -1;
+        for (unsigned long i = 0; i < attrs.size(); ++i) {
+            if (equal(attr_objectID, attrs[i])) {
+                offset = static_cast<int>(i);
+            }
+        }
+        return offset;
+    }
+
+    // wrapper
+    void enter_scope() {
+        this->env_objectIDs->enterscope();
+    }
+
+    // wrapper
+    void exit_scope() {
+        this->env_objectIDs->exitscope();
+    }
+
+    // print env_objectIDs for debug
+    void print_env_objectIDs() {
+        printf("============Environment env_objectIDs start============\n");
+        this->env_objectIDs->dump();
+        printf("=============Environment env_objectIDs end=============\n");
+    }
+
+    // test env_objectIDs for development
+    void test_env_objectIDs() {
+        
+    }
+
     // print class_typeIDs for debug
     void print_class_typeIDs() {
         printf("============Environment class_typeIDs start============\n");
