@@ -144,6 +144,9 @@ bool equal(Symbol typeID1, Symbol typeID2) {
 class Environment
 {
 private:
+    // branch label idx
+    int label_idx = -1;
+
     // self object
     int so = -1;
 
@@ -162,6 +165,11 @@ private:
     std::map<int, std::map<Symbol, Feature> > tag_methods;
 
 public:
+    int get_label_idx() {
+        ++label_idx;
+        return label_idx;
+    }
+
     int get_tag(Symbol typeID) {
         for (long unsigned i = 0; i < class_typeIDs.size(); ++i) {
             if (equal(typeID, class_typeIDs[i])) {
@@ -203,10 +211,10 @@ public:
         return ret;
     }
 
-    // add all attributes with offset -1
+    // add all attributes with offset -2
     void enter_class() {
         std::vector<Symbol> attrs = tag_attrs[so];
-        int attr_idx = -1;
+        static int attr_idx = -2; // static is needed to keep attr_idx
         for (unsigned int i = 0; i < attrs.size(); ++i) {
             this->env_objectIDs->addid(attrs[i], &attr_idx);
         }
@@ -214,7 +222,7 @@ public:
 
     // true is symbol table contains this objectID, false if not contains
     bool contains(Symbol objectID) {
-        return (this->env_objectIDs->lookup(objectID) == nullptr);
+        return (this->env_objectIDs->lookup(objectID) != nullptr);
     }
 
     // true if it is attribute in current scope, false if it is variable
@@ -223,7 +231,7 @@ public:
             return false;
         }
         int *offset = this->env_objectIDs->lookup(objectID);
-        if ((*offset) == -1) {
+        if ((*offset) == -2) {
             return true;
         } else {
             return false;
@@ -231,8 +239,8 @@ public:
     }
 
     // add a variable to environment (not attribute)
-    void add_var(Symbol var_objectID, int offset) {
-        this->env_objectIDs->addid(var_objectID, &offset);
+    void add_var(Symbol var_objectID, int *offset) {
+        this->env_objectIDs->addid(var_objectID, offset);
     }
 
     // get the offset of a variable
@@ -278,7 +286,41 @@ public:
 
     // test env_objectIDs for development
     void test_env_objectIDs() {
-        
+        printf("============Environment test_env_objectIDs start============\n");
+        Symbol xsymb = idtable.add_string("x");
+        Symbol ysymb = idtable.add_string("y");
+        Symbol zsymb = idtable.add_string("z");
+        Symbol i1symb = idtable.add_string("i1");
+        Symbol i2symb = idtable.add_string("i2");
+        Symbol str1symb = idtable.add_string("str1");
+        int offset1 = 1;
+        int offset2 = 2;
+        int offset3 = 3;
+
+        printf("debug 1\n");
+        this->enter_scope();
+        this->set_so(5);
+        this->enter_class();
+        print_env_objectIDs();
+
+        printf("debug 2\n");
+        this->enter_scope();
+        this->add_var(idtable.add_string("x"), &offset1);
+        this->add_var(idtable.add_string("y"), &offset2);
+        printf("offset: x is %d, y is %d\n", this->get_var_offset(xsymb), \
+            this->get_var_offset(ysymb));
+        print_env_objectIDs();
+
+        printf("debug 3\n");
+        this->enter_scope();
+        this->add_var(idtable.lookup_string("x"), &offset3);
+        printf("offset: x is %d, i2 is %d, str1 is %d\n", this->get_var_offset(xsymb), \
+            this->get_attr_offset(i2symb), this->get_attr_offset(str1symb));
+
+        printf("x is attr: %d, i2 is attr: %d, y is contained: %d, i1 is contained: %d, z is contained: %d\n", \
+            is_attr(xsymb), is_attr(i2symb), contains(ysymb), contains(i1symb), contains(zsymb));
+        print_env_objectIDs();
+        printf("=============Environment test_env_objectIDs end=============\n");
     }
 
     // print class_typeIDs for debug

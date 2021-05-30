@@ -1250,6 +1250,7 @@ void CgenClassTable::code()
         env.print_tag_attrs();
         env.print_tag_methods();
         env.print_class_typeIDs();
+        env.test_env_objectIDs();
     }
 
     if (cgen_debug) cout << "coding class methods" << endl;
