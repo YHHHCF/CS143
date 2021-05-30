@@ -454,7 +454,10 @@ Main.main:
 	sw	$fp 0($sp)
 	addiu	$sp $sp -4
 	lw	$a0 12($s0)
+<<<<<<< Updated upstream
 	lw	$a0 12($s0)
+=======
+>>>>>>> Stashed changes
 	sw	$a0 0($sp)
 	addiu	$sp $sp -4
 	move	$a0 $s0
@@ -464,7 +467,10 @@ Main.main:
 	sw	$fp 0($sp)
 	addiu	$sp $sp -4
 	lw	$a0 16($s0)
+<<<<<<< Updated upstream
 	lw	$a0 16($s0)
+=======
+>>>>>>> Stashed changes
 	sw	$a0 0($sp)
 	addiu	$sp $sp -4
 	move	$a0 $s0
@@ -474,7 +480,10 @@ Main.main:
 	sw	$fp 0($sp)
 	addiu	$sp $sp -4
 	lw	$a0 20($s0)
+<<<<<<< Updated upstream
 	lw	$a0 20($s0)
+=======
+>>>>>>> Stashed changes
 	sw	$a0 0($sp)
 	addiu	$sp $sp -4
 	move	$a0 $s0
@@ -484,7 +493,10 @@ Main.main:
 	sw	$fp 0($sp)
 	addiu	$sp $sp -4
 	lw	$a0 24($s0)
+<<<<<<< Updated upstream
 	lw	$a0 24($s0)
+=======
+>>>>>>> Stashed changes
 	sw	$a0 0($sp)
 	addiu	$sp $sp -4
 	move	$a0 $s0

@@ -1407,7 +1407,6 @@ void dispatch_class::code(Environmentp envp, ostream &s) {
         printf("debug dispatch_class end\n");
     }
 
-    // jump
     // Pop n formals
     int num_formals = arguments->len();
     // emit_popn(num_formals, s);
@@ -1422,27 +1421,33 @@ void cond_class::code(Environmentp envp, ostream &s) {
     }
     
     Expression cond_expr = this->get_pred_expression();
-    cond_expr->code(envp, s);
-
-    int label_1 = envp->get_label_idx();
-    int label_2 = envp->get_label_idx();
-    emit_beqz(ACC, label_1, s);
-    emit_branch(label_2, s);
-
     Expression then_expr = this->get_then_expression();
     Expression else_expr = this->get_else_expression();
     
+    cond_expr->code(envp, s); // evaulated the conditional
+    emit_load(ACC, DEFAULT_OBJFIELDS, ACC, s); // Put value of bool into ACC
+
+    int label_1 = envp->get_label_idx(); // false
+    int label_2 = envp->get_label_idx(); // true
+    emit_beqz(ACC, label_1, s); // if false (equal to 0), branch to false code
+
+    then_expr->code(envp, s); // true code
+    
+    emit_branch(label_2, s); // jump to continued, common code 
+
+    
     // Emit two branches
-    emit_label_def(label_1, s);
-    then_expr->code(envp, s);
-    emit_label_def(label_2, s);
+    emit_label_def(label_1, s); // false code
     else_expr->code(envp, s);
+    
+    emit_label_def(label_2, s); // continued, common code
 }
 
 void loop_class::code(Environmentp envp, ostream &s) {
     if (cgen_debug) {
         printf("debug loop_class\n");
     }
+    
 }
 
 void typcase_class::code(Environmentp envp, ostream &s) {
@@ -1473,33 +1478,84 @@ void plus_class::code(Environmentp envp, ostream &s) {
     if (cgen_debug) {
         printf("debug plus_class\n");
     }
-    
-    Expression expr1 = this->get_expression();
+
+    Expression expr1 = this->get_expression1();
     expr1->code(envp, s);
     emit_push(ACC, s);
-    Expression expr2 = this->get_expression();
-    expr2->code(envp, s); // expr2 evaluated to ACC
     
-    emit_pop(T1, s); // expr1 popped to T1
-    emit_add(ACC, ACC, T1, s); // final value in ACC                  // why not addu?
+    Expression expr2 = this->get_expression2();
+    expr2->code(envp, s); // expr2 evaluated to ACC
+    s << JAL << "Object.copy" << endl;
+    emit_load(T3, DEFAULT_OBJFIELDS, ACC, s); // Put value of expr2 from Object into T3
+
+    emit_pop(T2, s); // expr1 popped to T1
+    emit_load(T2, DEFAULT_OBJFIELDS, T2, s); // Put value of expr1 from Object into T2
+    
+    emit_add(T1, T2, T3, s); // final value in ACC
+    emit_store(T1, DEFAULT_OBJFIELDS, ACC, s); // Plus the value into the copied object for return
 }
 
 void sub_class::code(Environmentp envp, ostream &s) {
     if (cgen_debug) {
         printf("debug sub_class\n");
     }
+
+    Expression expr1 = this->get_expression1();
+    expr1->code(envp, s);
+    emit_push(ACC, s);
+    
+    Expression expr2 = this->get_expression2();
+    expr2->code(envp, s); // expr2 evaluated to ACC
+    s << JAL << "Object.copy" << endl;
+    emit_load(T3, DEFAULT_OBJFIELDS, ACC, s); // Put value of expr2 from Object into T3
+
+    emit_pop(T2, s); // expr1 popped to T1
+    emit_load(T2, DEFAULT_OBJFIELDS, T2, s); // Put value of expr1 from Object into T2
+    
+    emit_sub(T1, T2, T3, s); // final value in ACC
+    emit_store(T1, DEFAULT_OBJFIELDS, ACC, s); // Plus the value into the copied object for return
 }
 
 void mul_class::code(Environmentp envp, ostream &s) {
     if (cgen_debug) {
         printf("debug mul_class\n");
     }
+
+    Expression expr1 = this->get_expression1();
+    expr1->code(envp, s);
+    emit_push(ACC, s);
+    
+    Expression expr2 = this->get_expression2();
+    expr2->code(envp, s); // expr2 evaluated to ACC
+    s << JAL << "Object.copy" << endl;
+    emit_load(T3, DEFAULT_OBJFIELDS, ACC, s); // Put value of expr2 from Object into T3
+
+    emit_pop(T2, s); // expr1 popped to T1
+    emit_load(T2, DEFAULT_OBJFIELDS, T2, s); // Put value of expr1 from Object into T2
+    
+    emit_mul(T1, T2, T3, s); // final value in ACC
+    emit_store(T1, DEFAULT_OBJFIELDS, ACC, s); // Plus the value into the copied object for return
 }
 
 void divide_class::code(Environmentp envp, ostream &s) {
     if (cgen_debug) {
         printf("debug divide_class\n");
     }
+
+    Expression expr1 = this->get_expression1();
+    expr1->code(envp, s);
+    emit_push(ACC, s);
+    
+    Expression expr2 = this->get_expression2();
+    expr2->code(envp, s); // expr2 evaluated to ACC
+    s << JAL << "Object.copy" << endl;
+    emit_load(T3, DEFAULT_OBJFIELDS, ACC, s); // Put value of expr2 from Object into T3
+
+    emit_pop(T2, s); // expr1 popped to T1
+    emit_load(T2, DEFAULT_OBJFIELDS, T2, s); // Put value of expr1 from Object into T2
+    
+    emit_div(T1, T2, T3, s); // final value in ACC
+    emit_store(T1, DEFAULT_OBJFIELDS, ACC, s); // Plus the value into the copied object for return
 }
 
 void neg_class::code(Environmentp envp, ostream &s) {
@@ -1517,6 +1573,28 @@ void lt_class::code(Environmentp envp, ostream &s) {
 void eq_class::code(Environmentp envp, ostream &s) {
     if (cgen_debug) {
         printf("debug eq_class\n");
+    }
+
+    Expression expr1 = this->get_expression1();
+    expr1->code(envp, s);
+    emit_push(ACC, s);
+    
+    Expression expr2 = this->get_expression2();
+    expr2->code(envp, s); // expr2 evaluated to ACC
+
+    emit_move(T2, ACC, s); // expr2 moved from ACC to T2
+    emit_pop(T1, s); // expr1 popped off stack to T1
+
+    if (isInt(expr1->get_type()) || isBool(expr1->get_type()) || isString(expr1->get_type())) {
+    
+        emit_load_bool(ACC, BoolConst(true), s);
+        emit_load_bool(A1, BoolConst(false), s);
+
+        s << JAL << "equality_test" << endl;
+    }
+    else {
+        // compare pointers here of t1 and t2
+        // copy the bool consts
     }
 }
 

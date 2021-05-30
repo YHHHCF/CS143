@@ -3,13 +3,16 @@ Class Main inherits IO {
     i2 : Int <- 1;
     str1 : String;
     str2 : String <- "hello";
+    objB : B;
 
     main() : Int {
         {
+            out_int(if i2=0 then 1 else 0 fi);
             out_int(i1);
             out_int(i2);
             out_string(str1);
             out_string(str2);
+            out_int(12/4);
             0;
         }
     };
