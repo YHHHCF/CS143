@@ -1190,6 +1190,19 @@ void CgenClassTable::code_class_methods(Environmentp envp) {
                         curr_method->get_methodID()->get_string());
                     }
 
+                    // enter the environment with formals
+                    envp->enter_scope();
+                    std::vector<Symbol> formal_objIDs;
+
+                    for (int f = curr_method->get_formals()->first(); curr_method->get_formals()->more(f); \
+                        f = curr_method->get_formals()->next(f)) {
+                        Formal curr_formal = curr_method->get_formals()->nth(f);
+                        formal_objIDs.push_back(curr_formal->get_objectID());
+                    }
+                    envp->update_formal_objectIDs(formal_objIDs);
+
+                    envp->enter_method();
+
                     // Emit label for the Method
                     emit_method_ref(curr_class_typeID, curr_method->get_methodID(), str);
                     str << LABEL;
@@ -1209,6 +1222,8 @@ void CgenClassTable::code_class_methods(Environmentp envp) {
                     
                     // Go back to return address
                     emit_return(str);
+
+                    envp->exit_scope();
                 }
             }
         }
