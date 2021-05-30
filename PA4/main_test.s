@@ -453,7 +453,7 @@ Main.main:
 	addiu	$sp $sp -4
 	sw	$fp 0($sp)
 	addiu	$sp $sp -4
-	sw	$a0 0($sp)
+	sw	$a0 12($sp)
 	addiu	$sp $sp -4
 	move	$a0 $s0
 	jal	IO.out_int
@@ -462,7 +462,7 @@ Main.main:
 	lw	$fp 0($sp)
 	sw	$fp 0($sp)
 	addiu	$sp $sp -4
-	sw	$a0 0($sp)
+	sw	$a0 16($sp)
 	addiu	$sp $sp -4
 	move	$a0 $s0
 	jal	IO.out_int
@@ -471,7 +471,7 @@ Main.main:
 	lw	$fp 0($sp)
 	sw	$fp 0($sp)
 	addiu	$sp $sp -4
-	sw	$a0 0($sp)
+	sw	$a0 20($sp)
 	addiu	$sp $sp -4
 	move	$a0 $s0
 	jal	IO.out_string
@@ -480,7 +480,7 @@ Main.main:
 	lw	$fp 0($sp)
 	sw	$fp 0($sp)
 	addiu	$sp $sp -4
-	sw	$a0 0($sp)
+	sw	$a0 24($sp)
 	addiu	$sp $sp -4
 	move	$a0 $s0
 	jal	IO.out_string
