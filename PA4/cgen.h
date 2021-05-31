@@ -157,6 +157,10 @@ private:
     // self object
     int so = -1;
 
+    // line no and filename
+    Symbol filename;
+    int lineno = 0;
+
     // an array of class typeID, ordered in tag
     std::vector<Symbol> class_typeIDs;
 
@@ -220,6 +224,21 @@ public:
 
     int get_so() {
         return this->so;
+    }
+
+    void set_lineno(int no) {
+        this->lineno = no;
+    }
+    int get_lineno() {
+        return this->lineno;
+    }
+
+    void set_filename(Symbol fname) {
+        this->filename = fname;
+    }
+
+    Symbol get_filename() {
+        return this->filename;
     }
 
     void update_class_typeIDs(std::vector<Symbol> typeIDs) {
