@@ -1537,6 +1537,27 @@ void let_class::code(Environmentp envp, ostream &s) {
     if (cgen_debug) {
         printf("debug let_class\n");
     }
+    envp->enter_scope();
+
+    // evaluate init expression e1 = v1
+    this->get_init_expression()->code(envp, s);
+
+    // assign v1 to variable with objectID and new location 
+    int offset = envp->get_num_vars() + 1;
+    envp->incr_num_vars();
+    envp->add_var(this->get_objectID(), &offset);
+
+    // push v1 to the stack with corresponding location
+    emit_push(ACC, s);
+
+    // process body expression
+    this->get_body_expression()->code(envp, s);
+
+    // pop v1 from stack
+    emit_popn(1, s);
+
+    envp->decr_num_vars();
+    envp->exit_scope();
 }
 
 void plus_class::code(Environmentp envp, ostream &s) {
