@@ -8,7 +8,7 @@ Class Main inherits IO {
 
     main() : Int {
         {
-            out_int(if Isvoid(i1) then ~10 else 0 fi);
+            out_int(if Isvoid(objA1) then ~10 else 0 fi);
             0;
         }
     };
