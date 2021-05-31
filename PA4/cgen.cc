@@ -1420,11 +1420,9 @@ void cond_class::code(Environmentp envp, ostream &s) {
     emit_load(ACC, DEFAULT_OBJFIELDS, ACC, s); // Put value of bool into ACC
 
     int label_1 = envp->get_label_idx(); // false
-    int label_2 = envp->get_label_idx(); // true
+    int label_2 = envp->get_label_idx(); // continued code
     emit_beqz(ACC, label_1, s); // if false (equal to 0), branch to false code
-
     then_expr->code(envp, s); // true code
-    
     emit_branch(label_2, s); // jump to continued, common code 
 
     
@@ -1480,7 +1478,7 @@ void plus_class::code(Environmentp envp, ostream &s) {
     s << JAL << "Object.copy" << endl;
     emit_load(T3, DEFAULT_OBJFIELDS, ACC, s); // Put value of expr2 from Object into T3
 
-    emit_pop(T2, s); // expr1 popped to T1
+    emit_pop(T2, s); // expr1 popped to T2
     emit_load(T2, DEFAULT_OBJFIELDS, T2, s); // Put value of expr1 from Object into T2
     
     emit_add(T1, T2, T3, s); // final value in ACC
@@ -1501,7 +1499,7 @@ void sub_class::code(Environmentp envp, ostream &s) {
     s << JAL << "Object.copy" << endl;
     emit_load(T3, DEFAULT_OBJFIELDS, ACC, s); // Put value of expr2 from Object into T3
 
-    emit_pop(T2, s); // expr1 popped to T1
+    emit_pop(T2, s); // expr1 popped to T2
     emit_load(T2, DEFAULT_OBJFIELDS, T2, s); // Put value of expr1 from Object into T2
     
     emit_sub(T1, T2, T3, s); // final value in ACC
@@ -1522,7 +1520,7 @@ void mul_class::code(Environmentp envp, ostream &s) {
     s << JAL << "Object.copy" << endl;
     emit_load(T3, DEFAULT_OBJFIELDS, ACC, s); // Put value of expr2 from Object into T3
 
-    emit_pop(T2, s); // expr1 popped to T1
+    emit_pop(T2, s); // expr1 popped to T2
     emit_load(T2, DEFAULT_OBJFIELDS, T2, s); // Put value of expr1 from Object into T2
     
     emit_mul(T1, T2, T3, s); // final value in ACC
@@ -1543,7 +1541,7 @@ void divide_class::code(Environmentp envp, ostream &s) {
     s << JAL << "Object.copy" << endl;
     emit_load(T3, DEFAULT_OBJFIELDS, ACC, s); // Put value of expr2 from Object into T3
 
-    emit_pop(T2, s); // expr1 popped to T1
+    emit_pop(T2, s); // expr1 popped to T2
     emit_load(T2, DEFAULT_OBJFIELDS, T2, s); // Put value of expr1 from Object into T2
     
     emit_div(T1, T2, T3, s); // final value in ACC
@@ -1560,6 +1558,27 @@ void lt_class::code(Environmentp envp, ostream &s) {
     if (cgen_debug) {
         printf("debug lt_class\n");
     }
+
+    Expression expr1 = this->get_expression1();
+    expr1->code(envp, s);
+    emit_push(ACC, s);
+    
+    Expression expr2 = this->get_expression2();
+    expr2->code(envp, s); // expr2 evaluated to ACC
+    emit_move(T3, ACC, s); // expr2 moved to T3
+    emit_pop(T2, s); // expr1 popped to T2
+    
+    int label_1 = envp->get_label_idx(); // true
+    int label_2 = envp->get_label_idx(); // continued
+    emit_blt(T2, T3, label_1, s); // if true, branch to true code
+    emit_load_bool(ACC, BoolConst(false), s); // false code
+    emit_branch(label_2, s); // jump to continued, common code 
+
+    // Emit two branches
+    emit_label_def(label_1, s); // true code
+    emit_load_bool(ACC, BoolConst(true), s);
+    
+    emit_label_def(label_2, s); // continued, common code
 }
 
 void eq_class::code(Environmentp envp, ostream &s) {
@@ -1585,8 +1604,17 @@ void eq_class::code(Environmentp envp, ostream &s) {
         s << JAL << "equality_test" << endl;
     }
     else {
-        // compare pointers here of t1 and t2
-        // copy the bool consts
+        int label_1 = envp->get_label_idx(); // true
+        int label_2 = envp->get_label_idx(); // continued
+        emit_beq(T1, T2, label_1, s); // if true, branch to true code
+        emit_load_bool(ACC, BoolConst(false), s); // false code
+        emit_branch(label_2, s); // jump to continued, common code 
+
+        // Emit two branches
+        emit_label_def(label_1, s); // true code
+        emit_load_bool(ACC, BoolConst(true), s);
+    
+        emit_label_def(label_2, s); // continued, common code
     }
 }
 
@@ -1594,6 +1622,27 @@ void leq_class::code(Environmentp envp, ostream &s) {
     if (cgen_debug) {
         printf("debug leq_class\n");
     }
+
+    Expression expr1 = this->get_expression1();
+    expr1->code(envp, s);
+    emit_push(ACC, s);
+    
+    Expression expr2 = this->get_expression2();
+    expr2->code(envp, s); // expr2 evaluated to ACC
+    emit_move(T3, ACC, s); // expr2 moved to T3
+    emit_pop(T2, s); // expr1 popped to T2
+    
+    int label_1 = envp->get_label_idx(); // true
+    int label_2 = envp->get_label_idx(); // continued
+    emit_bleq(T2, T3, label_1, s); // if true, branch to true code
+    emit_load_bool(ACC, BoolConst(false), s); // false code
+    emit_branch(label_2, s); // jump to continued, common code 
+
+    // Emit two branches
+    emit_label_def(label_1, s); // true code
+    emit_load_bool(ACC, BoolConst(true), s);
+    
+    emit_label_def(label_2, s); // continued, common code
 }
 
 void comp_class::code(Environmentp envp, ostream &s) {
