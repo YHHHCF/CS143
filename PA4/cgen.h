@@ -151,6 +151,9 @@ private:
     // branch label idx
     int label_idx = -1;
 
+    // the number of variables
+    int num_vars = 0;
+
     // self object
     int so = -1;
 
@@ -176,6 +179,22 @@ public:
     int get_label_idx() {
         ++label_idx;
         return label_idx;
+    }
+
+    void clear_num_vars() {
+        num_vars = 0;
+    }
+
+    int get_num_vars() {
+        return num_vars;
+    }
+
+    void incr_num_vars() {
+        ++num_vars;
+    }
+
+    void decr_num_vars() {
+        --num_vars;
     }
 
     int get_tag(Symbol typeID) {
