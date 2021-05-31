@@ -1705,7 +1705,7 @@ void object_class::code(Environmentp envp, ostream &s) {
     } else if (envp->is_formal(curr_objectID)) {
         // formal
         int offset = envp->get_formal_offset(curr_objectID) + 1;
-        emit_load(ACC, offset + 1, FP, s); // formals / arguments are above fp
+        emit_load(ACC, offset, FP, s); // formals / arguments are above fp
     } else {
         // variable
         int offset = envp->get_var_offset(curr_objectID);
