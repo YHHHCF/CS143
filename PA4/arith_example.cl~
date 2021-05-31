@@ -1,0 +1,18 @@
+Class Main inherits IO {
+    i1 : Int;
+    i2 : Int <- 1;
+    str1 : String;
+    str2 : String <- "hello";
+    objA1 : A <- new A;
+    objB2 : B;
+
+    main() : Int {
+        {
+            out_int(5+2);
+            out_int(10-13);
+            out_int(4*2);
+            out_int(12/6);
+            0;
+        }
+    };
+};

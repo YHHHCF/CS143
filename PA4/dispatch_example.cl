@@ -2,8 +2,18 @@
     as possible.
  *)
 
-class Main {
-  main():Int { 0 };
+class Main inherits IO {
+  a : A <- new A;
+  b : B <- new B;
+  c : C <- new C;
+  d : D <- new D;
+  e : E <- new E;
+  main():Int {
+    {
+      out_int(e.mC());
+      0;
+    }
+  };
 };
 
 class A {

@@ -1444,7 +1444,7 @@ void dispatch_class::code(Environmentp envp, ostream &s) {
     }
 
     // Checking if dispatch is attempted on void object
-    emit_move(ACC, SELF, s);
+    /*emit_move(ACC, SELF, s);
     emit_load_imm(T1, EMPTYSLOT, s); // 0 (void) in T1
  
     int normal = envp->get_label_idx(); // true
@@ -1455,7 +1455,7 @@ void dispatch_class::code(Environmentp envp, ostream &s) {
     // emit_load_int(T1, inttable.lookup_string(envp->get_lineno()), s);               //uncomment this after implementation
     s << JAL << "_dispatch_abort" << endl;
 
-    emit_label_def(normal, s); // continued, common code
+    emit_label_def(normal, s); // continued, common code*/
     
     // Step 1: prepare the stack
     // push fp on stack
