@@ -1442,6 +1442,21 @@ void dispatch_class::code(Environmentp envp, ostream &s) {
     if (cgen_debug) {
         printf("debug dispatch_class\n");
     }
+
+    // Checking if dispatch is attempted on void object
+    emit_move(ACC, SELF, s);
+    emit_load_imm(T1, EMPTYSLOT, s); // 0 (void) in T1
+ 
+    int normal = envp->get_label_idx(); // true
+    emit_bne(ACC, T1, normal, s); // if false, skip to normal code
+
+    // ERROR CODE: If void object
+    // emit_load_string(ACC, stringtable.lookup_string(envp->get_filename()), s);      //uncomment this after implementation
+    // emit_load_int(T1, inttable.lookup_string(envp->get_lineno()), s);               //uncomment this after implementation
+    s << JAL << "_dispatch_abort" << endl;
+
+    emit_label_def(normal, s); // continued, common code
+    
     // Step 1: prepare the stack
     // push fp on stack
     emit_push(FP, s);
@@ -1485,7 +1500,6 @@ void cond_class::code(Environmentp envp, ostream &s) {
     emit_beqz(ACC, label_1, s); // if false (equal to 0), branch to false code
     then_expr->code(envp, s); // true code
     emit_branch(label_2, s); // jump to continued, common code 
-
     
     // Emit two branches
     emit_label_def(label_1, s); // false code
@@ -1499,12 +1513,44 @@ void loop_class::code(Environmentp envp, ostream &s) {
         printf("debug loop_class\n");
     }
     
+    int loop_start = envp->get_label_idx();
+    int loop_end = envp->get_label_idx();
+        
+    emit_label_def(loop_start, s);  // loop start
+    Expression pred_expr = this->get_pred_expression();
+    pred_expr->code(envp, s);               // pred result in ACC
+
+    emit_load(ACC, DEFAULT_OBJFIELDS, ACC, s); // Put value 0 or 1 into ACC, depending if true or false
+    emit_beq(ACC, ZERO, loop_end, s);          // branch to loop_end if ACC = 0
+
+    Expression body_expr = this->get_body_expression();
+    body_expr->code(envp, s);
+    emit_branch(loop_start, s); // jump back to loop start to check pred once again
+
+    emit_label_def(loop_end, s);  // loop end
 }
 
 void typcase_class::code(Environmentp envp, ostream &s) {
     if (cgen_debug) {
         printf("debug typcase_class\n");
     }
+
+    Expression expr = this->get_expression();
+    expr->code(envp, s);
+    
+    int end_label = envp->get_label_idx();
+    
+    Cases curr_cases = this->get_cases();
+    for (int i = curr_cases->first(); curr_cases->more(i); i = curr_cases->next(i)) {
+        Case curr_case = curr_cases->nth(i);
+        int label = envp->get_label_idx();
+        emit_label_def(label, s);
+        Expression case_expr = curr_case->get_expression();
+        case_expr->code(envp, s);
+        emit_branch(end_label, s);
+    }
+
+    emit_label_def(end_label, s);
 }
 
 void block_class::code(Environmentp envp, ostream &s) {
@@ -1657,6 +1703,9 @@ void lt_class::code(Environmentp envp, ostream &s) {
     expr2->code(envp, s); // expr2 evaluated to ACC
     emit_move(T3, ACC, s); // expr2 moved to T3
     emit_pop(T2, s); // expr1 popped to T2
+
+    emit_load(T2, DEFAULT_OBJFIELDS, T2, s);
+    emit_load(T3, DEFAULT_OBJFIELDS, T3, s);
     
     int label_1 = envp->get_label_idx(); // true
     int label_2 = envp->get_label_idx(); // continued
@@ -1721,6 +1770,9 @@ void leq_class::code(Environmentp envp, ostream &s) {
     expr2->code(envp, s); // expr2 evaluated to ACC
     emit_move(T3, ACC, s); // expr2 moved to T3
     emit_pop(T2, s); // expr1 popped to T2
+
+    emit_load(T2, DEFAULT_OBJFIELDS, T2, s);
+    emit_load(T3, DEFAULT_OBJFIELDS, T3, s);
     
     int label_1 = envp->get_label_idx(); // true
     int label_2 = envp->get_label_idx(); // continued
@@ -1747,11 +1799,11 @@ void comp_class::code(Environmentp envp, ostream &s) {
     int label_1 = envp->get_label_idx(); // false
     int label_2 = envp->get_label_idx(); // continued code
     emit_beqz(ACC, label_1, s); // if false (equal to 0), branch to false code
-    emit_load_bool(ACC, BoolConst(false), s); // true code
+    emit_load_bool(ACC, BoolConst(false), s); // true code, should output opposite
     emit_branch(label_2, s); // jump to continued, common code
     
     emit_label_def(label_1, s);
-    emit_load_bool(ACC, BoolConst(true), s); // false code
+    emit_load_bool(ACC, BoolConst(true), s); // false code, should output opposite
     
     emit_label_def(label_2, s); // continued, common code
 }
