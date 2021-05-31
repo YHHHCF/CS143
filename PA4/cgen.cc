@@ -1354,6 +1354,32 @@ CgenNode::CgenNode(Class_ nd, Basicness bstatus, CgenClassTableP ct) :
 //
 //*****************************************************************
 
+// Helper functions for expr part
+// push arguments for disptach / static dispatch
+void push_arguments(Expressions args, Environmentp envp, ostream &s) {
+    for (int i = args->len() - 1; i >= 0; --i) {
+        args->nth(i)->code(envp, s);
+        emit_push(ACC, s);
+    }
+}
+
+// evaluate e0 and return e0_tag
+int eval_expr(Environmentp envp, Expression expr, ostream &s) {
+    int expr_tag;
+    if (is_SELF_TYPE(expr->get_type())) {
+        emit_move(ACC, SELF, s);
+        expr_tag = envp->get_so();
+    } else {
+        expr->code(envp, s); // now v0 is in ACC
+        // find v0 = X(a1 = la1, ... am = lam)
+        expr_tag = envp->get_tag(expr->get_type()); // get tag of e0
+    }
+    return expr_tag;
+}
+
+
+// Expr part
+
 void assign_class::code(Environmentp envp, ostream &s) {
     if (cgen_debug) {
         printf("debug assign_class\n");
@@ -1363,6 +1389,29 @@ void assign_class::code(Environmentp envp, ostream &s) {
 void static_dispatch_class::code(Environmentp envp, ostream &s) {
     if (cgen_debug) {
         printf("debug static_dispatch_class\n");
+    }
+
+    // Step 1: prepare the stack
+    // push fp on stack
+    emit_push(FP, s);
+    push_arguments(this->get_arg_expressions(), envp, s);
+
+    // Step 2: evaluate e0
+    // evaluate e0 -> v0
+    Expression e0 = this->get_expression();
+    int e0_tag = eval_expr(envp, e0, s);
+    int static_tag = envp->get_tag(this->get_typeID());
+
+    // Step 3: find method definition and jal
+    char *method_label = envp->get_method_label(static_tag, this->get_methodID());
+    envp->set_so(e0_tag);
+    emit_jal(method_label, s);
+
+    // Step 4: restore old fp
+    emit_pop(FP, s);
+
+    if (cgen_debug) {
+        printf("debug static_dispatch_class end\n");
     }
 }
 
@@ -1376,27 +1425,16 @@ void dispatch_class::code(Environmentp envp, ostream &s) {
 
     // evaluate arguments e1, e2, ..., en -> v1, v2, ..., vn
     // and push vn, vn-1, ..., v2, v1 to stack
-    Expressions arguments = this->get_arg_expressions();
-    for (int i = arguments->len() - 1; i >= 0; --i) {
-        arguments->nth(i)->code(envp, s);
-        emit_push(ACC, s);
-    }
+    push_arguments(this->get_arg_expressions(), envp, s);
     
-    // Step 2: find the method definition
+    // Step 2: evaluate e0
     // evaluate e0 -> v0
-    int e0_tag;
     Expression e0 = this->get_expression();
-    if (is_SELF_TYPE(e0->get_type())) {
-        emit_move(ACC, SELF, s);
-        e0_tag = envp->get_so();
-    } else {
-        e0->code(envp, s); // now v0 is in ACC
-        // find v0 = X(a1 = la1, ... am = lam)
-        e0_tag = envp->get_tag(e0->get_type()); // get tag of e0
-    }
+    int e0_tag = eval_expr(envp, e0, s);
 
     // Step 3: find method definition from the dispatch table of X and jal to it
     char *method_label = envp->get_method_label(e0_tag, this->get_methodID());
+    envp->set_so(e0_tag);
     emit_jal(method_label, s);
 
     // Step 4: restore old fp
@@ -1716,7 +1754,7 @@ void object_class::code(Environmentp envp, ostream &s) {
     } else if (envp->is_formal(curr_objectID)) {
         // formal
         int offset = envp->get_formal_offset(curr_objectID) + 1;
-        emit_load(ACC, offset + 1, FP, s); // formals / arguments are above fp
+        emit_load(ACC, offset, FP, s); // formals / arguments are above fp
     } else {
         // variable
         int offset = envp->get_var_offset(curr_objectID);
