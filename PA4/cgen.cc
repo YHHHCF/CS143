@@ -1485,7 +1485,6 @@ void cond_class::code(Environmentp envp, ostream &s) {
     emit_beqz(ACC, label_1, s); // if false (equal to 0), branch to false code
     then_expr->code(envp, s); // true code
     emit_branch(label_2, s); // jump to continued, common code 
-
     
     // Emit two branches
     emit_label_def(label_1, s); // false code
@@ -1499,6 +1498,21 @@ void loop_class::code(Environmentp envp, ostream &s) {
         printf("debug loop_class\n");
     }
     
+    /*int loop_start = envp->get_label_idx();
+    int loop_end = envp->get_label_idx();
+        
+    emit_label_def(loop_start, s);  // loop start
+    Expression pred_expr = this->get_pred_expression();
+    pred_expr->code(envp, s);               // pred result in ACC
+
+    emit_load(ACC, DEFAULT_OBJFIELDS, ACC, s); // Put value 0 or 1 into ACC, depending if true or false
+    emit_beq(ACC, ZERO, loop_end, s);          // branch to loop_end if ACC = 0
+
+    Expression body_expr = this->get_body_expression();
+    body_expr->code(envp, s);
+    emit_branch(loop_start, s); // jump back to loop start to check pred once again
+
+    emit_label_def(loop_end, s);  // loop end*/
 }
 
 void typcase_class::code(Environmentp envp, ostream &s) {
@@ -1726,11 +1740,11 @@ void comp_class::code(Environmentp envp, ostream &s) {
     int label_1 = envp->get_label_idx(); // false
     int label_2 = envp->get_label_idx(); // continued code
     emit_beqz(ACC, label_1, s); // if false (equal to 0), branch to false code
-    emit_load_bool(ACC, BoolConst(false), s); // true code
+    emit_load_bool(ACC, BoolConst(false), s); // true code, should output opposite
     emit_branch(label_2, s); // jump to continued, common code
     
     emit_label_def(label_1, s);
-    emit_load_bool(ACC, BoolConst(true), s); // false code
+    emit_load_bool(ACC, BoolConst(true), s); // false code, should output opposite
     
     emit_label_def(label_2, s); // continued, common code
 }

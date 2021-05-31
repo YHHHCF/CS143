@@ -8,12 +8,13 @@ Class Main inherits IO {
 
     main() : Int {
         {
-            while i2 < 5 loop
+            while i2 <= 10 loop
                 {
                     out_int(i2);
                     i2 <- i2 + 1;
                 }
             pool;
+            out_int(if Isvoid(objA1) then ~10 else 0 fi);
             out_int(if objA1=objB2 then 1 else 0 fi);
             out_int(if i1 < i2 then 1 else 0 fi);
             out_string(str1);
