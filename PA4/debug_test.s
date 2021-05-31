@@ -523,6 +523,10 @@ Main_init:
 	sw	$a0 16($s0)
 	la	$a0 str_const1
 	sw	$a0 24($s0)
+	la	$a0 A_protObj
+	jal	Object.copy
+	jal	A_init
+	sw	$a0 28($s0)
 	move	$a0 $s0
 	lw	$fp 12($sp)
 	lw	$s0 8($sp)

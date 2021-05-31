@@ -3,7 +3,7 @@ Class Main inherits IO {
     i2 : Int <- 1;
     str1 : String;
     str2 : String <- "hello";
-    objA1 : A;
+    objA1 : A <- new A;
     objB2 : B;
 
     main() : Int {

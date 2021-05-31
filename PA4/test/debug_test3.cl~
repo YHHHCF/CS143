@@ -1,0 +1,22 @@
+Class Main inherits IO {
+    objA1 : A <- new A;
+
+    main() : Int {
+        {
+            while i2 <= 10 loop
+                {
+                    out_int(i2);
+                    i2 <- i2 + 1;
+                }
+            pool;
+            0;
+        }
+    };
+};
+
+Class A {
+    tf : Bool <- true;
+    foo() : Int {
+        if tf then 1 else 0 fi
+    };
+};

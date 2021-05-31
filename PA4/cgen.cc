@@ -1442,6 +1442,21 @@ void dispatch_class::code(Environmentp envp, ostream &s) {
     if (cgen_debug) {
         printf("debug dispatch_class\n");
     }
+
+    // Checking if dispatch is attempted on void object
+    emit_move(ACC, SELF, s);
+    emit_load_imm(T1, EMPTYSLOT, s); // 0 (void) in T1
+ 
+    int normal = envp->get_label_idx(); // true
+    emit_bne(ACC, T1, normal, s); // if false, skip to normal code
+
+    // ERROR CODE: If void object
+    // emit_load_string(ACC, stringtable.lookup_string(envp->get_filename()), s);      //uncomment this after implementation
+    // emit_load_int(T1, inttable.lookup_string(envp->get_lineno()), s);               //uncomment this after implementation
+    s << JAL << "_dispatch_abort" << endl;
+
+    emit_label_def(normal, s); // continued, common code
+    
     // Step 1: prepare the stack
     // push fp on stack
     emit_push(FP, s);
@@ -1519,6 +1534,23 @@ void typcase_class::code(Environmentp envp, ostream &s) {
     if (cgen_debug) {
         printf("debug typcase_class\n");
     }
+
+    Expression expr = this->get_expression();
+    expr->code(envp, s);
+    
+    int end_label = envp->get_label_idx();
+    
+    Cases curr_cases = this->get_cases();
+    for (int i = curr_cases->first(); curr_cases->more(i); i = curr_cases->next(i)) {
+        Case curr_case = curr_cases->nth(i);
+        int label = envp->get_label_idx();
+        emit_label_def(label, s);
+        Expression case_expr = curr_case->get_expression();
+        case_expr->code(envp, s);
+        emit_branch(end_label, s);
+    }
+
+    emit_label_def(end_label, s);
 }
 
 void block_class::code(Environmentp envp, ostream &s) {
