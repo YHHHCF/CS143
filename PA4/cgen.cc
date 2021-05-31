@@ -1498,7 +1498,7 @@ void loop_class::code(Environmentp envp, ostream &s) {
         printf("debug loop_class\n");
     }
     
-    /*int loop_start = envp->get_label_idx();
+    int loop_start = envp->get_label_idx();
     int loop_end = envp->get_label_idx();
         
     emit_label_def(loop_start, s);  // loop start
@@ -1512,7 +1512,7 @@ void loop_class::code(Environmentp envp, ostream &s) {
     body_expr->code(envp, s);
     emit_branch(loop_start, s); // jump back to loop start to check pred once again
 
-    emit_label_def(loop_end, s);  // loop end*/
+    emit_label_def(loop_end, s);  // loop end
 }
 
 void typcase_class::code(Environmentp envp, ostream &s) {
@@ -1650,6 +1650,9 @@ void lt_class::code(Environmentp envp, ostream &s) {
     expr2->code(envp, s); // expr2 evaluated to ACC
     emit_move(T3, ACC, s); // expr2 moved to T3
     emit_pop(T2, s); // expr1 popped to T2
+
+    emit_load(T2, DEFAULT_OBJFIELDS, T2, s);
+    emit_load(T3, DEFAULT_OBJFIELDS, T3, s);
     
     int label_1 = envp->get_label_idx(); // true
     int label_2 = envp->get_label_idx(); // continued
@@ -1714,6 +1717,9 @@ void leq_class::code(Environmentp envp, ostream &s) {
     expr2->code(envp, s); // expr2 evaluated to ACC
     emit_move(T3, ACC, s); // expr2 moved to T3
     emit_pop(T2, s); // expr1 popped to T2
+
+    emit_load(T2, DEFAULT_OBJFIELDS, T2, s);
+    emit_load(T3, DEFAULT_OBJFIELDS, T3, s);
     
     int label_1 = envp->get_label_idx(); // true
     int label_2 = envp->get_label_idx(); // continued
