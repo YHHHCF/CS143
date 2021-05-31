@@ -322,6 +322,10 @@ static void emit_branch(int l, ostream& s)
 static void emit_push(char *reg, ostream& str)
 {
     emit_store(reg,0,SP,str);
+    if (cgen_Memmgr) {
+        emit_addiu(A1, SP, 0, str);
+        emit_gc_assign(str);
+    }
     emit_addiu(SP,SP,-WORD_SIZE,str);
 }
 
@@ -1150,12 +1154,20 @@ void CgenClassTable::code_object_initializer(Environmentp envp) {
             if (!init_expr->instanceof("no_expr_class")) { // with init
                 init_expr->code(envp, str); // code the init expression
                 emit_store(ACC, DEFAULT_OBJFIELDS + i, SELF, str); // store
+                if (cgen_Memmgr) {
+                    emit_addiu(A1, SELF, WORD_SIZE * (DEFAULT_OBJFIELDS + i), str);
+                    emit_gc_assign(str);
+                }
             } else { // default init
                 emit_partial_load_address(ACC, str);
                 emit_protobj_ref(curr_class_typeID, str); // get protObj ptr
                 str << endl;
                 emit_load(ACC, DEFAULT_OBJFIELDS + i, ACC, str); // load default init value from protObj
                 emit_store(ACC, DEFAULT_OBJFIELDS + i, SELF, str); // store default value
+                if (cgen_Memmgr) {
+                    emit_addiu(A1, SELF, WORD_SIZE * (DEFAULT_OBJFIELDS + i), str);
+                    emit_gc_assign(str);
+                }
             }
         }
 
@@ -1398,14 +1410,26 @@ void assign_class::code(Environmentp envp, ostream &s) {
         // attribute
         int offset = envp->get_attr_offset(curr_objectID) + DEFAULT_OBJFIELDS;
         emit_store(ACC, offset, SELF, s);
+        if (cgen_Memmgr) {
+            emit_addiu(A1, SELF, WORD_SIZE * offset, s);
+            emit_gc_assign(s);
+        }
     } else if (envp->is_formal(curr_objectID)) {
         // formal
         int offset = envp->get_formal_offset(curr_objectID) + 1;
         emit_store(ACC, offset, FP, s);
+        if (cgen_Memmgr) {
+            emit_addiu(A1, FP, WORD_SIZE * offset, s);
+            emit_gc_assign(s);
+        }
     } else {
         // variable
         int offset = envp->get_var_offset(curr_objectID);
         emit_store(ACC, -offset, FP, s);
+        if (cgen_Memmgr) {
+            emit_addiu(A1, FP, -WORD_SIZE * offset, s);
+            emit_gc_assign(s);
+        }
     }
 }
 
@@ -1611,6 +1635,10 @@ void plus_class::code(Environmentp envp, ostream &s) {
     
     emit_add(T1, T2, T3, s); // final value in ACC
     emit_store(T1, DEFAULT_OBJFIELDS, ACC, s); // Plus the value into the copied object for return
+    if (cgen_Memmgr) {
+        emit_addiu(A1, ACC, WORD_SIZE * DEFAULT_OBJFIELDS, s);
+        emit_gc_assign(s);
+    }
 }
 
 void sub_class::code(Environmentp envp, ostream &s) {
@@ -1632,6 +1660,10 @@ void sub_class::code(Environmentp envp, ostream &s) {
     
     emit_sub(T1, T2, T3, s); // final value in ACC
     emit_store(T1, DEFAULT_OBJFIELDS, ACC, s); // Plus the value into the copied object for return
+    if (cgen_Memmgr) {
+        emit_addiu(A1, ACC, WORD_SIZE * DEFAULT_OBJFIELDS, s);
+        emit_gc_assign(s);
+    }
 }
 
 void mul_class::code(Environmentp envp, ostream &s) {
@@ -1653,6 +1685,10 @@ void mul_class::code(Environmentp envp, ostream &s) {
     
     emit_mul(T1, T2, T3, s); // final value in ACC
     emit_store(T1, DEFAULT_OBJFIELDS, ACC, s); // Plus the value into the copied object for return
+    if (cgen_Memmgr) {
+        emit_addiu(A1, ACC, WORD_SIZE * DEFAULT_OBJFIELDS, s);
+        emit_gc_assign(s);
+    }
 }
 
 void divide_class::code(Environmentp envp, ostream &s) {
@@ -1674,6 +1710,10 @@ void divide_class::code(Environmentp envp, ostream &s) {
     
     emit_div(T1, T2, T3, s); // final value in ACC
     emit_store(T1, DEFAULT_OBJFIELDS, ACC, s); // Plus the value into the copied object for return
+    if (cgen_Memmgr) {
+        emit_addiu(A1, ACC, WORD_SIZE * DEFAULT_OBJFIELDS, s);
+        emit_gc_assign(s);
+    }
 }
 
 void neg_class::code(Environmentp envp, ostream &s) {
@@ -1688,6 +1728,10 @@ void neg_class::code(Environmentp envp, ostream &s) {
     emit_neg(T1, T1, s);
     
     emit_store(T1, DEFAULT_OBJFIELDS, ACC, s); // Plus the value into the copied object for return
+    if (cgen_Memmgr) {
+        emit_addiu(A1, ACC, WORD_SIZE * DEFAULT_OBJFIELDS, s);
+        emit_gc_assign(s);
+    }
 }
 
 void lt_class::code(Environmentp envp, ostream &s) {
