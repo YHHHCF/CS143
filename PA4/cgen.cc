@@ -1475,8 +1475,8 @@ void dispatch_class::code(Environmentp envp, ostream &s) {
     emit_bne(ACC, T1, normal, s); // if false, skip to normal code
 
     // ERROR CODE: If void object
-    // emit_load_string(ACC, stringtable.lookup_string(envp->get_filename()), s);      //uncomment this after implementation
-    // emit_load_int(T1, inttable.lookup_string(envp->get_lineno()), s);               //uncomment this after implementation
+    emit_load_string(ACC, stringtable.lookup_string(envp->get_filename()->get_string()), s);      //uncomment this after implementation
+    emit_load_int(T1, inttable.lookup_string((envp->get_lineno())), s);                             //uncomment this after implementation
     s << JAL << "_dispatch_abort" << endl;
 
     emit_label_def(normal, s); // continued, common code*/
