@@ -368,6 +368,15 @@ static void emit_gc_check(char *source, ostream &s)
     s << JAL << "_gc_check" << endl;
 }
 
+// emit the code to print an int for debug
+static void emit_int_debug(int x, ostream &s) {
+    emit_push(ACC, s);
+    emit_load_imm(ACC, x, s);
+    emit_push(ACC, s);
+    emit_jalr("IO.out_int", s);
+    emit_popn(1, s);
+    emit_pop(ACC, s);
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -629,7 +638,7 @@ void CgenClassTable::code_name_and_obj_table()
 //
 //***************************************************
 
-void CgenClassTable::code_attr_and_dispatch_table()
+void CgenClassTable::code_attr_and_dispatch_table(Environmentp envp)
 {
     // code for class_attrTabTab
     str << CLASSATTRTABTAB << LABEL;
@@ -644,6 +653,9 @@ void CgenClassTable::code_attr_and_dispatch_table()
     // Update attribute_table and method_table using BFS
     std::list<CgenNodeP> node_pool; // a pool for BFS
     node_pool.push_back(probe(Object)); // start from Object
+
+    std::map<int, std::map<Symbol, Feature> > env_tag_methods; // for env
+    std::map<int, std::vector<Symbol> > env_tag_attrs; // for env
 
     while (node_pool.size()) {
         int size = node_pool.size();
@@ -695,6 +707,8 @@ void CgenClassTable::code_attr_and_dispatch_table()
             attribute_table[curr_node->get_typeID()] = curr_attr_map;
             method_order[curr_node->get_typeID()] = curr_method_order;
             method_table[curr_node->get_typeID()] = curr_method_map;
+            env_tag_attrs[curr_node->get_tag()] = curr_attr_order; // for env
+            env_tag_methods[curr_node->get_tag()] = curr_method_map; // for env
             
             // add childrens to node_pool
             List<CgenNode> *children_nodes = curr_node->get_children();
@@ -703,6 +717,8 @@ void CgenClassTable::code_attr_and_dispatch_table()
             }
         }
     }
+    envp->update_tag_attrs(env_tag_attrs); // update for environment
+    envp->update_tag_methods(env_tag_methods); // update for environment
 
     // code for _attrTab
     for (int tag = 0; tag <= this->_max_tag; ++tag) {
@@ -1107,9 +1123,15 @@ void CgenClassTable::code_parentTab() {
 // CgenClassTable::code_object_initializer
 // generate code for object intializers (first pass)
 //
-void CgenClassTable::code_object_initializer() {
+void CgenClassTable::code_object_initializer(Environmentp envp) {
+    std::vector<Symbol> typeIDs; // for env
+
     for (int tag = 0; tag <= this->_max_tag; ++tag) {
         Symbol curr_class_typeID = this->tag_table[tag]->get_typeID();
+        typeIDs.push_back(curr_class_typeID); // for env
+        envp->set_so(tag); // set envp's so
+        envp->enter_scope();
+        envp->enter_class(); // set envp
         emit_init_ref(curr_class_typeID, str);
         str << LABEL;
 
@@ -1126,7 +1148,7 @@ void CgenClassTable::code_object_initializer() {
             Feature attr_typeID = attr_map[attr_objID];
             Expression init_expr = attr_typeID->get_expression();
             if (!init_expr->instanceof("no_expr_class")) { // with init
-                init_expr->code(str); // code the init expression
+                init_expr->code(envp, str); // code the init expression
                 emit_store(ACC, DEFAULT_OBJFIELDS + i, SELF, str); // store
             } else { // default init
                 emit_partial_load_address(ACC, str);
@@ -1142,17 +1164,21 @@ void CgenClassTable::code_object_initializer() {
         emit_pop(FP, str); // restore fp
         
         emit_return(str);
+        envp->exit_scope();
     }
+    envp->update_class_typeIDs(typeIDs); // for env
 }
 
 //
 // CgenClassTable::code_class_methods
 // generate code for class methods (second pass)
 //
-void CgenClassTable::code_class_methods() {
-
+void CgenClassTable::code_class_methods(Environmentp envp) {
     for (int tag = 0; tag <= this->_max_tag; ++tag) {
         Symbol curr_class_typeID = this->tag_table[tag]->get_typeID();
+        envp->set_so(tag); // set so for environment
+        envp->enter_scope();
+        envp->enter_class(); // set envp variables
 
         // Do not override provided method code for basic classes
         if (!tag_table[tag]->basic()) {
@@ -1160,8 +1186,27 @@ void CgenClassTable::code_class_methods() {
 
             for (auto method : class_methods) {
                 Feature curr_method = method.second;
+
                 // We only process methods defined in this class to prevent double counting
                 if (equal(curr_method->get_implement_typeID(), curr_class_typeID)) {
+
+                    if (cgen_debug) {
+                        printf("code_class_methods: %s -> %s\n", curr_class_typeID->get_string(), \
+                        curr_method->get_methodID()->get_string());
+                    }
+
+                    // enter the environment with formals
+                    envp->enter_scope();
+                    std::vector<Symbol> formal_objIDs;
+
+                    for (int f = curr_method->get_formals()->first(); curr_method->get_formals()->more(f); \
+                        f = curr_method->get_formals()->next(f)) {
+                        Formal curr_formal = curr_method->get_formals()->nth(f);
+                        formal_objIDs.push_back(curr_formal->get_objectID());
+                    }
+                    envp->update_formal_objectIDs(formal_objIDs);
+
+                    envp->enter_method();
 
                     // Emit label for the Method
                     emit_method_ref(curr_class_typeID, curr_method->get_methodID(), str);
@@ -1175,28 +1220,29 @@ void CgenClassTable::code_class_methods() {
                     
                     // Execute Code of Method
                     Expression method_expr = curr_method->get_expression();
-                    method_expr->code(str);
+                    method_expr->code(envp, str);
                 
                     // Restore return address
                     emit_pop(RA, str);
 
-                    // Pop n formals
-                    int num_formals = curr_method->get_formals()->len();
-                    emit_popn(num_formals, str);
-
-                    // Restore old fp
-                    emit_pop(FP, str);
+                    // Pop n arguments
+                    emit_popn(curr_method->get_formals()->len(), str);
                     
                     // Go back to return address
                     emit_return(str);
+
+                    envp->exit_scope();
                 }
             }
         }
+        envp->exit_scope();
     }
 }
 
 void CgenClassTable::code()
 {
+    Environment env;
+
     if (cgen_debug) cout << "coding global data" << endl;
     code_global_data();
 
@@ -1213,7 +1259,7 @@ void CgenClassTable::code()
     code_parentTab();
 
     if (cgen_debug) cout << "coding attirbute and dispatch tables" << endl;
-    code_attr_and_dispatch_table();
+    code_attr_and_dispatch_table(&env);
 
     if (cgen_debug) cout << "coding prototype objects" << endl;
     code_protObj();
@@ -1222,15 +1268,17 @@ void CgenClassTable::code()
     code_global_text();
 
     if (cgen_debug) cout << "coding object initializer" << endl;
-    code_object_initializer();
+    code_object_initializer(&env);
+
+    if (cgen_debug) {
+        env.print_tag_attrs();
+        env.print_tag_methods();
+        env.print_class_typeIDs();
+        // env.test_env_objectIDs();
+    }
 
     if (cgen_debug) cout << "coding class methods" << endl;
-    code_class_methods();
-
-//                 Add your code to emit
-//                   - the class methods
-//                   - etc...
-    
+    code_class_methods(&env);
 }
 
 CgenNodeP CgenClassTable::root()
@@ -1296,27 +1344,6 @@ CgenNode::CgenNode(Class_ nd, Basicness bstatus, CgenClassTableP ct) :
     stringtable.add_string(name->get_string()); // Add class name to string table
 }
 
-///////////////////////////////////////////////////////////////////////
-//
-// Helper Functions
-//
-///////////////////////////////////////////////////////////////////////
-bool CgenClassTable::isInt(Symbol typeID) {
-    return strcmp(typeID->get_string(), "Int") == 0;
-}
-
-bool CgenClassTable::isString(Symbol typeID) {
-    return strcmp(typeID->get_string(), "String") == 0;
-}
-
-bool CgenClassTable::isBool(Symbol typeID) {
-    return strcmp(typeID->get_string(), "Bool") == 0;
-}
-
-bool CgenClassTable::equal(Symbol typeID1, Symbol typeID2) {
-    return strcmp(typeID1->get_string(), typeID2->get_string()) == 0;
-}
-
 //******************************************************************
 //
 //   Fill in the following methods to produce code for the
@@ -1327,83 +1354,362 @@ bool CgenClassTable::equal(Symbol typeID1, Symbol typeID2) {
 //
 //*****************************************************************
 
-void assign_class::code(ostream &s) {
+// Helper functions for expr part
+// push arguments for disptach / static dispatch
+void push_arguments(Expressions args, Environmentp envp, ostream &s) {
+    for (int i = args->len() - 1; i >= 0; --i) {
+        args->nth(i)->code(envp, s);
+        emit_push(ACC, s);
+    }
 }
 
-void static_dispatch_class::code(ostream &s) {
+// evaluate e0 and return e0_tag
+int eval_expr(Environmentp envp, Expression expr, ostream &s) {
+    int expr_tag;
+    if (is_SELF_TYPE(expr->get_type())) {
+        emit_move(ACC, SELF, s);
+        expr_tag = envp->get_so();
+    } else {
+        expr->code(envp, s); // now v0 is in ACC
+        // find v0 = X(a1 = la1, ... am = lam)
+        expr_tag = envp->get_tag(expr->get_type()); // get tag of e0
+    }
+    return expr_tag;
 }
 
-void dispatch_class::code(ostream &s) {
+
+// Expr part
+
+void assign_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug assign_class\n");
+    }
 }
 
-void cond_class::code(ostream &s) {
+void static_dispatch_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug static_dispatch_class\n");
+    }
+
+    // Step 1: prepare the stack
+    // push fp on stack
+    emit_push(FP, s);
+    push_arguments(this->get_arg_expressions(), envp, s);
+
+    // Step 2: evaluate e0
+    // evaluate e0 -> v0
+    Expression e0 = this->get_expression();
+    int e0_tag = eval_expr(envp, e0, s);
+    int static_tag = envp->get_tag(this->get_typeID());
+
+    // Step 3: find method definition and jal
+    char *method_label = envp->get_method_label(static_tag, this->get_methodID());
+    envp->set_so(e0_tag);
+    emit_jal(method_label, s);
+
+    // Step 4: restore old fp
+    emit_pop(FP, s);
+
+    if (cgen_debug) {
+        printf("debug static_dispatch_class end\n");
+    }
 }
 
-void loop_class::code(ostream &s) {
+void dispatch_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug dispatch_class\n");
+    }
+    // Step 1: prepare the stack
+    // push fp on stack
+    emit_push(FP, s);
+
+    // evaluate arguments e1, e2, ..., en -> v1, v2, ..., vn
+    // and push vn, vn-1, ..., v2, v1 to stack
+    push_arguments(this->get_arg_expressions(), envp, s);
+    
+    // Step 2: evaluate e0
+    // evaluate e0 -> v0
+    Expression e0 = this->get_expression();
+    int e0_tag = eval_expr(envp, e0, s);
+
+    // Step 3: find method definition from the dispatch table of X and jal to it
+    char *method_label = envp->get_method_label(e0_tag, this->get_methodID());
+    envp->set_so(e0_tag);
+    emit_jal(method_label, s);
+
+    // Step 4: restore old fp
+    emit_pop(FP, s);
+
+    if (cgen_debug) {
+        printf("debug dispatch_class end\n");
+    }
 }
 
-void typcase_class::code(ostream &s) {
+void cond_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug cond_class\n");
+    }
+    
+    Expression cond_expr = this->get_pred_expression();
+    Expression then_expr = this->get_then_expression();
+    Expression else_expr = this->get_else_expression();
+    
+    cond_expr->code(envp, s); // evaulated the conditional
+    emit_load(ACC, DEFAULT_OBJFIELDS, ACC, s); // Put value of bool into ACC
+
+    int label_1 = envp->get_label_idx(); // false
+    int label_2 = envp->get_label_idx(); // true
+    emit_beqz(ACC, label_1, s); // if false (equal to 0), branch to false code
+
+    then_expr->code(envp, s); // true code
+    
+    emit_branch(label_2, s); // jump to continued, common code 
+
+    
+    // Emit two branches
+    emit_label_def(label_1, s); // false code
+    else_expr->code(envp, s);
+    
+    emit_label_def(label_2, s); // continued, common code
 }
 
-void block_class::code(ostream &s) {
+void loop_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug loop_class\n");
+    }
+    
 }
 
-void let_class::code(ostream &s) {
+void typcase_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug typcase_class\n");
+    }
 }
 
-void plus_class::code(ostream &s) {
+void block_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug block_class\n");
+    }
+
+    Expressions exprs = this->get_body_expressions();
+    for (int i = exprs->first(); exprs->more(i); i = exprs->next(i)) {
+        Expression curr_expr = exprs->nth(i);
+        curr_expr->code(envp, s);
+    }
 }
 
-void sub_class::code(ostream &s) {
+void let_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug let_class\n");
+    }
 }
 
-void mul_class::code(ostream &s) {
+void plus_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug plus_class\n");
+    }
+
+    Expression expr1 = this->get_expression1();
+    expr1->code(envp, s);
+    emit_push(ACC, s);
+    
+    Expression expr2 = this->get_expression2();
+    expr2->code(envp, s); // expr2 evaluated to ACC
+    s << JAL << "Object.copy" << endl;
+    emit_load(T3, DEFAULT_OBJFIELDS, ACC, s); // Put value of expr2 from Object into T3
+
+    emit_pop(T2, s); // expr1 popped to T1
+    emit_load(T2, DEFAULT_OBJFIELDS, T2, s); // Put value of expr1 from Object into T2
+    
+    emit_add(T1, T2, T3, s); // final value in ACC
+    emit_store(T1, DEFAULT_OBJFIELDS, ACC, s); // Plus the value into the copied object for return
 }
 
-void divide_class::code(ostream &s) {
+void sub_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug sub_class\n");
+    }
+
+    Expression expr1 = this->get_expression1();
+    expr1->code(envp, s);
+    emit_push(ACC, s);
+    
+    Expression expr2 = this->get_expression2();
+    expr2->code(envp, s); // expr2 evaluated to ACC
+    s << JAL << "Object.copy" << endl;
+    emit_load(T3, DEFAULT_OBJFIELDS, ACC, s); // Put value of expr2 from Object into T3
+
+    emit_pop(T2, s); // expr1 popped to T1
+    emit_load(T2, DEFAULT_OBJFIELDS, T2, s); // Put value of expr1 from Object into T2
+    
+    emit_sub(T1, T2, T3, s); // final value in ACC
+    emit_store(T1, DEFAULT_OBJFIELDS, ACC, s); // Plus the value into the copied object for return
 }
 
-void neg_class::code(ostream &s) {
+void mul_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug mul_class\n");
+    }
+
+    Expression expr1 = this->get_expression1();
+    expr1->code(envp, s);
+    emit_push(ACC, s);
+    
+    Expression expr2 = this->get_expression2();
+    expr2->code(envp, s); // expr2 evaluated to ACC
+    s << JAL << "Object.copy" << endl;
+    emit_load(T3, DEFAULT_OBJFIELDS, ACC, s); // Put value of expr2 from Object into T3
+
+    emit_pop(T2, s); // expr1 popped to T1
+    emit_load(T2, DEFAULT_OBJFIELDS, T2, s); // Put value of expr1 from Object into T2
+    
+    emit_mul(T1, T2, T3, s); // final value in ACC
+    emit_store(T1, DEFAULT_OBJFIELDS, ACC, s); // Plus the value into the copied object for return
 }
 
-void lt_class::code(ostream &s) {
+void divide_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug divide_class\n");
+    }
+
+    Expression expr1 = this->get_expression1();
+    expr1->code(envp, s);
+    emit_push(ACC, s);
+    
+    Expression expr2 = this->get_expression2();
+    expr2->code(envp, s); // expr2 evaluated to ACC
+    s << JAL << "Object.copy" << endl;
+    emit_load(T3, DEFAULT_OBJFIELDS, ACC, s); // Put value of expr2 from Object into T3
+
+    emit_pop(T2, s); // expr1 popped to T1
+    emit_load(T2, DEFAULT_OBJFIELDS, T2, s); // Put value of expr1 from Object into T2
+    
+    emit_div(T1, T2, T3, s); // final value in ACC
+    emit_store(T1, DEFAULT_OBJFIELDS, ACC, s); // Plus the value into the copied object for return
 }
 
-void eq_class::code(ostream &s) {
+void neg_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug neg_class\n");
+    }
 }
 
-void leq_class::code(ostream &s) {
+void lt_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug lt_class\n");
+    }
 }
 
-void comp_class::code(ostream &s) {
+void eq_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug eq_class\n");
+    }
+
+    Expression expr1 = this->get_expression1();
+    expr1->code(envp, s);
+    emit_push(ACC, s);
+    
+    Expression expr2 = this->get_expression2();
+    expr2->code(envp, s); // expr2 evaluated to ACC
+
+    emit_move(T2, ACC, s); // expr2 moved from ACC to T2
+    emit_pop(T1, s); // expr1 popped off stack to T1
+
+    if (isInt(expr1->get_type()) || isBool(expr1->get_type()) || isString(expr1->get_type())) {
+    
+        emit_load_bool(ACC, BoolConst(true), s);
+        emit_load_bool(A1, BoolConst(false), s);
+
+        s << JAL << "equality_test" << endl;
+    }
+    else {
+        // compare pointers here of t1 and t2
+        // copy the bool consts
+    }
 }
 
-void int_const_class::code(ostream& s)  
+void leq_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug leq_class\n");
+    }
+}
+
+void comp_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug comp_class\n");
+    }
+}
+
+void int_const_class::code(Environmentp envp, ostream& s)  
 {
+    if (cgen_debug) {
+        printf("debug int_const_class: %s\n", token->get_string());
+    }
     //
     // Need to be sure we have an IntEntry *, not an arbitrary Symbol
     //
     emit_load_int(ACC,inttable.lookup_string(token->get_string()),s);
 }
 
-void string_const_class::code(ostream& s)
+void string_const_class::code(Environmentp envp, ostream& s)
 {
+    if (cgen_debug) {
+        printf("debug string_const_class: %s\n", token->get_string());
+    }
     emit_load_string(ACC,stringtable.lookup_string(token->get_string()),s);
 }
 
-void bool_const_class::code(ostream& s)
+void bool_const_class::code(Environmentp envp, ostream& s)
 {
+    if (cgen_debug) {
+        printf("debug bool_const_class: %d\n", val);
+    }
     emit_load_bool(ACC, BoolConst(val), s);
 }
 
-void new__class::code(ostream &s) {
+void new__class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug new__class\n");
+    }
 }
 
-void isvoid_class::code(ostream &s) {
+void isvoid_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug isvoid_class\n");
+    }
 }
 
-void no_expr_class::code(ostream &s) {
+void no_expr_class::code(Environmentp envp, ostream &s) {
+    if (cgen_debug) {
+        printf("debug no_expr_class\n");
+    }
 }
 
-void object_class::code(ostream &s) {
+void object_class::code(Environmentp envp, ostream &s) {
+
+    Symbol curr_objectID = this->get_objectID();
+    if (cgen_debug) {
+        printf("debug object_class: %s\n", this->get_objectID()->get_string());
+    }
+
+    if (!envp->contains(curr_objectID)) {
+        if (cgen_debug) {
+            printf("Error: objectID not defined, should be handled by type checker.\n");
+        }
+    }
+
+    if (envp->is_attr(curr_objectID)) {
+        // attribute
+        int offset = envp->get_attr_offset(curr_objectID) + DEFAULT_OBJFIELDS;
+        emit_load(ACC, offset, SELF, s);
+    } else if (envp->is_formal(curr_objectID)) {
+        // formal
+        int offset = envp->get_formal_offset(curr_objectID) + 1;
+        emit_load(ACC, offset, FP, s); // formals / arguments are above fp
+    } else {
+        // variable
+        int offset = envp->get_var_offset(curr_objectID);
+        emit_load(ACC, -offset, FP, s); // variables are stored below fp
+    }
 }
+// bottom
