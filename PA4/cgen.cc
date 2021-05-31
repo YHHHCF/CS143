@@ -1383,6 +1383,30 @@ void assign_class::code(Environmentp envp, ostream &s) {
     if (cgen_debug) {
         printf("debug assign_class\n");
     }
+    Symbol curr_objectID = this->get_objectID();
+
+    if (!envp->contains(curr_objectID)) {
+        if (cgen_debug) {
+            printf("Error: objectID not defined, should be handled by type checker.\n");
+        }
+    }
+
+    // evaluate e1, the eval result is in ACC
+    this->get_expression()->code(envp, s);
+
+    if (envp->is_attr(curr_objectID)) {
+        // attribute
+        int offset = envp->get_attr_offset(curr_objectID) + DEFAULT_OBJFIELDS;
+        emit_store(ACC, offset, SELF, s);
+    } else if (envp->is_formal(curr_objectID)) {
+        // formal
+        int offset = envp->get_formal_offset(curr_objectID) + 1;
+        emit_store(ACC, offset, FP, s);
+    } else {
+        // variable
+        int offset = envp->get_var_offset(curr_objectID);
+        emit_store(ACC, -offset, FP, s);
+    }
 }
 
 void static_dispatch_class::code(Environmentp envp, ostream &s) {
@@ -1704,11 +1728,10 @@ void no_expr_class::code(Environmentp envp, ostream &s) {
 }
 
 void object_class::code(Environmentp envp, ostream &s) {
-
-    Symbol curr_objectID = this->get_objectID();
     if (cgen_debug) {
         printf("debug object_class: %s\n", this->get_objectID()->get_string());
     }
+    Symbol curr_objectID = this->get_objectID();
 
     if (!envp->contains(curr_objectID)) {
         if (cgen_debug) {
