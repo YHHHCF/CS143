@@ -187,6 +187,14 @@ public:
         return -1;
     }
 
+    Symbol get_typeID(int tag) {
+        int size = static_cast<int>(this->class_typeIDs.size());
+        if (tag < 0 || tag >= size) {
+            return nullptr;
+        }
+        return this->class_typeIDs[tag];
+    }
+
     void set_so (int tag) {
         this->so = tag;
     }

@@ -1379,10 +1379,33 @@ int eval_expr(Environmentp envp, Expression expr, ostream &s) {
 
 
 // Expr part
-
 void assign_class::code(Environmentp envp, ostream &s) {
     if (cgen_debug) {
         printf("debug assign_class\n");
+    }
+    Symbol curr_objectID = this->get_objectID();
+
+    if (!envp->contains(curr_objectID)) {
+        if (cgen_debug) {
+            printf("Error: objectID not defined, should be handled by type checker.\n");
+        }
+    }
+
+    // evaluate e1, the eval result is in ACC
+    this->get_expression()->code(envp, s);
+
+    if (envp->is_attr(curr_objectID)) {
+        // attribute
+        int offset = envp->get_attr_offset(curr_objectID) + DEFAULT_OBJFIELDS;
+        emit_store(ACC, offset, SELF, s);
+    } else if (envp->is_formal(curr_objectID)) {
+        // formal
+        int offset = envp->get_formal_offset(curr_objectID) + 1;
+        emit_store(ACC, offset, FP, s);
+    } else {
+        // variable
+        int offset = envp->get_var_offset(curr_objectID);
+        emit_store(ACC, -offset, FP, s);
     }
 }
 
@@ -1741,8 +1764,27 @@ void bool_const_class::code(Environmentp envp, ostream& s)
 
 void new__class::code(Environmentp envp, ostream &s) {
     if (cgen_debug) {
-        printf("debug new__class\n");
+        printf("debug new__class: %s\n", this->get_typeID()->get_string());
     }
+    // Get the tag of type to create
+    Symbol T0 = this->get_typeID();
+    if (is_SELF_TYPE(this->get_typeID())) {
+        T0 = envp->get_typeID(envp->get_so());
+    }
+
+    // load address of protObj of the type to ACC
+    emit_partial_load_address(ACC, s);
+    emit_protobj_ref(T0, s);
+    s << endl;
+
+    // Call Object.copy to get a copy of protObj
+    emit_jal("Object.copy", s);
+
+    // Call init to initialize the object
+    emit_partial_load_address(T1, s);
+    emit_init_ref(T0, s);
+    s << endl;
+    emit_jalr(T1, s);
 }
 
 void isvoid_class::code(Environmentp envp, ostream &s) {
@@ -1776,16 +1818,20 @@ void no_expr_class::code(Environmentp envp, ostream &s) {
 }
 
 void object_class::code(Environmentp envp, ostream &s) {
-
-    Symbol curr_objectID = this->get_objectID();
     if (cgen_debug) {
         printf("debug object_class: %s\n", this->get_objectID()->get_string());
     }
+    Symbol curr_objectID = this->get_objectID();
 
     if (!envp->contains(curr_objectID)) {
         if (cgen_debug) {
             printf("Error: objectID not defined, should be handled by type checker.\n");
         }
+    }
+
+    if (is_SELF_TYPE(this->get_type())) {
+        emit_load(ACC, 0, SELF, s);
+        return;
     }
 
     if (envp->is_attr(curr_objectID)) {
